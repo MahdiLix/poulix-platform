@@ -17,7 +17,7 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(3000);
-  logger.log('Application is running on: http://localhost:3000');
+  await app.listen(3001);
+  logger.log('Application is running on: http://localhost:3001');
 }
 void bootstrap();

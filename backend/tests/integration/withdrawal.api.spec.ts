@@ -4,6 +4,7 @@ import {
   balanceOf,
   cleanupUser,
   createTestApp,
+  creditWallet,
   getDatabase,
   registerUser,
   type AuthSession,
@@ -36,11 +37,7 @@ describe('Withdrawal API', () => {
   });
 
   async function deposit(amount: number) {
-    await request(app.getHttpServer())
-      .post('/wallets/deposit')
-      .set('Authorization', `Bearer ${session.accessToken}`)
-      .send({ amount })
-      .expect(201);
+    await creditWallet(db, session.userId, amount);
   }
 
   it('withdraws to a valid account number and decreases the balance', async () => {

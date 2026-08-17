@@ -7,15 +7,21 @@ import {
   getDatabase,
   uniqueUser,
 } from '../helpers/app';
+import { FakeZarinpalService } from '../helpers/zarinpal';
 import type { DatabaseService } from '../../src/database/database.service';
+import { ZarinpalService } from '../../src/payments/zarinpal.service';
 
 describe('Financial flow', () => {
   let app: INestApplication;
   let db: DatabaseService;
+  let zarinpal: FakeZarinpalService;
   let userId: string | undefined;
 
   beforeAll(async () => {
-    app = await createTestApp();
+    zarinpal = new FakeZarinpalService();
+    app = await createTestApp((builder) =>
+      builder.overrideProvider(ZarinpalService).useValue(zarinpal),
+    );
     db = getDatabase(app);
   });
 
@@ -35,7 +41,8 @@ describe('Financial flow', () => {
     const http = request(app.getHttpServer());
 
     const registered = await http.post('/auth/register').send(user).expect(201);
-    userId = registered.body.user.id as string;
+    const registeredUserId = registered.body.user.id as string;
+    userId = registeredUserId;
     expect(typeof registered.body.accessToken).toBe('string');
 
     const login = await http
@@ -58,7 +65,20 @@ describe('Financial flow', () => {
       .set(auth)
       .send({ amount: 1000000 })
       .expect(201);
-    expect(balanceOf(deposit.body.balance)).toBe(1000000);
+    expect(typeof deposit.body.paymentUrl).toBe('string');
+    expect(deposit.body.paymentUrl).toContain('/pg/StartPay/');
+    expect(deposit.body.authority).toBeDefined();
+
+    const pendingBalance = await http.get('/wallets/balance').set(auth).expect(200);
+    expect(balanceOf(pendingBalance.body.balance)).toBe(0);
+
+    const verified = await http
+      .get('/wallets/deposit/callback')
+      .query({ Authority: deposit.body.authority, Status: 'OK' })
+      .expect(200);
+    expect(verified.body.status).toBe('PAID');
+    expect(verified.body.alreadyVerified).toBe(false);
+    expect(balanceOf(verified.body.balance)).toBe(1000000);
 
     const afterDeposit = await http
       .get('/wallets/balance')
@@ -80,8 +100,14 @@ describe('Financial flow', () => {
     expect(balanceOf(finalBalance.body.balance)).toBe(300000);
 
     const wallet = await db.wallet.findUniqueOrThrow({
-      where: { userId },
+      where: { userId: registeredUserId },
     });
     expect(balanceOf(wallet.balance)).toBe(300000);
+
+    const deposits = await db.transaction.findMany({
+      where: { walletId: wallet.id, type: 'DEPOSIT' },
+    });
+    expect(deposits).toHaveLength(1);
+    expect(zarinpal.verifyCalls).toBe(1);
   });
 });

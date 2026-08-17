@@ -16,6 +16,13 @@ enum TransactionType {
   WITHDRAWAL
 }
 
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+}
+
 // USER
 
 model User {
@@ -47,6 +54,7 @@ model Wallet {
   user User @relation(fields: [userId], references: [id])
 
   transactions Transaction[]
+  payments     Payment[]
 }
 
 // TRANSACTION
@@ -60,6 +68,26 @@ model Transaction {
   type   TransactionType
 
   createdAt DateTime @default(now())
+
+  wallet Wallet @relation(fields: [walletId], references: [id])
+
+  @@index([walletId, createdAt])
+}
+
+// PAYMENT (ZarinPal deposit requests)
+
+model Payment {
+  id String @id @default(uuid())
+
+  walletId String
+
+  amount    Decimal       @db.Decimal(20, 0)
+  authority String?       @unique
+  refId     String?
+  status    PaymentStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   wallet Wallet @relation(fields: [walletId], references: [id])
 

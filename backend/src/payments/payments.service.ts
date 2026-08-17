@@ -1,0 +1,202 @@
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { DatabaseService } from '../database/database.service';
+import { ZarinpalService } from './zarinpal.service';
+
+@Injectable()
+export class PaymentsService {
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly zarinpal: ZarinpalService,
+  ) {}
+
+  async createDeposit(userId: string, amount: number) {
+    const wallet = await this.db.wallet.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!wallet) {
+      throw new BadRequestException('Wallet not found');
+    }
+
+    const user = await this.db.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+
+    const payment = await this.db.payment.create({
+      data: {
+        walletId: wallet.id,
+        amount,
+        status: 'PENDING',
+      },
+    });
+
+    try {
+      const requested = await this.zarinpal.requestPayment({
+        amount,
+        description: `Wallet deposit ${payment.id}`,
+        callbackOrderId: payment.id,
+        email: user?.email,
+      });
+
+      await this.db.payment.update({
+        where: { id: payment.id },
+        data: { authority: requested.authority },
+      });
+
+      return {
+        paymentId: payment.id,
+        authority: requested.authority,
+        paymentUrl: requested.paymentUrl,
+        amount,
+      };
+    } catch (error) {
+      await this.db.payment.update({
+        where: { id: payment.id },
+        data: { status: 'FAILED' },
+      });
+
+      throw error;
+    }
+  }
+
+  async handleCallback(authority: string | undefined, status: string | undefined) {
+    if (!authority) {
+      throw new BadRequestException('Missing payment authority');
+    }
+
+    const payment = await this.db.payment.findUnique({
+      where: { authority },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+
+    if (status !== 'OK') {
+      if (payment.status === 'PAID') {
+        return {
+          status: 'PAID',
+          alreadyVerified: true,
+          authority,
+          refId: payment.refId,
+        };
+      }
+
+      await this.db.payment.updateMany({
+        where: { id: payment.id, status: 'PENDING' },
+        data: { status: 'CANCELLED' },
+      });
+
+      return {
+        status: payment.status === 'PENDING' ? 'CANCELLED' : payment.status,
+        authority,
+      };
+    }
+
+    if (payment.status === 'PAID') {
+      return {
+        status: 'PAID',
+        alreadyVerified: true,
+        authority,
+        refId: payment.refId,
+      };
+    }
+
+    if (payment.status !== 'PENDING') {
+      throw new BadRequestException('Payment is not pending verification');
+    }
+
+    const amount = Number(payment.amount.toString());
+    const verified = await this.zarinpal.verifyPayment({
+      amount,
+      authority,
+    });
+
+    // 100 = first successful verify, 101 = already verified at ZarinPal
+    if (verified.code !== 100 && verified.code !== 101) {
+      await this.db.payment.updateMany({
+        where: { id: payment.id, status: 'PENDING' },
+        data: { status: 'FAILED' },
+      });
+
+      throw new BadRequestException('Payment verification failed');
+    }
+
+    return this.settleVerifiedPayment(authority, verified.refId);
+  }
+
+  private async settleVerifiedPayment(authority: string, refId?: string) {
+    return this.db.$transaction(async (tx) => {
+      const [updatedPayment] = await tx.payment.updateManyAndReturn({
+        where: {
+          authority,
+          status: 'PENDING',
+        },
+        data: {
+          status: 'PAID',
+          refId: refId ?? null,
+        },
+        select: {
+          walletId: true,
+          amount: true,
+          refId: true,
+        },
+      });
+
+      if (!updatedPayment) {
+        const existing = await tx.payment.findUnique({
+          where: { authority },
+          select: {
+            status: true,
+            refId: true,
+          },
+        });
+
+        if (existing?.status === 'PAID') {
+          return {
+            status: 'PAID' as const,
+            alreadyVerified: true,
+            authority,
+            refId: existing.refId,
+          };
+        }
+
+        throw new BadRequestException('Payment cannot be settled');
+      }
+
+      const wallet = await tx.wallet.update({
+        where: { id: updatedPayment.walletId },
+        data: {
+          balance: { increment: updatedPayment.amount },
+        },
+        select: {
+          balance: true,
+          currency: true,
+        },
+      });
+
+      await tx.transaction.create({
+        data: {
+          walletId: updatedPayment.walletId,
+          amount: updatedPayment.amount,
+          type: 'DEPOSIT',
+        },
+      });
+
+      return {
+        status: 'PAID' as const,
+        alreadyVerified: false,
+        authority,
+        refId: updatedPayment.refId,
+        balance: wallet.balance,
+        currency: wallet.currency,
+      };
+    });
+  }
+}

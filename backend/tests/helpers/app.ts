@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
+import { Test, type TestingModuleBuilder } from '@nestjs/testing';
 import crypto from 'node:crypto';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
@@ -30,10 +30,18 @@ export function balanceOf(value: { toString(): string } | string | number) {
   return Number(value.toString());
 }
 
-export async function createTestApp(): Promise<INestApplication> {
-  const moduleRef = await Test.createTestingModule({
+export async function createTestApp(
+  configure?: (builder: TestingModuleBuilder) => TestingModuleBuilder,
+): Promise<INestApplication> {
+  let builder = Test.createTestingModule({
     imports: [AppModule],
-  }).compile();
+  });
+
+  if (configure) {
+    builder = configure(builder);
+  }
+
+  const moduleRef = await builder.compile();
 
   const app = moduleRef.createNestApplication();
   app.useGlobalPipes(
@@ -48,6 +56,31 @@ export async function createTestApp(): Promise<INestApplication> {
 
 export function getDatabase(app: INestApplication) {
   return app.get(DatabaseService);
+}
+
+export async function creditWallet(
+  db: DatabaseService,
+  userId: string,
+  amount: number,
+) {
+  const wallet = await db.wallet.findUniqueOrThrow({
+    where: { userId },
+    select: { id: true },
+  });
+
+  await db.$transaction([
+    db.wallet.update({
+      where: { id: wallet.id },
+      data: { balance: { increment: amount } },
+    }),
+    db.transaction.create({
+      data: {
+        walletId: wallet.id,
+        amount,
+        type: 'DEPOSIT',
+      },
+    }),
+  ]);
 }
 
 export async function registerUser(
@@ -73,6 +106,7 @@ export async function cleanupUser(db: DatabaseService, userId: string) {
   });
 
   if (wallet) {
+    await db.payment.deleteMany({ where: { walletId: wallet.id } });
     await db.transaction.deleteMany({ where: { walletId: wallet.id } });
     await db.wallet.delete({ where: { id: wallet.id } });
   }

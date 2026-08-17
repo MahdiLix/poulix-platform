@@ -1,0 +1,15 @@
+# never commit
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+
+# Artifacts if they appear at the repository root
+node_modules/
+dist/
+logs/
+coverage/
+*.log

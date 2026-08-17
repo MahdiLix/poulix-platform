@@ -1,0 +1,21 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "..",
+  "testMatch": [
+    "<rootDir>/tests/integration/**/*.spec.ts",
+    "<rootDir>/tests/units/**/*.spec.ts"
+  ],
+  "transform": {
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": "<rootDir>/tests/tsconfig.json"
+      }
+    ]
+  },
+  "testEnvironment": "node",
+  "moduleNameMapper": {
+    "^(\\.{1,2}/.*)\\.js$": "$1"
+  },
+  "forceExit": true
+}

@@ -1,0 +1,69 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+//----TRANSACTION TYPE-----------------
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+// USER
+
+model User {
+  id String @id @default(uuid())
+
+  username     String @unique
+  email        String @unique
+  passwordHash String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wallet Wallet?
+}
+
+// WALLET
+
+model Wallet {
+  id String @id @default(uuid())
+
+  userId String @unique
+
+  currency String  @default("IRR")
+  balance  Decimal @default(0) @db.Decimal(20, 0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  transactions Transaction[]
+}
+
+// TRANSACTION
+
+model Transaction {
+  id String @id @default(uuid())
+
+  walletId String
+
+  amount Decimal         @db.Decimal(20, 0)
+  type   TransactionType
+
+  createdAt DateTime @default(now())
+
+  wallet Wallet @relation(fields: [walletId], references: [id])
+
+  @@index([walletId, createdAt])
+}
+
+  

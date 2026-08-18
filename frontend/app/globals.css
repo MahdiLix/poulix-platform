@@ -1,0 +1,166 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+
+  --canvas: #e8eef7;
+  --background: #f4f7fb;
+  --foreground: #0f172a;
+  --surface: #ffffff;
+  --surface-muted: #eef3f9;
+  --border: #d7e2ef;
+  --muted: #64748b;
+
+  --primary: #1d4ed8;
+  --primary-hover: #1e40af;
+  --primary-active: #1e3a8a;
+  --primary-foreground: #ffffff;
+  --primary-soft: #dbeafe;
+  --primary-strong: #0b2f7a;
+  --primary-strong-from: #1554c0;
+  --primary-strong-via: #0e3d9a;
+  --primary-strong-to: #082056;
+
+  --secondary: #0284c7;
+  --secondary-hover: #0369a1;
+  --secondary-soft: #e0f2fe;
+
+  --success: #059669;
+  --success-soft: #d1fae5;
+  --danger: #dc2626;
+  --danger-soft: #fee2e2;
+
+  /* Statistic chart — edit these to change chart colors in light mode */
+  --chart-income: #0e7490;
+  --chart-expense: #1d4ed8;
+  --chart-expense-from: #1554c0;
+  --chart-expense-via: #0e3d9a;
+  --chart-expense-to: #082056;
+
+  --radius-card: 1.5rem;
+  --radius-control: 1rem;
+  --page-pad: 1.5rem;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --canvas: #060b16;
+  --background: #0b1220;
+  --foreground: #f1f5f9;
+  --surface: #121a2b;
+  --surface-muted: #1a2438;
+  --border: #2a3a55;
+  --muted: #94a3b8;
+
+  --primary: #3b82f6;
+  --primary-hover: #60a5fa;
+  --primary-active: #2563eb;
+  --primary-foreground: #f8fafc;
+  --primary-soft: #1e3a8a;
+  --primary-strong: #071833;
+  --primary-strong-from: #1d4ed8;
+  --primary-strong-via: #123a8c;
+  --primary-strong-to: #071833;
+
+  --secondary: #38bdf8;
+  --secondary-hover: #7dd3fc;
+  --secondary-soft: #0c4a6e;
+
+  --success: #34d399;
+  --success-soft: #064e3b;
+  --danger: #f87171;
+  --danger-soft: #7f1d1d;
+
+  /* Statistic chart — softer tones for dark-mode readability */
+  --chart-income: #179fb4;
+  --chart-expense: #60a5fa;
+  --chart-expense-from: #3b82f6;
+  --chart-expense-via: #2563eb;
+  --chart-expense-to: #1d4ed8;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-strong: var(--primary-strong);
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-soft: var(--secondary-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-chart-income: var(--chart-income);
+  --color-chart-expense: var(--chart-expense);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-vazirmatn: var(--font-vazirmatn);
+}
+
+html[dir="rtl"],
+body[dir="rtl"],
+[dir="rtl"] {
+  font-family: var(--font-vazirmatn), system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.bg-hero-gradient {
+  background-image: linear-gradient(
+    180deg,
+    var(--primary-strong-from) 0%,
+    var(--primary-strong-via) 50%,
+    var(--primary-strong-to) 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+.bg-chart-expense-gradient {
+  background-image: linear-gradient(
+    180deg,
+    var(--chart-expense-from) 0%,
+    var(--chart-expense-via) 50%,
+    var(--chart-expense-to) 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+.bg-promo-gradient {
+  background-image: linear-gradient(
+    135deg,
+    var(--primary-strong-to) 0%,
+    var(--primary-strong-via) 50%,
+    var(--primary) 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}

@@ -1,8 +1,8 @@
-import type { TranslationDictionary } from '@/shared/i18n/translations';
+import type { TranslationDictionary } from "@/shared/i18n/translations";
 
-type Messages = TranslationDictionary['messages'];
+type Messages = TranslationDictionary["messages"];
 
-export type WithdrawDestination = 'account' | 'shaba';
+export type WithdrawDestination = "account" | "shaba";
 
 export type WithdrawResponse = {
   balance: string | number;
@@ -24,7 +24,7 @@ export function validateWithdrawAmount(
     return messages.amountWholeNumberMin;
   }
 
-  if (typeof availableBalance === 'number' && amount > availableBalance) {
+  if (typeof availableBalance === "number" && amount > availableBalance) {
     return messages.insufficientFunds;
   }
 
@@ -32,7 +32,7 @@ export function validateWithdrawAmount(
 }
 
 export function normalizeAccountNumber(raw: string): string {
-  return raw.replace(/[\s-]/g, '');
+  return raw.replace(/[\s-]/g, "");
 }
 
 export function validateAccountNumber(
@@ -50,7 +50,7 @@ export function validateAccountNumber(
 }
 
 export function normalizeShabaNumber(raw: string): string {
-  const compact = raw.replace(/[\s-]/g, '').toUpperCase();
+  const compact = raw.replace(/[\s-]/g, "").toUpperCase();
   if (/^\d{24}$/.test(compact)) {
     return `IR${compact}`;
   }
@@ -71,20 +71,20 @@ export function validateShabaNumber(
   return null;
 }
 
-const ACCOUNT_NUMBER_COOKIE = 'poulix_account_number';
-const SHABA_NUMBER_COOKIE = 'poulix_shaba_number';
+const ACCOUNT_NUMBER_COOKIE = "poulix_account_number";
+const SHABA_NUMBER_COOKIE = "poulix_shaba_number";
 const DESTINATION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 function isBrowser() {
-  return typeof window !== 'undefined' && typeof document !== 'undefined';
+  return typeof window !== "undefined" && typeof document !== "undefined";
 }
 
 function cookieAttributeString(maxAgeSeconds: number) {
-  const parts = ['Path=/', `Max-Age=${maxAgeSeconds}`, 'SameSite=Lax'];
-  if (isBrowser() && window.location.protocol === 'https:') {
-    parts.push('Secure');
+  const parts = ["Path=/", `Max-Age=${maxAgeSeconds}`, "SameSite=Lax"];
+  if (isBrowser() && window.location.protocol === "https:") {
+    parts.push("Secure");
   }
-  return parts.join('; ');
+  return parts.join("; ");
 }
 
 function readCookie(name: string): string | null {
@@ -92,7 +92,7 @@ function readCookie(name: string): string | null {
 
   const prefix = `${encodeURIComponent(name)}=`;
   const match = document.cookie
-    .split(';')
+    .split(";")
     .map((part) => part.trim())
     .find((part) => part.startsWith(prefix));
 
@@ -110,7 +110,7 @@ function writeCookie(name: string, value: string) {
 export function getSavedAccountNumber(): string {
   const saved = readCookie(ACCOUNT_NUMBER_COOKIE);
   if (!saved || !/^\d{10,18}$/.test(normalizeAccountNumber(saved))) {
-    return '';
+    return "";
   }
   return saved;
 }
@@ -124,7 +124,7 @@ export function saveAccountNumber(raw: string) {
 export function getSavedShabaNumber(): string {
   const saved = readCookie(SHABA_NUMBER_COOKIE);
   if (!saved || !/^IR\d{24}$/.test(normalizeShabaNumber(saved))) {
-    return '';
+    return "";
   }
   return saved;
 }

@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, type TestingModuleBuilder } from '@nestjs/testing';
 import crypto from 'node:crypto';
@@ -99,7 +98,11 @@ export async function registerUser(
   };
 }
 
-export async function cleanupUser(db: DatabaseService, userId: string) {
+export async function cleanupUser(db: DatabaseService, userId?: string) {
+  if (!userId) {
+    return;
+  }
+
   const wallet = await db.wallet.findUnique({
     where: { userId },
     select: { id: true },

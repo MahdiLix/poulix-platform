@@ -201,6 +201,17 @@ describe('Deposit API (callback and verification)', () => {
     expect(payment.authority).toBe(created.authority);
   });
 
+  it('sends the correct payload to ZarinPal request API', async () => {
+    const created = await createDeposit();
+
+    expect(zarinpal.lastRequest).toEqual({
+      amount: DEPOSIT_AMOUNT,
+      description: `Wallet deposit ${created.paymentId}`,
+      callbackOrderId: created.paymentId,
+      email: session.email,
+    });
+  });
+
   it('marks the payment failed when ZarinPal request creation fails', async () => {
     zarinpal.failRequest = true;
 
@@ -221,6 +232,7 @@ describe('Deposit API (callback and verification)', () => {
     expect(balanceOf(wallet.balance)).toBe(0);
   });
 
+
   it('does not verify or credit on a cancelled NOK callback', async () => {
     const created = await createDeposit();
 
@@ -238,6 +250,7 @@ describe('Deposit API (callback and verification)', () => {
     });
     expect(balanceOf(wallet.balance)).toBe(0);
   });
+  
 
   it('verifies a successful payment and credits the wallet once', async () => {
     const created = await createDeposit();
@@ -257,6 +270,7 @@ describe('Deposit API (callback and verification)', () => {
     const payment = await db.payment.findUniqueOrThrow({
       where: { authority: created.authority },
     });
+    expect(zarinpal.lastVerify?.authority).toBe(payment.authority);
     expect(payment.status).toBe('PAID');
     expect(payment.refId).toBe('201');
 
@@ -363,9 +377,9 @@ describe('Deposit API (callback and verification)', () => {
       sendCallback(created.authority, 'OK'),
     ]);
 
-    expect([first.status, second.status].every((status) => status === 200)).toBe(
-      true,
-    );
+    expect(
+      [first.status, second.status].every((status) => status === 200),
+    ).toBe(true);
     expect([first.body.alreadyVerified, second.body.alreadyVerified]).toEqual(
       expect.arrayContaining([true, false]),
     );
@@ -412,7 +426,7 @@ describe('Deposit API (callback and verification)', () => {
       .expect(404);
   });
 
-  it('accepts lowercase callback query parameters', async () => {
+    it('accepts lowercase callback query parameters', async () => {
     const created = await createDeposit();
 
     const response = await request(app.getHttpServer())
@@ -422,5 +436,45 @@ describe('Deposit API (callback and verification)', () => {
 
     expect(response.body.status).toBe('PAID');
     expect(balanceOf(response.body.balance)).toBe(DEPOSIT_AMOUNT);
+  });
+
+  it('rolls back payment and wallet when DEPOSIT transaction creation fails', async () => {
+    const created = await createDeposit();
+    const originalTransaction = db.$transaction.bind(db);
+    const spy = jest
+      .spyOn(db, '$transaction')
+      .mockImplementation((fn: unknown, options?: unknown) => {
+        if (typeof fn !== 'function') {
+          return originalTransaction(fn as never, options as never);
+        }
+
+        return originalTransaction(async (tx) => {
+          jest
+            .spyOn(tx.transaction, 'create')
+            .mockRejectedValue(new Error('forced settlement failure'));
+          return (fn as (client: typeof tx) => Promise<unknown>)(tx);
+        }, options as never);
+      });
+
+    try {
+      await sendCallback(created.authority, 'OK').expect(500);
+
+      const payment = await db.payment.findUniqueOrThrow({
+        where: { authority: created.authority },
+      });
+      expect(payment.status).toBe('PENDING');
+
+      const wallet = await db.wallet.findUniqueOrThrow({
+        where: { userId: session.userId },
+      });
+      expect(balanceOf(wallet.balance)).toBe(0);
+
+      const deposits = await db.transaction.findMany({
+        where: { walletId: wallet.id, type: 'DEPOSIT' },
+      });
+      expect(deposits).toHaveLength(0);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

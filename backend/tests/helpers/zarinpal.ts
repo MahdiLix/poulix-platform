@@ -8,9 +8,21 @@ export class FakeZarinpalService {
   requestCalls = 0;
   verifyCalls = 0;
   lastVerify?: { amount: number; authority: string };
+  lastRequest?: {
+    amount: number;
+    description: string;
+    callbackOrderId: string;
+    email?: string;
+  };
 
-  async requestPayment(): Promise<{ authority: string; paymentUrl: string }> {
+  async requestPayment(params: {
+    amount: number;
+    description: string;
+    callbackOrderId: string;
+    email?: string;
+  }): Promise<{ authority: string; paymentUrl: string }> {
     this.requestCalls += 1;
+    this.lastRequest = { ...params };
 
     if (this.failRequest) {
       throw new BadRequestException('Failed to create ZarinPal payment request');

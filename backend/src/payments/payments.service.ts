@@ -36,9 +36,11 @@ export class PaymentsService {
       },
     });
 
+    const depositAmount = Number(payment.amount.toString());
+
     try {
       const requested = await this.zarinpal.requestPayment({
-        amount,
+        amount: depositAmount,
         description: `Wallet deposit ${payment.id}`,
         callbackOrderId: payment.id,
         email: user?.email,
@@ -53,7 +55,7 @@ export class PaymentsService {
         paymentId: payment.id,
         authority: requested.authority,
         paymentUrl: requested.paymentUrl,
-        amount,
+        amount: depositAmount,
       };
     } catch (error) {
       await this.db.payment.update({
@@ -112,10 +114,15 @@ export class PaymentsService {
       throw new BadRequestException('Payment is not pending verification');
     }
 
+    if (!payment.authority) {
+      throw new BadRequestException('Missing payment authority');
+    }
+
+    const storedAuthority = payment.authority;
     const amount = Number(payment.amount.toString());
     const verified = await this.zarinpal.verifyPayment({
       amount,
-      authority,
+      authority: storedAuthority,
     });
 
     // 100 = first successful verify, 101 = already verified at ZarinPal
@@ -128,7 +135,7 @@ export class PaymentsService {
       throw new BadRequestException('Payment verification failed');
     }
 
-    return this.settleVerifiedPayment(authority, verified.refId);
+    return this.settleVerifiedPayment(storedAuthority, verified.refId);
   }
 
   private async settleVerifiedPayment(authority: string, refId?: string) {

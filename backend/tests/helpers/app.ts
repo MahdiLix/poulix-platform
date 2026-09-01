@@ -19,9 +19,9 @@ export type AuthSession = TestUser & {
 export function uniqueUser(): TestUser {
   const suffix = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
   return {
-    username: `u${suffix}`,
-    email: `u${suffix}@example.com`,
-    password: 'password123',
+    username: `user${suffix}`,
+    email: `user${suffix}@example.com`,
+    password: 'password123456',
   };
 }
 

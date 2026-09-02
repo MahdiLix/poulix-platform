@@ -21,11 +21,36 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       select: {
         id: true,
         email: true,
+        role: true,
+        status: true,
       },
     });
 
     if (!user) {
       throw new UnauthorizedException();
+    }
+
+    if (user.status === 'DISABLED') {
+      throw new UnauthorizedException('Account disabled');
+    }
+
+    if (user.status === 'LOCKED') {
+      throw new UnauthorizedException('Account locked');
+    }
+
+    if (payload.sid) {
+      const session = await this.db.userSession.findFirst({
+        where: {
+          id: payload.sid,
+          userId: user.id,
+          revokedAt: null,
+        },
+        select: { id: true },
+      });
+
+      if (!session) {
+        throw new UnauthorizedException();
+      }
     }
 
     return user;

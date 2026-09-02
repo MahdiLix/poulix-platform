@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { DatabaseService } from '../database/database.service';
+import { SecurityService } from '../security/security.service';
 import { Prisma } from '../generated/prisma/client';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -16,6 +17,7 @@ export class AuthService {
   constructor(
     private readonly db: DatabaseService,
     private readonly jwtService: JwtService,
+    private readonly securityService: SecurityService,
   ) {}
 
   private hashPassword(password: string): string {
@@ -40,12 +42,25 @@ export class AuthService {
     );
   }
 
-  private async createAuthResponse(user: { id: string; email: string }) {
-    const payload: JwtPayload = { sub: user.id, email: user.email };
+  private async createAuthResponse(user: {
+    id: string;
+    email: string;
+    role: 'USER' | 'ADMIN';
+    sessionId?: string;
+  }) {
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      ...(user.sessionId ? { sid: user.sessionId } : {}),
+    };
     const accessToken = await this.jwtService.signAsync(payload);
 
     return {
-      user,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
       accessToken,
     };
   }
@@ -61,10 +76,9 @@ export class AuthService {
 
     const passwordHash = this.hashPassword(dto.password);
 
-    // Using a transaction to create both User and Wallet simultaneously
     try {
-      return await this.db.$transaction(async (tx) => {
-        const user = await tx.user.create({
+      const user = await this.db.$transaction(async (tx) => {
+        const created = await tx.user.create({
           data: {
             username: dto.username,
             email: dto.email,
@@ -74,11 +88,25 @@ export class AuthService {
 
         await tx.wallet.create({
           data: {
-            userId: user.id,
+            userId: created.id,
           },
         });
 
-        return this.createAuthResponse({ id: user.id, email: user.email });
+        return created;
+      });
+
+      const sessionId = await this.securityService.recordSuccessfulLogin(
+        user.id,
+        undefined,
+        undefined,
+        { emitNewDeviceEvent: false },
+      );
+
+      return this.createAuthResponse({
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        sessionId,
       });
     } catch (error) {
       if (
@@ -92,7 +120,7 @@ export class AuthService {
     }
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, userAgent?: string, ipAddress?: string) {
     const user = await this.db.user.findFirst({
       where: {
         OR: [{ email: dto.identifier }, { username: dto.identifier }],
@@ -101,13 +129,50 @@ export class AuthService {
         id: true,
         email: true,
         passwordHash: true,
+        role: true,
+        status: true,
       },
     });
 
     if (!user || !this.verifyPassword(dto.password, user.passwordHash)) {
+      if (user) {
+        void this.securityService.recordFailedLogin(user.id, ipAddress);
+      }
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return this.createAuthResponse({ id: user.id, email: user.email });
+    if (user.status === 'DISABLED') {
+      throw new UnauthorizedException('Account disabled');
+    }
+
+    if (user.status === 'LOCKED') {
+      throw new UnauthorizedException('Account locked');
+    }
+
+    const sessionId = await this.securityService.recordSuccessfulLogin(
+      user.id,
+      userAgent,
+      ipAddress,
+    );
+
+    if (user.role === 'ADMIN') {
+      await this.db.adminAuditLog.create({
+        data: {
+          adminUserId: user.id,
+          action: 'ADMIN_LOGIN',
+          targetType: 'session',
+          targetId: user.id,
+          success: true,
+          ipAddress: ipAddress?.slice(0, 45),
+        },
+      });
+    }
+
+    return this.createAuthResponse({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      sessionId,
+    });
   }
 }

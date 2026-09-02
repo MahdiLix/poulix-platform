@@ -84,4 +84,30 @@ describe('Auth API', () => {
       .set('Authorization', 'Bearer invalid.token.value')
       .expect(401);
   });
+
+  it('rejects a JWT after its session is revoked', async () => {
+    const user = uniqueUser();
+    const registered = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(user)
+      .expect(201);
+    createdUserIds.push(registered.body.user.id);
+
+    const sessions = await request(app.getHttpServer())
+      .get('/security/sessions')
+      .set('Authorization', `Bearer ${registered.body.accessToken}`)
+      .expect(200);
+
+    expect(sessions.body).toHaveLength(1);
+
+    await request(app.getHttpServer())
+      .post(`/security/sessions/${sessions.body[0].id}/revoke`)
+      .set('Authorization', `Bearer ${registered.body.accessToken}`)
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .get('/wallets/balance')
+      .set('Authorization', `Bearer ${registered.body.accessToken}`)
+      .expect(401);
+  });
 });

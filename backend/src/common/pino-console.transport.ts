@@ -72,7 +72,7 @@ function formatLine(obj: HttpLogObject): string | null {
   return `${color}${parts.join(' ')}${RESET}`;
 }
 
-export default async function pinoConsoleTransport() {
+export default function pinoConsoleTransport() {
   return build((source) => {
     source.on('data', (obj: HttpLogObject) => {
       const line = formatLine(obj);

@@ -8,12 +8,28 @@ datasource db {
   provider = "postgresql"
 }
 
-
 //----TRANSACTION TYPE-----------------
 
 enum TransactionType {
   DEPOSIT
   WITHDRAWAL
+  TRANSFER_OUT
+  TRANSFER_IN
+  GOAL_CONTRIBUTE
+  GOAL_RELEASE
+  ENVELOPE_ALLOCATE
+  ENVELOPE_RELEASE
+}
+
+enum TransactionCategory {
+  DINNER
+  LUNCH
+  RENT
+  SHOPPING
+  GIFT
+  TRANSPORTATION
+  FAMILY_SUPPORT
+  OTHER
 }
 
 enum PaymentStatus {
@@ -21,6 +37,114 @@ enum PaymentStatus {
   PAID
   FAILED
   CANCELLED
+}
+
+enum ScheduledPaymentFrequency {
+  ONCE
+  WEEKLY
+  MONTHLY
+}
+
+enum ScheduledPaymentStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum ScheduledPaymentExecutionStatus {
+  SUCCESS
+  FAILED
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum GoalContributionType {
+  CONTRIBUTE
+  RELEASE
+}
+
+enum EnvelopeStatus {
+  ACTIVE
+  CANCELLED
+}
+
+enum EnvelopeMovementType {
+  ALLOCATE
+  RELEASE
+}
+
+enum NotificationType {
+  DEPOSIT_SUCCESS
+  WITHDRAWAL_SUCCESS
+  TRANSFER_SUCCESS
+  TRANSFER_RECEIVED
+  TRANSFER_FAILED
+  SCHEDULED_PAYMENT_SUCCESS
+  SCHEDULED_PAYMENT_FAILED
+  GOAL_PROGRESS
+  GOAL_COMPLETED
+  ACCOUNT_EVENT
+  SECURITY_WARNING
+  SPENDING_LIMIT_WARNING
+}
+
+enum NotificationCategory {
+  SUCCESS
+  WARNING
+  ERROR
+  INFO
+}
+
+enum FinancialDestinationType {
+  P2P_USER
+  BANK_ACCOUNT
+  SHABA
+  CARD
+}
+
+enum SpendingLimitType {
+  DAILY_TRANSFER
+  DAILY_WITHDRAWAL
+  MONTHLY_TRANSFER
+  MONTHLY_WITHDRAWAL
+}
+
+enum SecurityEventType {
+  NEW_DEVICE_LOGIN
+  FAILED_LOGIN
+  FAILED_TRANSFER
+  FAILED_WITHDRAWAL
+  LIMIT_EXCEEDED
+  SUSPICIOUS_ACTIVITY
+  SESSION_REVOKED
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserAccountStatus {
+  ACTIVE
+  DISABLED
+  LOCKED
+}
+
+enum AdminAuditAction {
+  ADMIN_LOGIN
+  USER_VIEWED
+  USER_DISABLED
+  USER_ENABLED
+  USER_LOCKED
+  USER_UNLOCKED
+  TRANSACTION_VIEWED
+  PAYMENT_VIEWED
 }
 
 // USER
@@ -32,10 +156,30 @@ model User {
   email        String @unique
   passwordHash String
 
+  role            UserRole          @default(USER)
+  status          UserAccountStatus @default(ACTIVE)
+  statusChangedAt DateTime?
+  statusReason    String?           @db.VarChar(200)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  wallet Wallet?
+  wallet                        Wallet?
+  counterpartyTransactions      Transaction[]          @relation("CounterpartyTransactions")
+  scheduledPayments             ScheduledPayment[]     @relation("ScheduledPaymentOwner")
+  scheduledPaymentsReceived     ScheduledPayment[]     @relation("ScheduledPaymentRecipient")
+  goals                         Goal[]
+  envelopes                     Envelope[]
+  notifications                 Notification[]
+  financialDestinations         FinancialDestination[] @relation("UserFinancialDestinations")
+  financialDestinationsReceived FinancialDestination[] @relation("FinancialDestinationRecipient")
+  spendingLimits                UserSpendingLimit[]
+  sessions                      UserSession[]
+  securityEvents                SecurityEvent[]
+  adminAuditLogs                AdminAuditLog[]
+
+  @@index([role])
+  @@index([status])
 }
 
 // WALLET
@@ -67,11 +211,249 @@ model Transaction {
   amount Decimal         @db.Decimal(20, 0)
   type   TransactionType
 
+  reason   String?              @db.VarChar(200)
+  category TransactionCategory?
+
+  counterpartyUserId          String?
+  relatedTransactionId        String? @unique
+  scheduledPaymentExecutionId String? @unique
+  goalId                      String?
+  envelopeId                  String?
+
   createdAt DateTime @default(now())
 
-  wallet Wallet @relation(fields: [walletId], references: [id])
+  wallet                    Wallet                     @relation(fields: [walletId], references: [id])
+  counterpartyUser          User?                      @relation("CounterpartyTransactions", fields: [counterpartyUserId], references: [id])
+  relatedTransaction        Transaction?               @relation("TransferPair", fields: [relatedTransactionId], references: [id], onDelete: SetNull)
+  pairedFrom                Transaction?               @relation("TransferPair")
+  scheduledPaymentExecution ScheduledPaymentExecution? @relation(fields: [scheduledPaymentExecutionId], references: [id], onDelete: SetNull)
+  goal                      Goal?                      @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  goalContribution          GoalContribution?
+  envelope                  Envelope?                  @relation(fields: [envelopeId], references: [id], onDelete: SetNull)
+  envelopeMovement          EnvelopeMovement?
 
   @@index([walletId, createdAt])
+  @@index([type, createdAt])
+  @@index([createdAt])
+}
+
+model ScheduledPayment {
+  id String @id @default(uuid())
+
+  userId          String
+  recipientUserId String
+
+  amount   Decimal              @db.Decimal(20, 0)
+  reason   String?              @db.VarChar(200)
+  category TransactionCategory?
+
+  frequency       ScheduledPaymentFrequency
+  startDate       DateTime
+  nextExecutionAt DateTime
+  endDate         DateTime?
+
+  status ScheduledPaymentStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user          User                        @relation("ScheduledPaymentOwner", fields: [userId], references: [id])
+  recipientUser User                        @relation("ScheduledPaymentRecipient", fields: [recipientUserId], references: [id])
+  executions    ScheduledPaymentExecution[]
+
+  @@index([userId, createdAt])
+  @@index([status, nextExecutionAt])
+}
+
+model ScheduledPaymentExecution {
+  id String @id @default(uuid())
+
+  scheduledPaymentId String
+  status             ScheduledPaymentExecutionStatus
+  scheduledFor       DateTime
+  failureReason      String?                         @db.VarChar(200)
+  executedAt         DateTime                        @default(now())
+
+  scheduledPayment ScheduledPayment @relation(fields: [scheduledPaymentId], references: [id], onDelete: Cascade)
+  transactions     Transaction[]
+
+  @@unique([scheduledPaymentId, scheduledFor])
+  @@index([scheduledPaymentId, executedAt])
+}
+
+model Goal {
+  id String @id @default(uuid())
+
+  userId String
+
+  title        String
+  description  String?   @db.VarChar(500)
+  targetAmount Decimal   @db.Decimal(20, 0)
+  savedAmount  Decimal   @default(0) @db.Decimal(20, 0)
+  targetDate   DateTime?
+
+  status GoalStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user          User               @relation(fields: [userId], references: [id])
+  contributions GoalContribution[]
+  transactions  Transaction[]
+
+  @@index([userId, createdAt])
+}
+
+model GoalContribution {
+  id String @id @default(uuid())
+
+  goalId String
+  amount Decimal              @db.Decimal(20, 0)
+  type   GoalContributionType
+
+  transactionId String? @unique
+
+  createdAt DateTime @default(now())
+
+  goal        Goal         @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@index([goalId, createdAt])
+}
+
+model Envelope {
+  id String @id @default(uuid())
+
+  userId String
+
+  name            String
+  description     String? @db.VarChar(500)
+  allocatedAmount Decimal @default(0) @db.Decimal(20, 0)
+
+  status EnvelopeStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User               @relation(fields: [userId], references: [id])
+  movements    EnvelopeMovement[]
+  transactions Transaction[]
+
+  @@index([userId, createdAt])
+}
+
+model EnvelopeMovement {
+  id String @id @default(uuid())
+
+  envelopeId String
+  amount     Decimal              @db.Decimal(20, 0)
+  type       EnvelopeMovementType
+
+  transactionId String? @unique
+
+  createdAt DateTime @default(now())
+
+  envelope    Envelope     @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@index([envelopeId, createdAt])
+}
+
+model Notification {
+  id String @id @default(uuid())
+
+  userId   String
+  type     NotificationType
+  category NotificationCategory
+
+  metadata Json?
+
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+model FinancialDestination {
+  id String @id @default(uuid())
+
+  userId String
+  type   FinancialDestinationType
+
+  label          String  @db.VarChar(120)
+  maskedValue    String  @db.VarChar(64)
+  identifierHash String  @db.VarChar(64)
+  encryptedValue String? @db.VarChar(500)
+
+  recipientUserId   String?
+  recipientUsername String? @db.VarChar(120)
+
+  isSaved  Boolean @default(false)
+  useCount Int     @default(1)
+
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user          User  @relation("UserFinancialDestinations", fields: [userId], references: [id], onDelete: Cascade)
+  recipientUser User? @relation("FinancialDestinationRecipient", fields: [recipientUserId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, type, identifierHash])
+  @@index([userId, lastUsedAt])
+  @@index([userId, isSaved])
+}
+
+model UserSpendingLimit {
+  id String @id @default(uuid())
+
+  userId    String
+  type      SpendingLimitType
+  maxAmount Decimal           @db.Decimal(20, 0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+}
+
+model UserSession {
+  id String @id @default(uuid())
+
+  userId      String
+  deviceKey   String  @db.VarChar(64)
+  deviceLabel String? @db.VarChar(120)
+  userAgent   String? @db.VarChar(500)
+  ipAddress   String? @db.VarChar(45)
+
+  lastSeenAt DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceKey])
+  @@index([userId, lastSeenAt])
+}
+
+model SecurityEvent {
+  id String @id @default(uuid())
+
+  userId    String
+  type      SecurityEventType
+  metadata  Json?
+  ipAddress String?           @db.VarChar(45)
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, type, createdAt])
 }
 
 // PAYMENT (ZarinPal deposit requests)
@@ -92,6 +474,25 @@ model Payment {
   wallet Wallet @relation(fields: [walletId], references: [id])
 
   @@index([walletId, createdAt])
+  @@index([status, createdAt])
 }
 
-  
+model AdminAuditLog {
+  id String @id @default(uuid())
+
+  adminUserId String
+  action      AdminAuditAction
+  targetType  String           @db.VarChar(80)
+  targetId    String?          @db.VarChar(64)
+  success     Boolean          @default(true)
+  metadata    Json?
+  ipAddress   String?          @db.VarChar(45)
+
+  createdAt DateTime @default(now())
+
+  adminUser User @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([adminUserId, createdAt])
+  @@index([action, createdAt])
+}

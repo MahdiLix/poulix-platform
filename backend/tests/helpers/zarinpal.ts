@@ -25,7 +25,9 @@ export class FakeZarinpalService {
     this.lastRequest = { ...params };
 
     if (this.failRequest) {
-      throw new BadRequestException('Failed to create ZarinPal payment request');
+      throw new BadRequestException(
+        'Failed to create ZarinPal payment request',
+      );
     }
 
     const authority = `S${crypto.randomUUID().replace(/-/g, '')}`;

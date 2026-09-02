@@ -1,5 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { getPaymentStartUrl, getZarinpalConfig, type ZarinpalConfig } from './zarinpal.config';
+import {
+  getPaymentStartUrl,
+  getZarinpalConfig,
+  type ZarinpalConfig,
+} from './zarinpal.config';
 
 type ZarinpalData = {
   code?: number;
@@ -123,7 +127,9 @@ export class ZarinpalService {
       throw new BadRequestException('Failed to reach ZarinPal');
     }
 
-    const body = (await response.json().catch(() => null)) as ZarinpalResponse | null;
+    const body = (await response
+      .json()
+      .catch(() => null)) as ZarinpalResponse | null;
 
     if (!body) {
       throw new BadRequestException('Invalid response from ZarinPal');

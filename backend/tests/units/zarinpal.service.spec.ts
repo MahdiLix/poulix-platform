@@ -7,7 +7,8 @@ describe('ZarinpalService', () => {
 
   beforeEach(() => {
     process.env.ZARINPAL_MERCHANT_ID = '11111111-1111-1111-1111-111111111111';
-    process.env.ZARINPAL_CALLBACK_URL = 'http://localhost:3000/deposit/callback';
+    process.env.ZARINPAL_CALLBACK_URL =
+      'http://localhost:3000/deposit/callback';
     process.env.ZARINPAL_BASE_URL = 'https://sandbox.zarinpal.com';
   });
 
@@ -35,7 +36,7 @@ describe('ZarinpalService', () => {
 
     const service = new ZarinpalService();
     const result = await service.requestPayment({
-      amount: 1000000,
+      amount: 1_000_000,
       description: 'Wallet deposit payment-1',
       callbackOrderId: 'payment-1',
       email: 'user@example.com',
@@ -51,7 +52,7 @@ describe('ZarinpalService', () => {
         },
         body: JSON.stringify({
           merchant_id: '11111111-1111-1111-1111-111111111111',
-          amount: 1000000,
+          amount: 1_000_000,
           currency: 'IRR',
           description: 'Wallet deposit payment-1',
           callback_url: 'http://localhost:3000/deposit/callback',
@@ -97,7 +98,7 @@ describe('ZarinpalService', () => {
 
     const service = new ZarinpalService();
     const result = await service.verifyPayment({
-      amount: 1000000,
+      amount: 1_000_000,
       authority: 'A0000000000000000000000000000wwOGYpd',
     });
 
@@ -107,7 +108,7 @@ describe('ZarinpalService', () => {
         method: 'POST',
         body: JSON.stringify({
           merchant_id: '11111111-1111-1111-1111-111111111111',
-          amount: 1000000,
+          amount: 1_000_000,
           authority: 'A0000000000000000000000000000wwOGYpd',
         }),
       }),
@@ -127,7 +128,7 @@ describe('ZarinpalService', () => {
 
     const service = new ZarinpalService();
     const result = await service.verifyPayment({
-      amount: 1000000,
+      amount: 1_000_000,
       authority: 'A0000000000000000000000000000wwOGYpd',
     });
 

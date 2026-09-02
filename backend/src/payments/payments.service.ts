@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { ZarinpalService } from './zarinpal.service';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class PaymentsService {
   constructor(
     private readonly db: DatabaseService,
     private readonly zarinpal: ZarinpalService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async createDeposit(userId: string, amount: number) {
@@ -67,7 +69,10 @@ export class PaymentsService {
     }
   }
 
-  async handleCallback(authority: string | undefined, status: string | undefined) {
+  async handleCallback(
+    authority: string | undefined,
+    status: string | undefined,
+  ) {
     if (!authority) {
       throw new BadRequestException('Missing payment authority');
     }
@@ -90,13 +95,8 @@ export class PaymentsService {
         };
       }
 
-      await this.db.payment.updateMany({
-        where: { id: payment.id, status: 'PENDING' },
-        data: { status: 'CANCELLED' },
-      });
-
       return {
-        status: payment.status === 'PENDING' ? 'CANCELLED' : payment.status,
+        status: 'NOK',
         authority,
       };
     }
@@ -139,7 +139,7 @@ export class PaymentsService {
   }
 
   private async settleVerifiedPayment(authority: string, refId?: string) {
-    return this.db.$transaction(async (tx) => {
+    const result = await this.db.$transaction(async (tx) => {
       const [updatedPayment] = await tx.payment.updateManyAndReturn({
         where: {
           authority,
@@ -183,6 +183,7 @@ export class PaymentsService {
           balance: { increment: updatedPayment.amount },
         },
         select: {
+          userId: true,
           balance: true,
           currency: true,
         },
@@ -203,7 +204,31 @@ export class PaymentsService {
         refId: updatedPayment.refId,
         balance: wallet.balance,
         currency: wallet.currency,
+        userId: wallet.userId,
+        amount: updatedPayment.amount,
       };
     });
+
+    if (
+      result.status === 'PAID' &&
+      !result.alreadyVerified &&
+      result.userId &&
+      result.amount
+    ) {
+      void this.notificationsService.createDepositSuccess(result.userId, {
+        amount: Number(result.amount),
+        currency: result.currency ?? 'IRR',
+        refId: result.refId,
+      });
+    }
+
+    return {
+      status: result.status,
+      alreadyVerified: result.alreadyVerified,
+      authority: result.authority,
+      refId: result.refId,
+      balance: result.balance,
+      currency: result.currency,
+    };
   }
 }

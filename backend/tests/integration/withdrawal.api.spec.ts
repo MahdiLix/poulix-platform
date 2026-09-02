@@ -41,62 +41,87 @@ describe('Withdrawal API', () => {
   }
 
   it('withdraws to a valid account number and decreases the balance', async () => {
-    await deposit(1000000);
+    await deposit(1_000_000);
 
     const response = await request(app.getHttpServer())
       .post('/wallets/withdraw')
       .set('Authorization', `Bearer ${session.accessToken}`)
-      .send({ amount: 700000, accountNumber: ACCOUNT_NUMBER })
+      .send({ amount: 700_000, accountNumber: ACCOUNT_NUMBER })
       .expect(201);
 
-    expect(balanceOf(response.body.balance)).toBe(300000);
+    expect(balanceOf(response.body.balance)).toBe(300_000);
 
     const wallet = await db.wallet.findUniqueOrThrow({
       where: { userId: session.userId },
     });
-    expect(balanceOf(wallet.balance)).toBe(300000);
+    expect(balanceOf(wallet.balance)).toBe(300_000);
 
     const withdrawals = await db.transaction.findMany({
       where: { walletId: wallet.id, type: 'WITHDRAWAL' },
     });
     expect(withdrawals).toHaveLength(1);
-    expect(balanceOf(withdrawals[0].amount)).toBe(700000);
+    expect(balanceOf(withdrawals[0].amount)).toBe(700_000);
   });
 
-  it('withdraws to a valid Shaba number and decreases the balance', async () => {
-    await deposit(1000000);
-
-    const response = await request(app.getHttpServer())
-      .post('/wallets/withdraw')
-      .set('Authorization', `Bearer ${session.accessToken}`)
-      .send({ amount: 250000, shabaNumber: SHABA_NUMBER })
-      .expect(201);
-
-    expect(balanceOf(response.body.balance)).toBe(750000);
-
-    const wallet = await db.wallet.findUniqueOrThrow({
-      where: { userId: session.userId },
-    });
-    expect(balanceOf(wallet.balance)).toBe(750000);
-  });
-
-  it('rejects a withdrawal that exceeds the available balance', async () => {
-    await deposit(500000);
+  it('stores optional reason and category on withdrawal', async () => {
+    await deposit(1_000_000);
 
     await request(app.getHttpServer())
       .post('/wallets/withdraw')
       .set('Authorization', `Bearer ${session.accessToken}`)
-      .send({ amount: 700000, accountNumber: ACCOUNT_NUMBER })
+      .send({
+        amount: 200_000,
+        accountNumber: ACCOUNT_NUMBER,
+        reason: 'Monthly rent',
+        category: 'RENT',
+      })
+      .expect(201);
+
+    const wallet = await db.wallet.findUniqueOrThrow({
+      where: { userId: session.userId },
+    });
+    const withdrawals = await db.transaction.findMany({
+      where: { walletId: wallet.id, type: 'WITHDRAWAL' },
+    });
+    expect(withdrawals).toHaveLength(1);
+    expect(withdrawals[0].reason).toBe('Monthly rent');
+    expect(withdrawals[0].category).toBe('RENT');
+  });
+
+  it('withdraws to a valid Shaba number and decreases the balance', async () => {
+    await deposit(1_000_000);
+
+    const response = await request(app.getHttpServer())
+      .post('/wallets/withdraw')
+      .set('Authorization', `Bearer ${session.accessToken}`)
+      .send({ amount: 250_000, shabaNumber: SHABA_NUMBER })
+      .expect(201);
+
+    expect(balanceOf(response.body.balance)).toBe(750_000);
+
+    const wallet = await db.wallet.findUniqueOrThrow({
+      where: { userId: session.userId },
+    });
+    expect(balanceOf(wallet.balance)).toBe(750_000);
+  });
+
+  it('rejects a withdrawal that exceeds the available balance', async () => {
+    await deposit(500_000);
+
+    await request(app.getHttpServer())
+      .post('/wallets/withdraw')
+      .set('Authorization', `Bearer ${session.accessToken}`)
+      .send({ amount: 700_000, accountNumber: ACCOUNT_NUMBER })
       .expect(400);
 
     const wallet = await db.wallet.findUniqueOrThrow({
       where: { userId: session.userId },
     });
-    expect(balanceOf(wallet.balance)).toBe(500000);
+    expect(balanceOf(wallet.balance)).toBe(500_000);
   });
 
   it('rejects a zero withdrawal amount', async () => {
-    await deposit(500000);
+    await deposit(500_000);
 
     await request(app.getHttpServer())
       .post('/wallets/withdraw')
@@ -107,11 +132,11 @@ describe('Withdrawal API', () => {
     const wallet = await db.wallet.findUniqueOrThrow({
       where: { userId: session.userId },
     });
-    expect(balanceOf(wallet.balance)).toBe(500000);
+    expect(balanceOf(wallet.balance)).toBe(500_000);
   });
 
   it('rejects a negative withdrawal amount', async () => {
-    await deposit(500000);
+    await deposit(500_000);
 
     await request(app.getHttpServer())
       .post('/wallets/withdraw')
@@ -122,43 +147,43 @@ describe('Withdrawal API', () => {
     const wallet = await db.wallet.findUniqueOrThrow({
       where: { userId: session.userId },
     });
-    expect(balanceOf(wallet.balance)).toBe(500000);
+    expect(balanceOf(wallet.balance)).toBe(500_000);
   });
 
   it('rejects an invalid account number', async () => {
-    await deposit(500000);
+    await deposit(500_000);
 
     await request(app.getHttpServer())
       .post('/wallets/withdraw')
       .set('Authorization', `Bearer ${session.accessToken}`)
-      .send({ amount: 100000, accountNumber: 'invalid' })
+      .send({ amount: 100_000, accountNumber: 'invalid' })
       .expect(400);
 
     const wallet = await db.wallet.findUniqueOrThrow({
       where: { userId: session.userId },
     });
-    expect(balanceOf(wallet.balance)).toBe(500000);
+    expect(balanceOf(wallet.balance)).toBe(500_000);
   });
 
   it('rejects an invalid Shaba number', async () => {
-    await deposit(500000);
+    await deposit(500_000);
 
     await request(app.getHttpServer())
       .post('/wallets/withdraw')
       .set('Authorization', `Bearer ${session.accessToken}`)
-      .send({ amount: 100000, shabaNumber: 'ir123' })
+      .send({ amount: 100_000, shabaNumber: 'ir123' })
       .expect(400);
 
     const wallet = await db.wallet.findUniqueOrThrow({
       where: { userId: session.userId },
     });
-    expect(balanceOf(wallet.balance)).toBe(500000);
+    expect(balanceOf(wallet.balance)).toBe(500_000);
   });
 
   it('rejects unauthenticated withdrawals', async () => {
     await request(app.getHttpServer())
       .post('/wallets/withdraw')
-      .send({ amount: 100000, accountNumber: ACCOUNT_NUMBER })
+      .send({ amount: 100_000, accountNumber: ACCOUNT_NUMBER })
       .expect(401);
   });
 });

@@ -12,9 +12,29 @@ export class UsersService {
         id: true,
         username: true,
         email: true,
+        role: true,
+        status: true,
         createdAt: true,
       },
     });
     return user;
+  }
+
+  async findByIdentifier(identifier: string) {
+    const trimmed = identifier.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    return this.db.user.findFirst({
+      where: {
+        OR: [{ email: trimmed }, { username: trimmed }],
+      },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+      },
+    });
   }
 }

@@ -9,8 +9,10 @@ import {
 } from '@nestjs/common';
 import { CurrentUser, JwtAuthGuard, type AuthenticatedUser } from '../common';
 import { PaymentsService } from '../payments/payments.service';
+import { FinancialDestinationsService } from '../financial-destinations/financial-destinations.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { DepositDto } from './dto/deposit.dto';
+import { TransferDto } from './dto/transfer.dto';
 import { WithdrawDto } from './dto/withdraw.dto';
 import { WalletsService } from './wallets.service';
 
@@ -20,6 +22,7 @@ export class WalletsController {
     private readonly walletsService: WalletsService,
     private readonly transactionsService: TransactionsService,
     private readonly paymentsService: PaymentsService,
+    private readonly financialDestinationsService: FinancialDestinationsService,
   ) {}
 
   @Get('me')
@@ -55,7 +58,10 @@ export class WalletsController {
 
   @Post('withdraw')
   @UseGuards(JwtAuthGuard)
-  withdraw(@CurrentUser() user: AuthenticatedUser, @Body() dto: WithdrawDto) {
+  async withdraw(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: WithdrawDto,
+  ) {
     if (
       (dto.accountNumber === undefined && dto.shabaNumber === undefined) ||
       (dto.accountNumber !== undefined && dto.shabaNumber !== undefined)
@@ -65,6 +71,39 @@ export class WalletsController {
       );
     }
 
-    return this.transactionsService.withdraw(user.id, dto.amount);
+    const result = await this.transactionsService.withdraw(
+      user.id,
+      dto.amount,
+      {
+        reason: dto.reason,
+        category: dto.category,
+      },
+    );
+
+    if (dto.accountNumber) {
+      await this.financialDestinationsService.recordBankAccount(user.id, {
+        accountNumber: dto.accountNumber,
+      });
+    } else if (dto.shabaNumber) {
+      await this.financialDestinationsService.recordShaba(user.id, {
+        shabaNumber: dto.shabaNumber,
+      });
+    }
+
+    return result;
+  }
+
+  @Post('transfer')
+  @UseGuards(JwtAuthGuard)
+  transfer(@CurrentUser() user: AuthenticatedUser, @Body() dto: TransferDto) {
+    return this.transactionsService.transferToUser(
+      user.id,
+      dto.recipient,
+      dto.amount,
+      {
+        reason: dto.reason,
+        category: dto.category,
+      },
+    );
   }
 }

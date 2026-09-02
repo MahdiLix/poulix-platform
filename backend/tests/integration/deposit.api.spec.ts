@@ -12,7 +12,7 @@ import { FakeZarinpalService } from '../helpers/zarinpal';
 import type { DatabaseService } from '../../src/database/database.service';
 import { ZarinpalService } from '../../src/payments/zarinpal.service';
 
-const DEPOSIT_AMOUNT = 1000000;
+const DEPOSIT_AMOUNT = 1_000_000;
 
 describe('Deposit API (ZarinPal sandbox)', () => {
   let app: INestApplication;
@@ -74,7 +74,7 @@ describe('Deposit API (ZarinPal sandbox)', () => {
     expect(balanceOf(payment.amount)).toBe(DEPOSIT_AMOUNT);
   });
 
-  it('cancels a pending sandbox payment on NOK callback without crediting', async () => {
+  it('leaves a pending payment unchanged on NOK so a later OK can still settle', async () => {
     const created = await request(app.getHttpServer())
       .post('/wallets/deposit')
       .set('Authorization', `Bearer ${session.accessToken}`)
@@ -86,12 +86,12 @@ describe('Deposit API (ZarinPal sandbox)', () => {
       .query({ Authority: created.body.authority, Status: 'NOK' })
       .expect(200);
 
-    expect(callback.body.status).toBe('CANCELLED');
+    expect(callback.body.status).toBe('NOK');
 
     const payment = await db.payment.findUniqueOrThrow({
       where: { authority: created.body.authority },
     });
-    expect(payment.status).toBe('CANCELLED');
+    expect(payment.status).toBe('PENDING');
 
     const wallet = await db.wallet.findUniqueOrThrow({
       where: { userId: session.userId },
@@ -232,25 +232,23 @@ describe('Deposit API (callback and verification)', () => {
     expect(balanceOf(wallet.balance)).toBe(0);
   });
 
-
-  it('does not verify or credit on a cancelled NOK callback', async () => {
+  it('does not verify or credit on a NOK callback and keeps the payment pending', async () => {
     const created = await createDeposit();
 
     const response = await sendCallback(created.authority, 'NOK').expect(200);
-    expect(response.body.status).toBe('CANCELLED');
+    expect(response.body.status).toBe('NOK');
     expect(zarinpal.verifyCalls).toBe(0);
 
     const payment = await db.payment.findUniqueOrThrow({
       where: { authority: created.authority },
     });
-    expect(payment.status).toBe('CANCELLED');
+    expect(payment.status).toBe('PENDING');
 
     const wallet = await db.wallet.findUniqueOrThrow({
       where: { userId: session.userId },
     });
     expect(balanceOf(wallet.balance)).toBe(0);
   });
-  
 
   it('verifies a successful payment and credits the wallet once', async () => {
     const created = await createDeposit();
@@ -395,21 +393,22 @@ describe('Deposit API (callback and verification)', () => {
     expect(deposits).toHaveLength(1);
   });
 
-  it('does not credit a cancelled payment if a later OK callback arrives', async () => {
+  it('credits a payment if NOK is followed by a successful OK callback', async () => {
     const created = await createDeposit();
     await sendCallback(created.authority, 'NOK').expect(200);
 
-    await sendCallback(created.authority, 'OK').expect(400);
+    const paid = await sendCallback(created.authority, 'OK').expect(200);
+    expect(paid.body.status).toBe('PAID');
 
     const payment = await db.payment.findUniqueOrThrow({
       where: { authority: created.authority },
     });
-    expect(payment.status).toBe('CANCELLED');
+    expect(payment.status).toBe('PAID');
 
     const wallet = await db.wallet.findUniqueOrThrow({
       where: { userId: session.userId },
     });
-    expect(balanceOf(wallet.balance)).toBe(0);
+    expect(balanceOf(wallet.balance)).toBe(DEPOSIT_AMOUNT);
   });
 
   it('rejects a callback without an authority', async () => {
@@ -426,7 +425,7 @@ describe('Deposit API (callback and verification)', () => {
       .expect(404);
   });
 
-    it('accepts lowercase callback query parameters', async () => {
+  it('accepts lowercase callback query parameters', async () => {
     const created = await createDeposit();
 
     const response = await request(app.getHttpServer())

@@ -63,13 +63,16 @@ describe('Financial flow', () => {
     const deposit = await http
       .post('/wallets/deposit')
       .set(auth)
-      .send({ amount: 1000000 })
+      .send({ amount: 1_000_000 })
       .expect(201);
     expect(typeof deposit.body.paymentUrl).toBe('string');
     expect(deposit.body.paymentUrl).toContain('/pg/StartPay/');
     expect(deposit.body.authority).toBeDefined();
 
-    const pendingBalance = await http.get('/wallets/balance').set(auth).expect(200);
+    const pendingBalance = await http
+      .get('/wallets/balance')
+      .set(auth)
+      .expect(200);
     expect(balanceOf(pendingBalance.body.balance)).toBe(0);
 
     const verified = await http
@@ -78,31 +81,31 @@ describe('Financial flow', () => {
       .expect(200);
     expect(verified.body.status).toBe('PAID');
     expect(verified.body.alreadyVerified).toBe(false);
-    expect(balanceOf(verified.body.balance)).toBe(1000000);
+    expect(balanceOf(verified.body.balance)).toBe(1_000_000);
 
     const afterDeposit = await http
       .get('/wallets/balance')
       .set(auth)
       .expect(200);
-    expect(balanceOf(afterDeposit.body.balance)).toBe(1000000);
+    expect(balanceOf(afterDeposit.body.balance)).toBe(1_000_000);
 
     const withdraw = await http
       .post('/wallets/withdraw')
       .set(auth)
-      .send({ amount: 700000, accountNumber: '1234567890' })
+      .send({ amount: 700_000, accountNumber: '1234567890' })
       .expect(201);
-    expect(balanceOf(withdraw.body.balance)).toBe(300000);
+    expect(balanceOf(withdraw.body.balance)).toBe(300_000);
 
     const finalBalance = await http
       .get('/wallets/balance')
       .set(auth)
       .expect(200);
-    expect(balanceOf(finalBalance.body.balance)).toBe(300000);
+    expect(balanceOf(finalBalance.body.balance)).toBe(300_000);
 
     const wallet = await db.wallet.findUniqueOrThrow({
       where: { userId: registeredUserId },
     });
-    expect(balanceOf(wallet.balance)).toBe(300000);
+    expect(balanceOf(wallet.balance)).toBe(300_000);
 
     const deposits = await db.transaction.findMany({
       where: { walletId: wallet.id, type: 'DEPOSIT' },

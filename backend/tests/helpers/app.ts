@@ -98,6 +98,13 @@ export async function registerUser(
   };
 }
 
+export async function promoteToAdmin(db: DatabaseService, userId: string) {
+  return db.user.update({
+    where: { id: userId },
+    data: { role: 'ADMIN', status: 'ACTIVE' },
+  });
+}
+
 export async function cleanupUser(db: DatabaseService, userId?: string) {
   if (!userId) {
     return;
@@ -113,6 +120,21 @@ export async function cleanupUser(db: DatabaseService, userId?: string) {
     await db.transaction.deleteMany({ where: { walletId: wallet.id } });
     await db.wallet.delete({ where: { id: wallet.id } });
   }
+
+  await db.scheduledPayment.deleteMany({
+    where: {
+      OR: [{ userId }, { recipientUserId: userId }],
+    },
+  });
+
+  await db.goal.deleteMany({ where: { userId } });
+  await db.envelope.deleteMany({ where: { userId } });
+  await db.notification.deleteMany({ where: { userId } });
+  await db.financialDestination.deleteMany({ where: { userId } });
+  await db.userSpendingLimit.deleteMany({ where: { userId } });
+  await db.securityEvent.deleteMany({ where: { userId } });
+  await db.userSession.deleteMany({ where: { userId } });
+  await db.adminAuditLog.deleteMany({ where: { adminUserId: userId } });
 
   await db.user.deleteMany({ where: { id: userId } });
 }

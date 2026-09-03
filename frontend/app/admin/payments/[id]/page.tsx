@@ -1,0 +1,78 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import { AdminShell } from "@/features/admin/components/AdminShell";
+import { Card } from "@/shared/ui/Card";
+import { api } from "@/shared/api";
+import { useLanguage } from "@/shared/i18n/LanguageProvider";
+import { localizeError } from "@/shared/i18n/localizeError";
+import { formatIrr } from "@/features/wallet/lib/wallet";
+import { formatDisplayDateTime } from "@/shared/i18n/dates";
+import type { AdminPaymentDetail } from "@/features/admin/lib/admin";
+
+export default function AdminPaymentDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const { t, language } = useLanguage();
+  const [item, setItem] = useState<AdminPaymentDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void api
+      .getAdminPayment(id)
+      .then((data) => {
+        if (!cancelled) {
+          setItem(data);
+          setError(null);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(localizeError(err, t.messages, "failedToLoadAdmin"));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, t.messages]);
+
+  return (
+    <AdminShell title={t.admin.paymentsTitle}>
+      {error ? (
+        <Card className="p-4 text-sm text-danger">{error}</Card>
+      ) : !item ? (
+        <p className="text-sm text-muted">{t.common.loading}</p>
+      ) : (
+        <Card className="space-y-2 p-4 text-sm">
+          <p className="text-lg font-bold">
+            {item.status} · {formatIrr(item.amount)}
+          </p>
+          <p>
+            {item.user.username} · {item.user.email}
+          </p>
+          <p className="text-xs text-muted">
+            ref: {item.refId ?? "—"} ·{" "}
+            {formatDisplayDateTime(item.createdAt, language)}
+          </p>
+          {item.relatedTransaction ? (
+            <Link
+              href={`/admin/transactions/${item.relatedTransaction.id}`}
+              className="block text-primary"
+            >
+              {item.relatedTransaction.type} ·{" "}
+              {formatIrr(item.relatedTransaction.amount)}
+            </Link>
+          ) : null}
+          <Link
+            href={`/admin/users/${item.user.id}`}
+            className="inline-block pt-2 text-xs font-semibold text-primary"
+          >
+            {t.admin.userDetailTitle}
+          </Link>
+        </Card>
+      )}
+    </AdminShell>
+  );
+}

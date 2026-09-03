@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { cn } from '@/shared/cn';
+import type { ReactNode } from "react";
+import { cn } from "@/shared/cn";
 
 export function Card({
   className,
@@ -11,7 +11,7 @@ export function Card({
   return (
     <div
       className={cn(
-        'rounded-3xl border border-border bg-surface shadow-sm',
+        "rounded-3xl border border-border bg-surface shadow-sm",
         className,
       )}
     >

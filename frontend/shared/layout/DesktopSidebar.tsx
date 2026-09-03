@@ -1,27 +1,53 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { BarChart3, FileText, Home, User, Wallet } from 'lucide-react';
-import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { ThemeToggle } from '@/shared/theme/ThemeToggle';
-import { LanguageToggle } from '@/shared/theme/LanguageToggle';
-import { cn } from '@/shared/cn';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  ArrowUpRight,
+  BarChart3,
+  Bell,
+  CalendarClock,
+  FileText,
+  Home,
+  Landmark,
+  Layers,
+  PiggyBank,
+  Send,
+  Shield,
+  User,
+  Wallet,
+} from "lucide-react";
+import { useLanguage } from "@/shared/i18n/LanguageProvider";
+import { ThemeToggle } from "@/shared/theme/ThemeToggle";
+import { LanguageToggle } from "@/shared/theme/LanguageToggle";
+import { cn } from "@/shared/cn";
 
 export function DesktopSidebar() {
   const pathname = usePathname();
   const { t } = useLanguage();
 
   const navItems = [
-    { href: '/', label: t.nav.home, icon: Home },
-    { href: '/statistics', label: t.nav.statistic, icon: BarChart3 },
-    { href: '/history', label: t.nav.history, icon: FileText },
-    { href: '/profile', label: t.nav.profile, icon: User },
+    { href: "/", label: t.nav.home, icon: Home },
+    { href: "/send", label: t.home.send, icon: Send },
+    {
+      href: "/transfer",
+      label: t.withdrawal.withdrawTitle,
+      icon: ArrowUpRight,
+    },
+    { href: "/scheduled", label: t.scheduled.title, icon: CalendarClock },
+    { href: "/goals", label: t.goals.title, icon: PiggyBank },
+    { href: "/envelopes", label: t.envelopes.title, icon: Layers },
+    { href: "/notifications", label: t.notifications.title, icon: Bell },
+    { href: "/statistics", label: t.nav.statistic, icon: BarChart3 },
+    { href: "/history", label: t.nav.history, icon: FileText },
+    { href: "/destinations", label: t.destinations.title, icon: Landmark },
+    { href: "/security", label: t.security.title, icon: Shield },
+    { href: "/profile", label: t.nav.profile, icon: User },
   ];
 
   return (
-    <aside className="hidden lg:flex lg:w-72 lg:shrink-0 lg:flex-col lg:justify-between lg:rounded-3xl lg:border lg:border-border lg:bg-surface lg:p-6 lg:shadow-md">
-      <div className="space-y-8">
+    <aside className="hidden lg:flex lg:w-72 lg:shrink-0 lg:flex-col lg:justify-between lg:overflow-hidden lg:rounded-3xl lg:border lg:border-border lg:bg-surface lg:p-6 lg:shadow-md">
+      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto">
         <Link
           href="/"
           className="flex cursor-pointer items-center gap-3.5 transition hover:opacity-90 active:scale-95"
@@ -33,13 +59,18 @@ export function DesktopSidebar() {
             <h1 className="text-lg font-extrabold text-foreground">
               {t.common.appName}
             </h1>
-            <p className="text-[11px] font-medium text-muted">Financial Wallet</p>
+            <p className="text-[11px] font-medium text-muted">
+              Financial Wallet
+            </p>
           </div>
         </Link>
 
-        <nav className="space-y-2">
+        <nav className="space-y-1">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(item.href);
             const Icon = item.icon;
 
             return (
@@ -47,10 +78,10 @@ export function DesktopSidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex cursor-pointer items-center gap-3.5 rounded-2xl px-4 py-3.5 text-sm font-semibold transition active:scale-95',
+                  "flex cursor-pointer items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition active:scale-95",
                   isActive
-                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25'
-                    : 'text-muted hover:bg-surface-muted hover:text-foreground',
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                    : "text-muted hover:bg-surface-muted hover:text-foreground",
                 )}
               >
                 <Icon className="h-5 w-5" />

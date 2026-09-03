@@ -113,7 +113,12 @@
 html[dir="rtl"],
 body[dir="rtl"],
 [dir="rtl"] {
-  font-family: var(--font-vazirmatn), system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    var(--font-vazirmatn),
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
 }
 
 html,

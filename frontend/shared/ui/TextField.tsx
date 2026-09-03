@@ -1,5 +1,5 @@
-import type { InputHTMLAttributes } from 'react';
-import { cn } from '@/shared/cn';
+import type { InputHTMLAttributes } from "react";
+import { cn } from "@/shared/cn";
 
 type TextFieldProps = InputHTMLAttributes<HTMLInputElement> & {
   label: string;
@@ -13,7 +13,7 @@ export function TextField({
   id,
   ...props
 }: TextFieldProps) {
-  const fieldId = id || props.name || label.toLowerCase().replace(/\s+/g, '-');
+  const fieldId = id || props.name || label.toLowerCase().replace(/\s+/g, "-");
 
   return (
     <div>
@@ -26,8 +26,8 @@ export function TextField({
       <input
         id={fieldId}
         className={cn(
-          'w-full rounded-xl border bg-surface px-3 py-2.5 text-sm text-foreground transition hover:border-primary/40 focus:ring-2 focus:ring-primary focus:outline-none',
-          error ? 'border-danger' : 'border-border',
+          "w-full rounded-xl border bg-surface px-3 py-2.5 text-sm text-foreground transition hover:border-primary/40 focus:ring-2 focus:ring-primary focus:outline-none",
+          error ? "border-danger" : "border-border",
           className,
         )}
         {...props}

@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { BarChart3, FileText, Home, User } from 'lucide-react';
-import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { cn } from '@/shared/cn';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { BarChart3, FileText, Home, User } from "lucide-react";
+import { useLanguage } from "@/shared/i18n/LanguageProvider";
+import { cn } from "@/shared/cn";
 
 export function BottomNav() {
   const pathname = usePathname();
   const { t } = useLanguage();
 
   const navItems = [
-    { href: '/', label: t.nav.home, icon: Home },
-    { href: '/statistics', label: t.nav.statistic, icon: BarChart3 },
-    { href: '/history', label: t.nav.history, icon: FileText },
-    { href: '/profile', label: t.nav.profile, icon: User },
+    { href: "/", label: t.nav.home, icon: Home },
+    { href: "/statistics", label: t.nav.statistic, icon: BarChart3 },
+    { href: "/history", label: t.nav.history, icon: FileText },
+    { href: "/profile", label: t.nav.profile, icon: User },
   ];
 
   return (
@@ -30,10 +30,10 @@ export function BottomNav() {
               href={item.href}
               aria-label={item.label}
               className={cn(
-                'flex min-w-14 cursor-pointer flex-col items-center justify-center rounded-xl px-3 py-1.5 transition-colors hover:bg-surface-muted active:scale-95',
+                "flex min-w-14 cursor-pointer flex-col items-center justify-center rounded-xl px-3 py-1.5 transition-colors hover:bg-surface-muted active:scale-95",
                 isActive
-                  ? 'font-bold text-primary'
-                  : 'text-muted hover:text-foreground',
+                  ? "font-bold text-primary"
+                  : "text-muted hover:text-foreground",
               )}
             >
               <Icon className="h-6 w-6" />

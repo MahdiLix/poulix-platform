@@ -1,43 +1,43 @@
-'use client';
+"use client";
 
-import { useState, type FormEvent } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { AppShell } from '@/shared/layout/AppShell';
-import { HeaderBar } from '@/shared/layout/HeaderBar';
-import { Button } from '@/shared/ui/Button';
-import { Card } from '@/shared/ui/Card';
-import { TextField } from '@/shared/ui/TextField';
-import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { formatMessage, localizeError } from '@/shared/i18n/localizeError';
+import { useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { AppShell } from "@/shared/layout/AppShell";
+import { HeaderBar } from "@/shared/layout/HeaderBar";
+import { Button } from "@/shared/ui/Button";
+import { Card } from "@/shared/ui/Card";
+import { TextField } from "@/shared/ui/TextField";
+import { useLanguage } from "@/shared/i18n/LanguageProvider";
+import { formatMessage, localizeError } from "@/shared/i18n/localizeError";
 import {
   registerAndStoreSession,
   validateEmail,
   validatePassword,
   validateUsername,
-} from '@/features/auth/lib/auth';
+} from "@/features/auth/lib/auth";
 
 export default function RegisterPage() {
   const router = useRouter();
   const { t } = useLanguage();
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{
     username?: string | null;
     email?: string | null;
     password?: string | null;
     confirmPassword?: string | null;
   }>({});
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
 
     const nextErrors = {
       username: validateUsername(username, t.messages),
@@ -66,10 +66,10 @@ export default function RegisterPage() {
       setSuccess(
         formatMessage(t.messages.accountCreatedFor, { email: res.user.email }),
       );
-      router.push('/');
+      router.push("/");
       router.refresh();
     } catch (err: unknown) {
-      setError(localizeError(err, t.messages, 'registrationFailed'));
+      setError(localizeError(err, t.messages, "registrationFailed"));
     } finally {
       setLoading(false);
     }
@@ -155,7 +155,7 @@ export default function RegisterPage() {
         </Card>
 
         <p className="text-center text-sm text-muted">
-          {t.auth.alreadyHaveAccount}{' '}
+          {t.auth.alreadyHaveAccount}{" "}
           <Link
             href="/login"
             className="font-semibold text-primary hover:underline active:opacity-80"

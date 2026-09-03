@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { X } from 'lucide-react';
-import { Button } from '@/shared/ui/Button';
-import { TextField } from '@/shared/ui/TextField';
-import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { localizeError } from '@/shared/i18n/localizeError';
+import { useState } from "react";
+import Link from "next/link";
+import { X } from "lucide-react";
+import { Button } from "@/shared/ui/Button";
+import { TextField } from "@/shared/ui/TextField";
+import { useLanguage } from "@/shared/i18n/LanguageProvider";
+import { localizeError } from "@/shared/i18n/localizeError";
 import {
   loginAndStoreSession,
   registerAndStoreSession,
@@ -14,7 +14,7 @@ import {
   validateIdentifier,
   validatePassword,
   validateUsername,
-} from '@/features/auth/lib/auth';
+} from "@/features/auth/lib/auth";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -25,17 +25,17 @@ interface AuthModalProps {
 export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const { t } = useLanguage();
   const [isLogin, setIsLogin] = useState(true);
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (isLogin) {
       const identifierError = validateIdentifier(username || email, t.messages);
@@ -50,7 +50,10 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
       const passwordError = validatePassword(password, t.messages);
       if (usernameError || emailError || passwordError) {
         setError(
-          usernameError || emailError || passwordError || t.messages.invalidForm,
+          usernameError ||
+            emailError ||
+            passwordError ||
+            t.messages.invalidForm,
         );
         return;
       }
@@ -67,12 +70,15 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           t.messages,
         );
       } else {
-        await registerAndStoreSession({ username, email, password }, t.messages);
+        await registerAndStoreSession(
+          { username, email, password },
+          t.messages,
+        );
       }
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      setError(localizeError(err, t.messages, 'authenticationFailed'));
+      setError(localizeError(err, t.messages, "authenticationFailed"));
     } finally {
       setLoading(false);
     }
@@ -113,7 +119,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
           <TextField
             label={isLogin ? t.auth.usernameOrEmail : t.auth.email}
-            type={isLogin ? 'text' : 'email'}
+            type={isLogin ? "text" : "email"}
             value={isLogin ? username || email : email}
             onChange={(e) => {
               if (isLogin) {
@@ -150,7 +156,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
             type="button"
             onClick={() => {
               setIsLogin(!isLogin);
-              setError('');
+              setError("");
             }}
             className="font-medium text-muted underline hover:text-primary active:opacity-80 cursor-pointer"
           >
@@ -163,7 +169,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
             >
               {t.auth.signInBtn}
             </Link>
-            {' / '}
+            {" / "}
             <Link
               href="/register"
               className="font-semibold text-primary hover:underline active:opacity-80 ms-1 me-1 cursor-pointer"

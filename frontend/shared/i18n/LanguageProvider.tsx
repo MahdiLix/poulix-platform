@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   createContext,
@@ -8,19 +8,19 @@ import {
   useMemo,
   useState,
   type ReactNode,
-} from 'react';
+} from "react";
 import {
   translations,
   type Language,
   type TranslationDictionary,
-} from './translations';
+} from "./translations";
 
-const LANGUAGE_COOKIE = 'poulix_lang';
-const DEFAULT_LANGUAGE: Language = 'en';
+const LANGUAGE_COOKIE = "poulix_lang";
+const DEFAULT_LANGUAGE: Language = "en";
 
 type LanguageContextType = {
   language: Language;
-  dir: 'ltr' | 'rtl';
+  dir: "ltr" | "rtl";
   isRtl: boolean;
   setLanguage: (lang: Language) => void;
   toggleLanguage: () => void;
@@ -32,24 +32,24 @@ const LanguageContext = createContext<LanguageContextType | undefined>(
 );
 
 function readLanguageCookie(): Language {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
+  if (typeof window === "undefined" || typeof document === "undefined") {
     return DEFAULT_LANGUAGE;
   }
   const prefix = `${encodeURIComponent(LANGUAGE_COOKIE)}=`;
   const match = document.cookie
-    .split(';')
+    .split(";")
     .map((part) => part.trim())
     .find((part) => part.startsWith(prefix));
 
   if (!match) return DEFAULT_LANGUAGE;
   const value = decodeURIComponent(match.slice(prefix.length));
-  return value === 'fa' ? 'fa' : 'en';
+  return value === "fa" ? "fa" : "en";
 }
 
 function writeLanguageCookie(lang: Language) {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  if (typeof window === "undefined" || typeof document === "undefined") return;
   const maxAge = 60 * 60 * 24 * 365; // 1 year
-  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
   document.cookie = `${encodeURIComponent(LANGUAGE_COOKIE)}=${encodeURIComponent(lang)}; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure}`;
 }
 
@@ -68,29 +68,29 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const toggleLanguage = useCallback(() => {
     setLanguageState((prev) => {
-      const next = prev === 'en' ? 'fa' : 'en';
+      const next = prev === "en" ? "fa" : "en";
       writeLanguageCookie(next);
       return next;
     });
   }, []);
 
   useEffect(() => {
-    const dir = language === 'fa' ? 'rtl' : 'ltr';
+    const dir = language === "fa" ? "rtl" : "ltr";
     document.documentElement.lang = language;
     document.documentElement.dir = dir;
-    if (language === 'fa') {
-      document.documentElement.classList.add('rtl');
+    if (language === "fa") {
+      document.documentElement.classList.add("rtl");
     } else {
-      document.documentElement.classList.remove('rtl');
+      document.documentElement.classList.remove("rtl");
     }
   }, [language]);
 
   const value = useMemo(() => {
-    const dir: 'ltr' | 'rtl' = language === 'fa' ? 'rtl' : 'ltr';
+    const dir: "ltr" | "rtl" = language === "fa" ? "rtl" : "ltr";
     return {
       language,
       dir,
-      isRtl: dir === 'rtl',
+      isRtl: dir === "rtl",
       setLanguage,
       toggleLanguage,
       t: translations[language],
@@ -107,7 +107,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 export function useLanguage() {
   const context = useContext(LanguageContext);
   if (!context) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
+    throw new Error("useLanguage must be used within a LanguageProvider");
   }
   return context;
 }

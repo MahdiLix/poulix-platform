@@ -1,33 +1,33 @@
-import type { Language } from './translations';
+import type { Language } from "./translations";
 
 const GREGORIAN_MONTHS_EN = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ] as const;
 
 const SOLAR_HIJRI_MONTHS_FA = [
-  'فروردین',
-  'اردیبهشت',
-  'خرداد',
-  'تیر',
-  'مرداد',
-  'شهریور',
-  'مهر',
-  'آبان',
-  'آذر',
-  'دی',
-  'بهمن',
-  'اسفند',
+  "فروردین",
+  "اردیبهشت",
+  "خرداد",
+  "تیر",
+  "مرداد",
+  "شهریور",
+  "مهر",
+  "آبان",
+  "آذر",
+  "دی",
+  "بهمن",
+  "اسفند",
 ] as const;
 
 export type CalendarMonth = {
@@ -42,21 +42,21 @@ function toDate(value: Date | string | number): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-export function calendarFor(language: Language): 'persian' | 'gregory' {
-  return language === 'fa' ? 'persian' : 'gregory';
+export function calendarFor(language: Language): "persian" | "gregory" {
+  return language === "fa" ? "persian" : "gregory";
 }
 
 export function localeFor(language: Language): string {
-  return language === 'fa' ? 'fa-IR' : 'en-GB';
+  return language === "fa" ? "fa-IR" : "en-GB";
 }
 
 function numericCalendarParts(date: Date, language: Language) {
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat("en-US", {
     calendar: calendarFor(language),
-    numberingSystem: 'latn',
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
+    numberingSystem: "latn",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
   }).formatToParts(date);
 }
 
@@ -73,24 +73,27 @@ export function getCalendarYearMonth(
 ): { year: number; month: number; day: number } {
   const parts = numericCalendarParts(date, language);
   return {
-    year: numericPart(parts, 'year'),
-    month: numericPart(parts, 'month'),
-    day: numericPart(parts, 'day'),
+    year: numericPart(parts, "year"),
+    month: numericPart(parts, "month"),
+    day: numericPart(parts, "day"),
   };
 }
 
 export function monthLabel(month: number, language: Language): string {
   const index = Math.min(12, Math.max(1, month)) - 1;
-  return language === 'fa'
+  return language === "fa"
     ? SOLAR_HIJRI_MONTHS_FA[index]
     : GREGORIAN_MONTHS_EN[index];
 }
 
 export function monthKey(year: number, month: number): string {
-  return `${year}-${String(month).padStart(2, '0')}`;
+  return `${year}-${String(month).padStart(2, "0")}`;
 }
 
-export function getLastMonths(count: number, language: Language): CalendarMonth[] {
+export function getLastMonths(
+  count: number,
+  language: Language,
+): CalendarMonth[] {
   const now = new Date();
   const current = getCalendarYearMonth(now, language);
   const months: CalendarMonth[] = [];
@@ -119,13 +122,14 @@ export function formatDisplayDate(
   language: Language,
 ): string {
   const date = toDate(value);
-  if (!date) return '';
+  if (!date) return "";
 
   return new Intl.DateTimeFormat(localeFor(language), {
     calendar: calendarFor(language),
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
+    numberingSystem: "latn",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   }).format(date);
 }
 
@@ -134,13 +138,15 @@ export function formatDisplayDateTime(
   language: Language,
 ): string {
   const date = toDate(value);
-  if (!date) return '';
+  if (!date) return "";
 
   const datePart = formatDisplayDate(date, language);
   const timePart = new Intl.DateTimeFormat(localeFor(language), {
-    hour: '2-digit',
-    minute: '2-digit',
+    calendar: calendarFor(language),
+    numberingSystem: "latn",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(date);
-  const separator = language === 'fa' ? '، ' : ', ';
+  const separator = language === "fa" ? "، " : ", ";
   return `${datePart}${separator}${timePart}`;
 }

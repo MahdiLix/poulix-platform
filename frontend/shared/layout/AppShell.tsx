@@ -1,21 +1,21 @@
-'use client';
+"use client";
 
-import type { ReactNode } from 'react';
-import { BottomNav } from './BottomNav';
-import { DesktopSidebar } from './DesktopSidebar';
-import { cn } from '@/shared/cn';
+import type { ReactNode } from "react";
+import { BottomNav } from "./BottomNav";
+import { DesktopSidebar } from "./DesktopSidebar";
+import { cn } from "@/shared/cn";
 
 type AppShellProps = {
   children: ReactNode;
   showBottomNav?: boolean;
-  variant?: 'default' | 'hero';
+  variant?: "default" | "hero";
   className?: string;
 };
 
 export function AppShell({
   children,
   showBottomNav = true,
-  variant = 'default',
+  variant = "default",
   className,
 }: AppShellProps) {
   return (
@@ -24,8 +24,8 @@ export function AppShell({
         <DesktopSidebar />
         <main
           className={cn(
-            'relative flex flex-1 flex-col bg-background lg:overflow-hidden lg:rounded-3xl lg:border lg:border-border lg:shadow-sm',
-            variant === 'hero' && 'bg-primary-strong',
+            "relative flex flex-1 flex-col bg-background lg:overflow-hidden lg:rounded-3xl lg:border lg:border-border lg:shadow-sm",
+            variant === "hero" && "bg-primary-strong",
             className,
           )}
         >

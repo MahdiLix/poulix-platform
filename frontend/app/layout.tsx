@@ -1,33 +1,40 @@
-import type { Metadata } from 'next';
-import { Geist, Geist_Mono, Vazirmatn } from 'next/font/google';
-import { ThemeProvider } from '@/shared/theme/ThemeProvider';
-import { LanguageProvider } from '@/shared/i18n/LanguageProvider';
-import './globals.css';
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono, Vazirmatn } from "next/font/google";
+import { ThemeProvider } from "@/shared/theme/ThemeProvider";
+import { LanguageProvider } from "@/shared/i18n/LanguageProvider";
+import "./globals.css";
 
 const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
 });
 
 const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
 });
 
 const vazirmatn = Vazirmatn({
-  variable: '--font-vazirmatn',
-  subsets: ['arabic'],
+  variable: "--font-vazirmatn",
+  subsets: ["arabic"],
 });
 
 export const metadata: Metadata = {
-  title: 'Poulix',
-  description: 'Poulix wallet',
+  title: "Poulix",
+  description:
+    "Poulix is a personal digital wallet for deposits, transfers, goals, envelopes, and more.",
+  manifest: "/manifest.webmanifest",
 };
 
-const themeBootScript = `try{var t=localStorage.getItem('poulix-theme');if(t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`;
+export const viewport: Viewport = {
+  themeColor: "#1d4ed8",
+  width: "device-width",
+  initialScale: 1,
+};
+
 const langBootScript = `try{var m=document.cookie.match(/poulix_lang=([^;]+)/);if(m&&m[1]==='fa'){document.documentElement.lang='fa';document.documentElement.dir='rtl';document.documentElement.classList.add('rtl')}}catch(e){}`;
 
-export default function RootLayout({ children }: LayoutProps<'/'>) {
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
@@ -37,7 +44,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: themeBootScript + ';' + langBootScript,
+            __html: langBootScript,
           }}
         />
       </head>

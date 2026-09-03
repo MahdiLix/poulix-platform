@@ -1,8 +1,8 @@
-import type { AuthResponse, LoginPayload, RegisterPayload } from '@/shared/api';
-import { api, setStoredToken } from '@/shared/api';
-import type { TranslationDictionary } from '@/shared/i18n/translations';
+import type { AuthResponse, LoginPayload, RegisterPayload } from "@/shared/api";
+import { api, setStoredToken } from "@/shared/api";
+import type { TranslationDictionary } from "@/shared/i18n/translations";
 
-type Messages = TranslationDictionary['messages'];
+type Messages = TranslationDictionary["messages"];
 
 export function validateUsername(
   username: string,
@@ -14,7 +14,10 @@ export function validateUsername(
   return null;
 }
 
-export function validateEmail(email: string, messages: Messages): string | null {
+export function validateEmail(
+  email: string,
+  messages: Messages,
+): string | null {
   const value = email.trim();
   if (!value) return messages.emailRequired;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return messages.emailInvalid;
@@ -50,7 +53,10 @@ export async function loginAndStoreSession(
   });
 
   if (!response?.accessToken) {
-    throw new Error(messages?.loginNoToken || 'Login succeeded but no access token was returned');
+    throw new Error(
+      messages?.loginNoToken ||
+        "Login succeeded but no access token was returned",
+    );
   }
 
   setStoredToken(response.accessToken);
@@ -70,7 +76,7 @@ export async function registerAndStoreSession(
   if (!response?.accessToken) {
     throw new Error(
       messages?.registerNoToken ||
-        'Registration succeeded but no access token was returned',
+        "Registration succeeded but no access token was returned",
     );
   }
 

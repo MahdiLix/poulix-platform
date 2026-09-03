@@ -1,38 +1,38 @@
-'use client';
+"use client";
 
-import { useState, type FormEvent } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { AppShell } from '@/shared/layout/AppShell';
-import { HeaderBar } from '@/shared/layout/HeaderBar';
-import { Button } from '@/shared/ui/Button';
-import { Card } from '@/shared/ui/Card';
-import { TextField } from '@/shared/ui/TextField';
-import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { localizeError } from '@/shared/i18n/localizeError';
+import { useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { AppShell } from "@/shared/layout/AppShell";
+import { HeaderBar } from "@/shared/layout/HeaderBar";
+import { Button } from "@/shared/ui/Button";
+import { Card } from "@/shared/ui/Card";
+import { TextField } from "@/shared/ui/TextField";
+import { useLanguage } from "@/shared/i18n/LanguageProvider";
+import { localizeError } from "@/shared/i18n/localizeError";
 import {
   loginAndStoreSession,
   validateIdentifier,
   validatePassword,
-} from '@/features/auth/lib/auth';
+} from "@/features/auth/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
   const { t } = useLanguage();
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{
     identifier?: string | null;
     password?: string | null;
   }>({});
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
 
     const nextErrors = {
       identifier: validateIdentifier(identifier, t.messages),
@@ -46,12 +46,15 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const res = await loginAndStoreSession({ identifier, password }, t.messages);
+      const res = await loginAndStoreSession(
+        { identifier, password },
+        t.messages,
+      );
       setSuccess(`${t.common.welcomeBack}, ${res.user.email}`);
-      router.push('/');
+      router.push(res.user.role === "ADMIN" ? "/admin" : "/");
       router.refresh();
     } catch (err: unknown) {
-      setError(localizeError(err, t.messages, 'loginFailed'));
+      setError(localizeError(err, t.messages, "loginFailed"));
     } finally {
       setLoading(false);
     }
@@ -113,7 +116,7 @@ export default function LoginPage() {
         </Card>
 
         <p className="text-center text-sm text-muted">
-          {t.auth.dontHaveAccount}{' '}
+          {t.auth.dontHaveAccount}{" "}
           <Link
             href="/register"
             className="font-semibold text-primary hover:underline active:opacity-80"

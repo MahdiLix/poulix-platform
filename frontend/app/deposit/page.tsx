@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { Plus } from 'lucide-react';
-import { AppShell } from '@/shared/layout/AppShell';
-import { HeaderBar } from '@/shared/layout/HeaderBar';
-import { DepositForm } from '@/features/deposit/components/DepositForm';
-import { useLanguage } from '@/shared/i18n/LanguageProvider';
+import { Plus } from "lucide-react";
+import { AppShell } from "@/shared/layout/AppShell";
+import { HeaderBar } from "@/shared/layout/HeaderBar";
+import { DepositForm } from "@/features/deposit/components/DepositForm";
+import { useLanguage } from "@/shared/i18n/LanguageProvider";
 
 export default function DepositPage() {
   const { t } = useLanguage();

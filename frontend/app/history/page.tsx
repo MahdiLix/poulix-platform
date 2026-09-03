@@ -1,32 +1,63 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { ArrowDown, ArrowUp, FileText } from 'lucide-react';
-import { AppShell } from '@/shared/layout/AppShell';
-import { HeaderBar } from '@/shared/layout/HeaderBar';
-import { Button } from '@/shared/ui/Button';
-import { Card } from '@/shared/ui/Card';
-import { api, getStoredToken } from '@/shared/api';
-import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { formatDisplayDate } from '@/shared/i18n/dates';
-import { localizeError } from '@/shared/i18n/localizeError';
-import { formatIrr, parseAmount } from '@/features/wallet/lib/wallet';
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowDown, ArrowUp, FileText } from "lucide-react";
+import { AppShell } from "@/shared/layout/AppShell";
+import { HeaderBar } from "@/shared/layout/HeaderBar";
+import { Button } from "@/shared/ui/Button";
+import { Card } from "@/shared/ui/Card";
+import { Select } from "@/shared/ui/Select";
+import { api, getStoredToken } from "@/shared/api";
+import { useLanguage } from "@/shared/i18n/LanguageProvider";
+import { formatDisplayDate } from "@/shared/i18n/dates";
+import { localizeError, formatMessage } from "@/shared/i18n/localizeError";
+import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
+import {
+  isTransactionCategory,
+  type TransactionCategory,
+} from "@/features/wallet/lib/transactionMeta";
 
 type Transaction = {
   id: string;
   type: string;
   amount: string | number;
   createdAt: string;
+  reason?: string | null;
+  category?: string | null;
+  counterpartyUser?: {
+    username: string;
+    email: string;
+  } | null;
 };
 
-type HistoryStatus = 'loading' | 'ready' | 'unauthenticated' | 'error';
+type HistoryStatus = "loading" | "ready" | "unauthenticated" | "error";
 
 export default function HistoryPage() {
   const { t, language } = useLanguage();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [status, setStatus] = useState<HistoryStatus>('loading');
+  const [status, setStatus] = useState<HistoryStatus>("loading");
   const [error, setError] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [search, setSearch] = useState("");
+
+  const filteredTransactions = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return transactions.filter((tx) => {
+      if (typeFilter !== "ALL" && tx.type !== typeFilter) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
+      const reason = tx.reason?.toLowerCase() ?? "";
+      const counterparty =
+        tx.counterpartyUser?.username?.toLowerCase() ??
+        tx.counterpartyUser?.email?.toLowerCase() ??
+        "";
+      return reason.includes(query) || counterparty.includes(query);
+    });
+  }, [transactions, typeFilter, search]);
 
   useEffect(() => {
     void loadHistory();
@@ -37,11 +68,11 @@ export default function HistoryPage() {
     if (!token) {
       setTransactions([]);
       setError(null);
-      setStatus('unauthenticated');
+      setStatus("unauthenticated");
       return;
     }
 
-    setStatus('loading');
+    setStatus("loading");
     setError(null);
 
     try {
@@ -50,18 +81,18 @@ export default function HistoryPage() {
         throw new Error(t.messages.historyResponseInvalid);
       }
       setTransactions(data);
-      setStatus('ready');
+      setStatus("ready");
     } catch (err) {
       if (!getStoredToken()) {
         setTransactions([]);
         setError(null);
-        setStatus('unauthenticated');
+        setStatus("unauthenticated");
         return;
       }
 
       setTransactions([]);
-      setError(localizeError(err, t.messages, 'failedToLoadHistory'));
-      setStatus('error');
+      setError(localizeError(err, t.messages, "failedToLoadHistory"));
+      setStatus("error");
     }
   }
 
@@ -70,11 +101,11 @@ export default function HistoryPage() {
       <HeaderBar title={t.history.historyTitle} backHref="/" />
 
       <div className="flex-1 space-y-4 p-6 lg:mx-auto lg:w-full lg:max-w-4xl lg:p-8">
-        {status === 'loading' ? (
+        {status === "loading" ? (
           <div className="py-12 text-center text-xs font-semibold text-muted">
             {t.history.loadingHistory}
           </div>
-        ) : status === 'unauthenticated' ? (
+        ) : status === "unauthenticated" ? (
           <div className="space-y-4 py-16 text-center lg:mx-auto lg:max-w-md">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-surface-muted text-muted">
               <FileText className="h-7 w-7" />
@@ -96,7 +127,7 @@ export default function HistoryPage() {
               </Link>
             </div>
           </div>
-        ) : status === 'error' ? (
+        ) : status === "error" ? (
           <div className="space-y-3 py-16 text-center lg:mx-auto lg:max-w-md">
             <div className="rounded-xl bg-danger-soft p-3 text-xs font-semibold text-danger">
               {error || t.messages.couldNotLoadTransactions}
@@ -119,9 +150,73 @@ export default function HistoryPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {transactions.map((tx) => {
-              const isDeposit = tx.type === 'DEPOSIT';
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t.history.searchPlaceholder}
+                className="flex-1 rounded-2xl border border-border bg-surface px-4 py-3 text-sm font-medium text-foreground transition hover:border-primary/40 focus:ring-2 focus:ring-primary focus:outline-none"
+              />
+              <Select
+                value={typeFilter}
+                onChange={(val) => setTypeFilter(val)}
+                className="sm:w-56"
+                options={[
+                  { value: "ALL", label: t.history.filterAll },
+                  { value: "DEPOSIT", label: t.history.deposit },
+                  { value: "WITHDRAWAL", label: t.history.withdrawal },
+                  { value: "TRANSFER_OUT", label: t.history.transferSent },
+                  { value: "TRANSFER_IN", label: t.history.transferReceived },
+                  { value: "GOAL_CONTRIBUTE", label: t.goals.goalContribute },
+                  { value: "GOAL_RELEASE", label: t.goals.goalRelease },
+                  {
+                    value: "ENVELOPE_ALLOCATE",
+                    label: t.envelopes.envelopeAllocate,
+                  },
+                  {
+                    value: "ENVELOPE_RELEASE",
+                    label: t.envelopes.envelopeRelease,
+                  },
+                ]}
+              />
+            </div>
+            {filteredTransactions.map((tx) => {
+              const isIncoming =
+                tx.type === "DEPOSIT" ||
+                tx.type === "TRANSFER_IN" ||
+                tx.type === "GOAL_RELEASE" ||
+                tx.type === "ENVELOPE_RELEASE";
               const formattedDate = formatDisplayDate(tx.createdAt, language);
+              const categoryLabel =
+                tx.category && isTransactionCategory(tx.category)
+                  ? t.history.categories[tx.category as TransactionCategory]
+                  : null;
+
+              let title = t.history.deposit;
+              if (tx.type === "WITHDRAWAL") {
+                title = t.history.withdrawal;
+              } else if (tx.type === "TRANSFER_OUT") {
+                title = tx.counterpartyUser?.username
+                  ? formatMessage(t.history.toUser, {
+                      name: tx.counterpartyUser.username,
+                    })
+                  : t.history.transferSent;
+              } else if (tx.type === "TRANSFER_IN") {
+                title = tx.counterpartyUser?.username
+                  ? formatMessage(t.history.fromUser, {
+                      name: tx.counterpartyUser.username,
+                    })
+                  : t.history.transferReceived;
+              } else if (tx.type === "GOAL_CONTRIBUTE") {
+                title = t.goals.goalContribute;
+              } else if (tx.type === "GOAL_RELEASE") {
+                title = t.goals.goalRelease;
+              } else if (tx.type === "ENVELOPE_ALLOCATE") {
+                title = t.envelopes.envelopeAllocate;
+              } else if (tx.type === "ENVELOPE_RELEASE") {
+                title = t.envelopes.envelopeRelease;
+              }
 
               return (
                 <Card
@@ -131,12 +226,12 @@ export default function HistoryPage() {
                   <div className="flex items-center gap-3.5">
                     <div
                       className={`flex h-11 w-11 items-center justify-center rounded-full ${
-                        isDeposit
-                          ? 'bg-success-soft text-success'
-                          : 'bg-primary-soft text-primary'
+                        isIncoming
+                          ? "bg-success-soft text-success"
+                          : "bg-primary-soft text-primary"
                       }`}
                     >
-                      {isDeposit ? (
+                      {isIncoming ? (
                         <ArrowDown className="h-5 w-5" />
                       ) : (
                         <ArrowUp className="h-5 w-5" />
@@ -144,20 +239,29 @@ export default function HistoryPage() {
                     </div>
                     <div>
                       <h3 className="text-xs font-bold text-foreground lg:text-sm">
-                        {isDeposit ? t.history.deposit : t.history.withdrawal}
+                        {title}
                       </h3>
                       <p className="text-[11px] font-medium text-muted">
                         {formattedDate}
                       </p>
+                      {categoryLabel || tx.reason ? (
+                        <p className="mt-0.5 text-[11px] font-medium text-muted">
+                          {categoryLabel ? <span>{categoryLabel}</span> : null}
+                          {categoryLabel && tx.reason ? (
+                            <span className="mx-1">·</span>
+                          ) : null}
+                          {tx.reason ? <span>{tx.reason}</span> : null}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
 
                   <span
                     className={`text-sm font-extrabold lg:text-base ${
-                      isDeposit ? 'text-success' : 'text-foreground'
+                      isIncoming ? "text-success" : "text-foreground"
                     }`}
                   >
-                    {isDeposit ? '+' : '-'}
+                    {isIncoming ? "+" : "-"}
                     {formatIrr(parseAmount(tx.amount))}
                   </span>
                 </Card>

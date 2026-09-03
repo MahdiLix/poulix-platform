@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { X } from 'lucide-react';
-import { DepositForm } from './DepositForm';
-import { useLanguage } from '@/shared/i18n/LanguageProvider';
+import { X } from "lucide-react";
+import { DepositForm } from "./DepositForm";
+import { useLanguage } from "@/shared/i18n/LanguageProvider";
 
 interface DepositModalProps {
   isOpen: boolean;

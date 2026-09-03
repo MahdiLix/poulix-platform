@@ -1,48 +1,46 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowDownLeft,
-  Bell,
+  CalendarClock,
   FileText,
-  Globe,
-  Menu,
+  Layers,
+  Landmark,
+  PiggyBank,
   Plus,
   Send,
   Shield,
-  ShoppingBag,
-  Smartphone,
-  Ticket,
-  Zap,
-  CircleCheck,
-} from 'lucide-react';
-import { AppShell } from '@/shared/layout/AppShell';
-import { ThemeToggle } from '@/shared/theme/ThemeToggle';
-import { LanguageToggle } from '@/shared/theme/LanguageToggle';
-import { Card } from '@/shared/ui/Card';
-import { api, getStoredToken } from '@/shared/api';
-import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { DepositModal } from '@/features/deposit/components/DepositModal';
-import { WalletBalance } from '@/features/wallet/components/WalletBalance';
-import { useWalletBalance } from '@/features/wallet/hooks/useWalletBalance';
+} from "lucide-react";
+import { AppShell } from "@/shared/layout/AppShell";
+import { ThemeToggle } from "@/shared/theme/ThemeToggle";
+import { LanguageToggle } from "@/shared/theme/LanguageToggle";
+import { Card } from "@/shared/ui/Card";
+import { api, getStoredToken } from "@/shared/api";
+import { useLanguage } from "@/shared/i18n/LanguageProvider";
+import { DepositModal } from "@/features/deposit/components/DepositModal";
+import { NotificationBell } from "@/features/notifications/components/NotificationBell";
+import { WalletBalance } from "@/features/wallet/components/WalletBalance";
+import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 
 export default function HomePage() {
   const router = useRouter();
   const { t } = useLanguage();
   const { status, balance, currency, error, refresh } = useWalletBalance();
-  const [user, setUser] = useState<{ id: string; email: string } | null>(null);
+  const [user, setUser] = useState<{
+    id: string;
+    email: string;
+    role?: "USER" | "ADMIN";
+  } | null>(null);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
 
-  useEffect(() => {
-    loadUser();
-  }, []);
-
-  async function loadUser() {
+  const loadUser = async () => {
     const token = getStoredToken();
     if (!token) {
       setUser(null);
+      router.replace("/login");
       return;
     }
 
@@ -52,55 +50,54 @@ export default function HomePage() {
     } catch {
       if (!getStoredToken()) {
         setUser(null);
+        router.replace("/login");
       }
     }
-  }
+  };
+
+  useEffect(() => {
+    void loadUser();
+  }, []);
 
   const paymentServices = [
     {
-      label: t.home.services.internet,
-      icon: Globe,
+      label: t.withdrawal.withdrawTitle,
+      href: "/transfer",
+      icon: ArrowDownLeft,
       color:
-        'bg-rose-50 text-rose-500 dark:bg-rose-950/40 dark:text-rose-300',
+        "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400",
     },
     {
-      label: t.home.services.electricity,
-      icon: Zap,
+      label: t.scheduled.title,
+      href: "/scheduled",
+      icon: CalendarClock,
       color:
-        'bg-amber-50 text-amber-500 dark:bg-amber-950/40 dark:text-amber-300',
+        "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400",
     },
     {
-      label: t.home.services.voucher,
-      icon: Ticket,
+      label: t.goals.title,
+      href: "/goals",
+      icon: PiggyBank,
       color:
-        'bg-emerald-50 text-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-300',
+        "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400",
     },
     {
-      label: t.home.services.assurance,
+      label: t.envelopes.title,
+      href: "/envelopes",
+      icon: Layers,
+      color: "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400",
+    },
+    {
+      label: t.destinations.title,
+      href: "/destinations",
+      icon: Landmark,
+      color: "bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400",
+    },
+    {
+      label: t.security.title,
+      href: "/security",
       icon: Shield,
-      color: 'bg-sky-50 text-sky-500 dark:bg-sky-950/40 dark:text-sky-300',
-    },
-    {
-      label: t.home.services.mobileCredit,
-      icon: Smartphone,
-      color: 'bg-primary-soft text-primary',
-    },
-    {
-      label: t.home.services.bill,
-      icon: CircleCheck,
-      color:
-        'bg-indigo-50 text-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-300',
-    },
-    {
-      label: t.home.services.merchant,
-      icon: ShoppingBag,
-      color:
-        'bg-pink-50 text-pink-500 dark:bg-pink-950/40 dark:text-pink-300',
-    },
-    {
-      label: t.home.services.more,
-      icon: Menu,
-      color: 'bg-surface-muted text-muted',
+      color: "bg-teal-50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-400",
     },
   ];
 
@@ -110,11 +107,11 @@ export default function HomePage() {
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
-              href={user ? '/profile' : '/login'}
+              href={user ? "/profile" : "/login"}
               className="relative overflow-hidden rounded-full p-0.5 ring-2 ring-white/30 transition hover:ring-white/70 active:scale-95 cursor-pointer"
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-soft text-sm font-bold text-primary">
-                {user?.email ? user.email.substring(0, 2).toUpperCase() : 'U'}
+                {user?.email ? user.email.substring(0, 2).toUpperCase() : "U"}
               </div>
             </Link>
             <div className="max-[460px]:hidden">
@@ -122,10 +119,10 @@ export default function HomePage() {
                 {t.common.welcomeBack}
               </p>
               <Link
-                href={user ? '/profile' : '/login'}
+                href={user ? "/profile" : "/login"}
                 className="flex items-center text-sm font-semibold text-white hover:underline active:opacity-80 cursor-pointer"
               >
-                {user ? user.email.split('@')[0] : t.common.guestUser}
+                {user ? user.email.split("@")[0] : t.common.guestUser}
                 <span className="ms-2 rounded-full bg-white/20 px-2 py-0.5 text-[10px]">
                   {user ? t.common.loggedIn : t.common.signIn}
                 </span>
@@ -136,14 +133,7 @@ export default function HomePage() {
           <div className="flex items-center gap-2">
             <LanguageToggle className="bg-white/10 text-primary-foreground hover:bg-white/20 active:bg-white/30 cursor-pointer" />
             <ThemeToggle className="bg-white/10 text-primary-foreground hover:bg-white/20 active:bg-white/30 cursor-pointer" />
-            <Link
-              href={user ? '/profile' : '/login'}
-              className="relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/10 transition hover:bg-white/20 active:scale-95 active:bg-white/30"
-              aria-label="Notifications"
-            >
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-danger ring-2 ring-[var(--primary-strong-to)] rtl:right-auto rtl:left-2" />
-            </Link>
+            <NotificationBell />
           </div>
         </div>
 
@@ -163,7 +153,7 @@ export default function HomePage() {
           <button
             onClick={() => {
               if (!getStoredToken()) {
-                router.push('/login');
+                router.push("/login");
               } else {
                 setIsDepositOpen(true);
               }
@@ -179,7 +169,7 @@ export default function HomePage() {
           </button>
 
           <Link
-            href="/transfer"
+            href="/send"
             className="group flex cursor-pointer flex-col items-center rounded-xl p-1 transition hover:bg-surface-muted active:scale-95"
           >
             <div className="mb-1.5 flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft text-primary transition group-hover:bg-secondary-soft lg:h-14 lg:w-14">
@@ -193,7 +183,7 @@ export default function HomePage() {
           <button
             onClick={() => {
               if (!getStoredToken()) {
-                router.push('/login');
+                router.push("/login");
               } else {
                 alert(t.home.requestMoneyAlert);
               }
@@ -220,6 +210,27 @@ export default function HomePage() {
             </span>
           </Link>
         </Card>
+
+        {user?.role === "ADMIN" ? (
+          <Link
+            href="/admin"
+            className="mx-6 mt-4 flex items-center justify-between rounded-2xl border border-border bg-surface p-4 transition hover:border-primary/30 hover:shadow-md active:scale-[0.99] lg:mx-auto lg:max-w-4xl"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-soft text-primary">
+                <Shield className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground">
+                  {t.admin.openAdmin}
+                </p>
+                <p className="text-[11px] font-medium text-muted">
+                  {t.admin.subtitle}
+                </p>
+              </div>
+            </div>
+          </Link>
+        ) : null}
       </div>
 
       <div className="flex-1 space-y-6 p-6 lg:p-8">
@@ -229,23 +240,24 @@ export default function HomePage() {
               {t.home.paymentList}
             </h2>
             <Card className="p-4 lg:p-6">
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
                 {paymentServices.map((service) => {
                   const Icon = service.icon;
                   return (
-                    <button
+                    <Link
                       key={service.label}
-                      className="group flex cursor-pointer flex-col items-center space-y-1.5 rounded-xl p-1 transition hover:bg-surface-muted active:scale-95"
+                      href={service.href}
+                      className="group flex cursor-pointer flex-col items-center space-y-2 rounded-2xl p-2 transition hover:bg-surface-muted active:scale-95"
                     >
                       <div
-                        className={`flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm transition group-hover:shadow-md ${service.color}`}
+                        className={`flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm transition group-hover:scale-105 group-hover:shadow-md ${service.color}`}
                       >
                         <Icon className="h-6 w-6" />
                       </div>
-                      <span className="text-center text-[11px] font-medium leading-tight text-muted">
+                      <span className="text-center text-[11px] font-semibold leading-tight text-foreground transition group-hover:text-primary">
                         {service.label}
                       </span>
-                    </button>
+                    </Link>
                   );
                 })}
               </div>

@@ -1,35 +1,35 @@
-'use client';
+"use client";
 
-import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/shared/ui/Button';
-import { getStoredToken } from '@/shared/api';
-import { formatIrr } from '@/features/wallet/lib/wallet';
-import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { localizeError } from '@/shared/i18n/localizeError';
+import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/shared/ui/Button";
+import { getStoredToken } from "@/shared/api";
+import { formatIrr } from "@/features/wallet/lib/wallet";
+import { useLanguage } from "@/shared/i18n/LanguageProvider";
+import { localizeError } from "@/shared/i18n/localizeError";
 import {
   DEPOSIT_PRESETS,
   depositRedirectHint,
   startZarinpalDeposit,
   validateDepositAmount,
-} from '@/features/deposit/lib/deposit';
+} from "@/features/deposit/lib/deposit";
 
 type DepositFormProps = {
   initialAmount?: string;
 };
 
-export function DepositForm({ initialAmount = '100000' }: DepositFormProps) {
+export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
   const router = useRouter();
   const { t } = useLanguage();
   const [amount, setAmount] = useState(initialAmount);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [info, setInfo] = useState('');
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
 
   async function handleDeposit(e: FormEvent) {
     e.preventDefault();
-    setError('');
-    setInfo('');
+    setError("");
+    setInfo("");
 
     const validationError = validateDepositAmount(amount, t.messages);
     if (validationError) {
@@ -39,7 +39,7 @@ export function DepositForm({ initialAmount = '100000' }: DepositFormProps) {
 
     if (!getStoredToken()) {
       setError(t.messages.pleaseSignInToDeposit);
-      router.push('/login');
+      router.push("/login");
       return;
     }
 
@@ -50,8 +50,8 @@ export function DepositForm({ initialAmount = '100000' }: DepositFormProps) {
     try {
       await startZarinpalDeposit(numericAmount, t.messages);
     } catch (err: unknown) {
-      setError(localizeError(err, t.messages, 'depositFailedGeneric'));
-      setInfo('');
+      setError(localizeError(err, t.messages, "depositFailedGeneric"));
+      setInfo("");
       setLoading(false);
     }
   }
@@ -78,12 +78,17 @@ export function DepositForm({ initialAmount = '100000' }: DepositFormProps) {
           type="number"
           min="1"
           step="1"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          autoComplete="off"
+          autoFocus
+          enterKeyHint="done"
           required
           value={amount}
           onChange={(e) => {
             setAmount(e.target.value);
-            setError('');
-            setInfo('');
+            setError("");
+            setInfo("");
           }}
           className="w-full rounded-2xl border border-border bg-surface px-4 py-4 text-2xl font-extrabold text-foreground transition hover:border-primary/40 focus:ring-2 focus:ring-primary focus:outline-none"
         />
@@ -96,13 +101,13 @@ export function DepositForm({ initialAmount = '100000' }: DepositFormProps) {
             type="button"
             onClick={() => {
               setAmount(String(preset));
-              setError('');
-              setInfo('');
+              setError("");
+              setInfo("");
             }}
             className={`rounded-xl border px-1 py-2.5 text-[11px] font-bold leading-tight transition cursor-pointer hover:border-primary/40 active:scale-95 ${
               Number(amount) === preset
-                ? 'border-primary bg-primary-soft text-primary'
-                : 'border-border bg-surface-muted text-muted hover:bg-border'
+                ? "border-primary bg-primary-soft text-primary"
+                : "border-border bg-surface-muted text-muted hover:bg-border"
             }`}
           >
             {formatIrr(preset)}

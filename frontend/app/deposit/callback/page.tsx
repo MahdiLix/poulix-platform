@@ -1,30 +1,30 @@
-'use client';
+"use client";
 
-import { Suspense, useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { Check, CircleAlert } from 'lucide-react';
-import { AppShell } from '@/shared/layout/AppShell';
-import { HeaderBar } from '@/shared/layout/HeaderBar';
-import { Button } from '@/shared/ui/Button';
-import { Card } from '@/shared/ui/Card';
-import { api } from '@/shared/api';
-import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { formatMessage, localizeError } from '@/shared/i18n/localizeError';
-import { WalletBalance } from '@/features/wallet/components/WalletBalance';
-import { useWalletBalance } from '@/features/wallet/hooks/useWalletBalance';
+import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Check, CircleAlert } from "lucide-react";
+import { AppShell } from "@/shared/layout/AppShell";
+import { HeaderBar } from "@/shared/layout/HeaderBar";
+import { Button } from "@/shared/ui/Button";
+import { Card } from "@/shared/ui/Card";
+import { api } from "@/shared/api";
+import { useLanguage } from "@/shared/i18n/LanguageProvider";
+import { formatMessage, localizeError } from "@/shared/i18n/localizeError";
+import { WalletBalance } from "@/features/wallet/components/WalletBalance";
+import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 
 function DepositCallbackContent() {
   const searchParams = useSearchParams();
   const { t } = useLanguage();
   const authority =
-    searchParams.get('Authority') || searchParams.get('authority') || '';
+    searchParams.get("Authority") || searchParams.get("authority") || "";
   const gatewayStatus =
-    searchParams.get('Status') || searchParams.get('status') || '';
+    searchParams.get("Status") || searchParams.get("status") || "";
   const { status, balance, currency, error, refresh } = useWalletBalance();
-  const [result, setResult] = useState<'pending' | 'paid' | 'cancelled' | 'failed'>(
-    'pending',
-  );
+  const [result, setResult] = useState<
+    "pending" | "paid" | "cancelled" | "failed"
+  >("pending");
   const [message, setMessage] = useState<string>(t.deposit.confirmingPayment);
 
   useEffect(() => {
@@ -32,17 +32,20 @@ function DepositCallbackContent() {
 
     async function completePayment() {
       if (!authority) {
-        setResult('failed');
+        setResult("failed");
         setMessage(t.messages.missingAuthority);
         return;
       }
 
       try {
-        const response = await api.completeDepositCallback(authority, gatewayStatus);
+        const response = await api.completeDepositCallback(
+          authority,
+          gatewayStatus,
+        );
         if (cancelled) return;
 
-        if (response.status === 'PAID') {
-          setResult('paid');
+        if (response.status === "PAID") {
+          setResult("paid");
           setMessage(
             response.alreadyVerified
               ? t.messages.paymentAlreadyVerified
@@ -52,24 +55,24 @@ function DepositCallbackContent() {
           return;
         }
 
-        if (response.status === 'CANCELLED') {
-          setResult('cancelled');
+        if (response.status === "CANCELLED" || response.status === "NOK") {
+          setResult("cancelled");
           setMessage(t.messages.paymentCancelledDetail);
           await refresh();
           return;
         }
 
-        setResult('failed');
+        setResult("failed");
         setMessage(
           formatMessage(t.messages.paymentStatus, {
-            status: response.status || 'unknown',
+            status: response.status || "unknown",
           }),
         );
         await refresh();
       } catch (err) {
         if (cancelled) return;
-        setResult('failed');
-        setMessage(localizeError(err, t.messages, 'paymentVerificationFailed'));
+        setResult("failed");
+        setMessage(localizeError(err, t.messages, "paymentVerificationFailed"));
         await refresh();
       }
     }
@@ -86,11 +89,11 @@ function DepositCallbackContent() {
 
       <div className="flex flex-1 flex-col justify-between space-y-6 p-6 lg:mx-auto lg:w-full lg:max-w-md">
         <Card className="mt-2 space-y-6 p-6 text-center shadow-2xl">
-          {result === 'pending' && (
+          {result === "pending" && (
             <p className="text-xs font-semibold text-muted">{message}</p>
           )}
 
-          {result === 'paid' && (
+          {result === "paid" && (
             <>
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success-soft text-success ring-8 ring-success-soft/50">
                 <Check className="h-8 w-8" strokeWidth={3} />
@@ -115,7 +118,7 @@ function DepositCallbackContent() {
             </>
           )}
 
-          {result === 'cancelled' && (
+          {result === "cancelled" && (
             <>
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-danger-soft text-danger">
                 <CircleAlert className="h-8 w-8" />
@@ -140,7 +143,7 @@ function DepositCallbackContent() {
             </>
           )}
 
-          {result === 'failed' && (
+          {result === "failed" && (
             <>
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-danger-soft text-danger">
                 <CircleAlert className="h-8 w-8" />

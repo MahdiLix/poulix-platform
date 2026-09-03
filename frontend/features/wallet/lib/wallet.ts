@@ -12,7 +12,7 @@ export function parseAmount(value: string | number | null | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export function formatIrr(amount: number, currency = 'IRR'): string {
+export function formatIrr(amount: number, currency = "IRR"): string {
   const whole = Number.isFinite(amount) ? Math.trunc(amount) : 0;
-  return `${whole.toLocaleString('en-US', { maximumFractionDigits: 0 })} ${currency}`;
+  return `${whole.toLocaleString("en-US", { maximumFractionDigits: 0 })} ${currency}`;
 }

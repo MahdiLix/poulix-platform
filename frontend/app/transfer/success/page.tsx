@@ -1,37 +1,37 @@
-'use client';
+"use client";
 
-import { Suspense, useState } from 'react';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { Check, ChevronDown, Share2 } from 'lucide-react';
-import { AppShell } from '@/shared/layout/AppShell';
-import { HeaderBar } from '@/shared/layout/HeaderBar';
-import { Card } from '@/shared/ui/Card';
-import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { formatDisplayDateTime } from '@/shared/i18n/dates';
-import { formatMessage } from '@/shared/i18n/localizeError';
-import { formatIrr, parseAmount } from '@/features/wallet/lib/wallet';
-import { WalletBalance } from '@/features/wallet/components/WalletBalance';
-import { useWalletBalance } from '@/features/wallet/hooks/useWalletBalance';
+import { Suspense, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Check, ChevronDown, Share2 } from "lucide-react";
+import { AppShell } from "@/shared/layout/AppShell";
+import { HeaderBar } from "@/shared/layout/HeaderBar";
+import { Card } from "@/shared/ui/Card";
+import { useLanguage } from "@/shared/i18n/LanguageProvider";
+import { formatDisplayDateTime } from "@/shared/i18n/dates";
+import { formatMessage } from "@/shared/i18n/localizeError";
+import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
+import { WalletBalance } from "@/features/wallet/components/WalletBalance";
+import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 
 function SuccessContent() {
   const searchParams = useSearchParams();
   const { t, language } = useLanguage();
 
-  const amount = searchParams.get('amount') || '0';
-  const destinationType = searchParams.get('type') || 'account';
+  const amount = searchParams.get("amount") || "0";
+  const destinationType = searchParams.get("type") || "account";
   const destination =
-    searchParams.get('destination') ||
-    searchParams.get('acc') ||
-    searchParams.get('name') ||
-    '';
-  const queryBalance = searchParams.get('balance');
-  const queryCurrency = searchParams.get('currency') || 'IRR';
+    searchParams.get("destination") ||
+    searchParams.get("acc") ||
+    searchParams.get("name") ||
+    "";
+  const queryBalance = searchParams.get("balance");
+  const queryCurrency = searchParams.get("currency") || "IRR";
   const { status, balance, currency, error, refresh } = useWalletBalance();
 
   const [showDetail, setShowDetail] = useState(false);
   const destinationLabel =
-    destinationType === 'shaba'
+    destinationType === "shaba"
       ? t.withdrawal.shabaNumber
       : t.withdrawal.accountNumber;
 
@@ -46,10 +46,7 @@ function SuccessContent() {
         trailing={
           <button
             onClick={() => {
-              const amountLabel = formatIrr(
-                parseAmount(amount),
-                queryCurrency,
-              );
+              const amountLabel = formatIrr(parseAmount(amount), queryCurrency);
               if (navigator.share) {
                 void navigator.share({
                   title: t.messages.shareReceiptTitle,
@@ -98,13 +95,13 @@ function SuccessContent() {
 
             <div className="rounded-2xl bg-surface-muted p-3">
               <WalletBalance
-                status={status === 'idle' ? 'loading' : status}
+                status={status === "idle" ? "loading" : status}
                 balance={
-                  status === 'ready' && balance !== null
+                  status === "ready" && balance !== null
                     ? balance
                     : parseAmount(queryBalance)
                 }
-                currency={status === 'ready' ? currency : queryCurrency}
+                currency={status === "ready" ? currency : queryCurrency}
                 error={error}
                 onRetry={() => void refresh()}
                 variant="heading"
@@ -137,7 +134,7 @@ function SuccessContent() {
               >
                 <span>{t.withdrawal.seeDetail}</span>
                 <ChevronDown
-                  className={`h-4 w-4 transition-transform ${showDetail ? 'rotate-180' : ''}`}
+                  className={`h-4 w-4 transition-transform ${showDetail ? "rotate-180" : ""}`}
                 />
               </button>
 

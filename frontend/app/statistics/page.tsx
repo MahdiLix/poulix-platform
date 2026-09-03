@@ -1,20 +1,21 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown } from 'lucide-react';
-import { AppShell } from '@/shared/layout/AppShell';
-import { HeaderBar } from '@/shared/layout/HeaderBar';
-import { Card } from '@/shared/ui/Card';
-import { api, getStoredToken } from '@/shared/api';
-import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { getCalendarYearMonth, getLastMonths } from '@/shared/i18n/dates';
-import { formatIrr, parseAmount } from '@/features/wallet/lib/wallet';
-import { WalletBalance } from '@/features/wallet/components/WalletBalance';
-import { useWalletBalance } from '@/features/wallet/hooks/useWalletBalance';
+import { useEffect, useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
+import { AppShell } from "@/shared/layout/AppShell";
+import { HeaderBar } from "@/shared/layout/HeaderBar";
+import { Card } from "@/shared/ui/Card";
+import { api, getStoredToken } from "@/shared/api";
+import { useLanguage } from "@/shared/i18n/LanguageProvider";
+import { getCalendarYearMonth, getLastMonths } from "@/shared/i18n/dates";
+import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
+import { WalletBalance } from "@/features/wallet/components/WalletBalance";
+import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 
 type Transaction = {
   amount?: string | number;
   type?: string;
+  category?: string | null;
   createdAt?: string;
 };
 
@@ -25,14 +26,19 @@ type MonthlyPoint = {
   expense: number;
 };
 
-const SAMPLE_MONTHLY_VALUES = [
-  { income: 1_800_000, expense: 950_000 },
-  { income: 2_400_000, expense: 1_200_000 },
-  { income: 2_100_000, expense: 1_450_000 },
-  { income: 2_850_000, expense: 1_100_000 },
-  { income: 1_650_000, expense: 2_050_000 },
-  { income: 3_200_000, expense: 1_600_000 },
-];
+const INCOME_TYPES = new Set([
+  "DEPOSIT",
+  "TRANSFER_IN",
+  "GOAL_RELEASE",
+  "ENVELOPE_RELEASE",
+]);
+
+const EXPENSE_TYPES = new Set([
+  "WITHDRAWAL",
+  "TRANSFER_OUT",
+  "GOAL_CONTRIBUTE",
+  "ENVELOPE_ALLOCATE",
+]);
 
 function axisLabel(value: number): string {
   if (value >= 1_000_000) {
@@ -50,7 +56,15 @@ function niceMax(value: number): number {
   const exponent = Math.pow(10, Math.floor(Math.log10(value)));
   const normalized = value / exponent;
   const nice =
-    normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 4 ? 4 : normalized <= 5 ? 5 : 10;
+    normalized <= 1
+      ? 1
+      : normalized <= 2
+        ? 2
+        : normalized <= 4
+          ? 4
+          : normalized <= 5
+            ? 5
+            : 10;
   return nice * exponent;
 }
 
@@ -58,63 +72,54 @@ export default function StatisticsPage() {
   const { t, language } = useLanguage();
   const { status, balance, currency, error, refresh } = useWalletBalance();
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
-  const [isSample, setIsSample] = useState(true);
-
-  useEffect(() => {
-    loadTransactions();
-  }, []);
+  const [signedIn, setSignedIn] = useState(false);
 
   async function loadTransactions() {
     const token = getStoredToken();
     if (!token) {
       setTransactions(null);
-      setIsSample(true);
+      setSignedIn(false);
       return;
     }
 
+    setSignedIn(true);
     try {
       const txRes = await api.getTransactions();
       if (!Array.isArray(txRes)) {
         setTransactions([]);
-        setIsSample(false);
         return;
       }
       setTransactions(txRes);
-      setIsSample(false);
     } catch {
       setTransactions([]);
-      setIsSample(false);
     }
   }
+
+  useEffect(() => {
+    void loadTransactions();
+  }, []);
 
   const monthlyData: MonthlyPoint[] = useMemo(() => {
     const months = getLastMonths(6, language);
 
-    if (isSample || transactions === null) {
-      return months.map((month, index) => ({
-        key: month.key,
-        label: month.label,
-        income: SAMPLE_MONTHLY_VALUES[index]?.income ?? 0,
-        expense: SAMPLE_MONTHLY_VALUES[index]?.expense ?? 0,
-      }));
-    }
+    const buckets = new Map(
+      months.map((month) => [month.key, { income: 0, expense: 0 }]),
+    );
 
-    const buckets = new Map(months.map((month) => [month.key, { income: 0, expense: 0 }]));
-
-    transactions.forEach((tx) => {
+    (transactions ?? []).forEach((tx) => {
       if (!tx.createdAt) return;
       const date = new Date(tx.createdAt);
       if (Number.isNaN(date.getTime())) return;
 
       const { year, month } = getCalendarYearMonth(date, language);
-      const key = `${year}-${String(month).padStart(2, '0')}`;
+      const key = `${year}-${String(month).padStart(2, "0")}`;
       const bucket = buckets.get(key);
       if (!bucket) return;
 
       const amount = parseAmount(tx.amount);
-      if (tx.type === 'DEPOSIT') {
+      if (tx.type && INCOME_TYPES.has(tx.type)) {
         bucket.income += amount;
-      } else if (tx.type === 'WITHDRAWAL') {
+      } else if (tx.type && EXPENSE_TYPES.has(tx.type)) {
         bucket.expense += amount;
       }
     });
@@ -125,35 +130,50 @@ export default function StatisticsPage() {
       income: buckets.get(month.key)?.income ?? 0,
       expense: buckets.get(month.key)?.expense ?? 0,
     }));
-  }, [isSample, language, transactions]);
+  }, [language, transactions]);
 
   const { incomeTotal, expenseTotal } = useMemo(() => {
-    if (isSample || transactions === null) {
-      return SAMPLE_MONTHLY_VALUES.reduce(
-        (totals, point) => ({
-          incomeTotal: totals.incomeTotal + point.income,
-          expenseTotal: totals.expenseTotal + point.expense,
-        }),
-        { incomeTotal: 0, expenseTotal: 0 },
-      );
-    }
-
-    return transactions.reduce(
+    return (transactions ?? []).reduce(
       (totals, tx) => {
         const amount = parseAmount(tx.amount);
-        if (tx.type === 'DEPOSIT') {
+        if (tx.type && INCOME_TYPES.has(tx.type)) {
           totals.incomeTotal += amount;
-        } else if (tx.type === 'WITHDRAWAL') {
+        } else if (tx.type && EXPENSE_TYPES.has(tx.type)) {
           totals.expenseTotal += amount;
         }
         return totals;
       },
       { incomeTotal: 0, expenseTotal: 0 },
     );
-  }, [isSample, transactions]);
+  }, [transactions]);
+
+  const categorySpend = useMemo(() => {
+    if (!transactions) {
+      return [];
+    }
+    const totals = new Map<string, number>();
+    for (const tx of transactions) {
+      if (!tx.type || !EXPENSE_TYPES.has(tx.type)) {
+        continue;
+      }
+      if (!tx.category) {
+        continue;
+      }
+      totals.set(
+        tx.category,
+        (totals.get(tx.category) ?? 0) + parseAmount(tx.amount ?? 0),
+      );
+    }
+    return Array.from(totals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6);
+  }, [transactions]);
 
   const maxY = niceMax(
-    Math.max(...monthlyData.map((point) => Math.max(point.income, point.expense)), 0),
+    Math.max(
+      ...monthlyData.map((point) => Math.max(point.income, point.expense)),
+      0,
+    ),
   );
   const ticks = [maxY, maxY * 0.75, maxY * 0.5, maxY * 0.25, 0];
 
@@ -179,11 +199,6 @@ export default function StatisticsPage() {
                 <h3 className="text-sm font-bold text-foreground lg:text-base">
                   {t.statistics.overview}
                 </h3>
-                {isSample ? (
-                  <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-semibold text-muted">
-                    {t.statistics.samplePreview}
-                  </span>
-                ) : null}
               </div>
               <button className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-xs font-semibold text-muted transition hover:bg-surface-muted hover:text-foreground active:scale-95">
                 <span>{t.statistics.month}</span>
@@ -228,7 +243,10 @@ export default function StatisticsPage() {
 
               <div className="flex justify-between gap-1 px-2 pt-2 text-[11px] font-semibold text-muted">
                 {monthlyData.map((point) => (
-                  <span key={point.key} className="min-w-0 flex-1 truncate text-center">
+                  <span
+                    key={point.key}
+                    className="min-w-0 flex-1 truncate text-center"
+                  >
                     {point.label}
                   </span>
                 ))}
@@ -277,6 +295,31 @@ export default function StatisticsPage() {
             </div>
           </div>
         </div>
+
+        {signedIn && categorySpend.length > 0 ? (
+          <Card className="p-4 lg:col-span-12">
+            <h3 className="mb-3 text-sm font-bold">
+              {t.statistics.categoryBreakdown}
+            </h3>
+            <ul className="space-y-2">
+              {categorySpend.map(([category, amount]) => (
+                <li
+                  key={category}
+                  className="flex items-center justify-between text-xs"
+                >
+                  <span className="font-semibold text-muted">
+                    {t.history.categories[
+                      category as keyof typeof t.history.categories
+                    ] ?? category}
+                  </span>
+                  <span className="font-bold">
+                    {formatIrr(amount, currency)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        ) : null}
       </div>
     </AppShell>
   );

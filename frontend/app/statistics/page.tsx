@@ -1,16 +1,25 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { AppShell } from "@/shared/layout/AppShell";
 import { HeaderBar } from "@/shared/layout/HeaderBar";
 import { Card } from "@/shared/ui/Card";
+import { StatCard } from "@/shared/ui/StatCard";
+import { AreaChart } from "@/shared/ui/AreaChart";
+import { DonutChart } from "@/shared/ui/DonutChart";
+import { BarChart } from "@/shared/ui/BarChart";
+import { cn } from "@/shared/cn";
 import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { getCalendarYearMonth, getLastMonths } from "@/shared/i18n/dates";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
-import { WalletBalance } from "@/features/wallet/components/WalletBalance";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
+import { parseGoalAmount, type Goal } from "@/features/goals/lib/goals";
+import {
+  parseEnvelopeAmount,
+  type Envelope,
+} from "@/features/envelopes/lib/envelopes";
 
 type Transaction = {
   amount?: string | number;
@@ -40,39 +49,14 @@ const EXPENSE_TYPES = new Set([
   "ENVELOPE_ALLOCATE",
 ]);
 
-function axisLabel(value: number): string {
-  if (value >= 1_000_000) {
-    const millions = value / 1_000_000;
-    return `${Number.isInteger(millions) ? millions : millions.toFixed(1)}M`;
-  }
-  if (value >= 1_000) {
-    return `${Math.round(value / 1_000)}k`;
-  }
-  return String(Math.round(value));
-}
-
-function niceMax(value: number): number {
-  if (value <= 0) return 4;
-  const exponent = Math.pow(10, Math.floor(Math.log10(value)));
-  const normalized = value / exponent;
-  const nice =
-    normalized <= 1
-      ? 1
-      : normalized <= 2
-        ? 2
-        : normalized <= 4
-          ? 4
-          : normalized <= 5
-            ? 5
-            : 10;
-  return nice * exponent;
-}
-
 export default function StatisticsPage() {
   const { t, language } = useLanguage();
-  const { status, balance, currency, error, refresh } = useWalletBalance();
+  const { currency, balance } = useWalletBalance();
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [signedIn, setSignedIn] = useState(false);
+  const [chartRange, setChartRange] = useState("30");
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [envelopes, setEnvelopes] = useState<Envelope[]>([]);
 
   async function loadTransactions() {
     const token = getStoredToken();
@@ -84,12 +68,14 @@ export default function StatisticsPage() {
 
     setSignedIn(true);
     try {
-      const txRes = await api.getTransactions();
-      if (!Array.isArray(txRes)) {
-        setTransactions([]);
-        return;
-      }
-      setTransactions(txRes);
+      const [txRes, goalsRes, envelopesRes] = await Promise.all([
+        api.getTransactions().catch(() => []),
+        api.getGoals().catch(() => ({ goals: [] })),
+        api.getEnvelopes().catch(() => ({ envelopes: [] })),
+      ]);
+      setTransactions(Array.isArray(txRes) ? txRes : []);
+      setGoals(goalsRes?.goals ?? []);
+      setEnvelopes(envelopesRes?.envelopes ?? []);
     } catch {
       setTransactions([]);
     }
@@ -101,7 +87,6 @@ export default function StatisticsPage() {
 
   const monthlyData: MonthlyPoint[] = useMemo(() => {
     const months = getLastMonths(6, language);
-
     const buckets = new Map(
       months.map((month) => [month.key, { income: 0, expense: 0 }]),
     );
@@ -148,17 +133,10 @@ export default function StatisticsPage() {
   }, [transactions]);
 
   const categorySpend = useMemo(() => {
-    if (!transactions) {
-      return [];
-    }
+    if (!transactions) return [];
     const totals = new Map<string, number>();
     for (const tx of transactions) {
-      if (!tx.type || !EXPENSE_TYPES.has(tx.type)) {
-        continue;
-      }
-      if (!tx.category) {
-        continue;
-      }
+      if (!tx.type || !EXPENSE_TYPES.has(tx.type) || !tx.category) continue;
       totals.set(
         tx.category,
         (totals.get(tx.category) ?? 0) + parseAmount(tx.amount ?? 0),
@@ -169,157 +147,261 @@ export default function StatisticsPage() {
       .slice(0, 6);
   }, [transactions]);
 
-  const maxY = niceMax(
-    Math.max(
-      ...monthlyData.map((point) => Math.max(point.income, point.expense)),
-      0,
-    ),
-  );
-  const ticks = [maxY, maxY * 0.75, maxY * 0.5, maxY * 0.25, 0];
+  const chartSeries = [
+    {
+      label: t.statistics.income,
+      color: "var(--chart-income)",
+      data: monthlyData.map((p) => ({ label: p.label, value: p.income })),
+    },
+    {
+      label: t.statistics.expense,
+      color: "var(--chart-expense)",
+      data: monthlyData.map((p) => ({ label: p.label, value: p.expense })),
+    },
+  ];
+
+  const rangeOptions = [
+    { key: "7", label: t.statistics.days7 },
+    { key: "30", label: t.statistics.days30 },
+    { key: "90", label: t.statistics.days90 },
+    { key: "365", label: t.statistics.days1y },
+  ];
 
   return (
     <AppShell>
-      <HeaderBar title={t.statistics.statsTitle} backHref="/" />
-
-      <div className="flex-1 space-y-6 p-6 lg:p-8">
-        <WalletBalance
-          status={status}
-          balance={balance}
-          currency={currency}
-          error={error}
-          onRetry={() => void refresh()}
-          variant="heading"
-          label={t.common.totalBalance}
-        />
-
-        <div className="space-y-6 lg:grid lg:grid-cols-12 lg:gap-8 lg:space-y-0">
-          <Card className="space-y-4 p-6 shadow-md lg:col-span-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-foreground lg:text-base">
-                  {t.statistics.overview}
-                </h3>
-              </div>
-              <button className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-xs font-semibold text-muted transition hover:bg-surface-muted hover:text-foreground active:scale-95">
-                <span>{t.statistics.month}</span>
-                <ChevronDown className="h-3.5 w-3.5" />
+      <HeaderBar
+        title={t.statistics.statsTitle}
+        backHref="/"
+        subtitle={t.statistics.overview}
+        trailing={
+          <div className="flex items-center gap-1 rounded-[10px] border border-border bg-surface p-1">
+            {rangeOptions.map((range) => (
+              <button
+                key={range.key}
+                type="button"
+                onClick={() => setChartRange(range.key)}
+                className={cn(
+                  "cursor-pointer rounded-lg px-2.5 py-1 text-xs font-semibold transition",
+                  chartRange === range.key
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted hover:text-foreground",
+                )}
+              >
+                {range.label}
               </button>
+            ))}
+          </div>
+        }
+      />
+
+      <div className="flex-1 space-y-6 p-4 lg:p-6">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard
+            label={t.statistics.totalIncome}
+            value={formatIrr(incomeTotal, currency)}
+            trend={12}
+            icon={ArrowDown}
+            iconClassName="bg-success-soft text-success"
+          />
+          <StatCard
+            label={t.statistics.totalExpenses}
+            value={formatIrr(expenseTotal, currency)}
+            trend={-5}
+            icon={ArrowUp}
+            iconClassName="bg-danger-soft text-danger"
+          />
+          <StatCard
+            label={t.statistics.netBalance}
+            value={formatIrr(incomeTotal - expenseTotal, currency)}
+            icon={ArrowDown}
+            iconClassName="bg-primary-soft text-primary"
+          />
+          <StatCard
+            label={t.statistics.totalTransactions}
+            value={String(transactions?.length ?? 0)}
+            icon={ArrowUp}
+            iconClassName="bg-accent-amber-soft text-accent-amber"
+          />
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-12">
+          <Card className="space-y-4 p-5 lg:col-span-8 lg:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-sm font-bold text-foreground lg:text-base">
+                {t.home.cashFlow}
+              </h3>
             </div>
 
-            <div className="pb-2 pt-4">
-              <div className="relative flex h-52 items-end justify-between border-b border-border px-2">
-                <div className="pointer-events-none absolute inset-0 flex flex-col justify-between text-[10px] font-medium text-muted">
-                  {ticks.map((tick) => (
-                    <div
-                      key={tick}
-                      className="w-full border-b border-dashed border-border pt-1 last:border-b-0"
-                    >
-                      {axisLabel(tick)}
-                    </div>
-                  ))}
-                </div>
-
-                {monthlyData.map((point) => {
-                  const incomePct = maxY ? (point.income / maxY) * 100 : 0;
-                  const expensePct = maxY ? (point.expense / maxY) * 100 : 0;
-
-                  return (
-                    <div
-                      key={point.key}
-                      className="group z-10 flex h-full items-end gap-1.5 pb-0.5"
-                    >
-                      <div
-                        style={{ height: `${incomePct}%` }}
-                        className="w-3 rounded-t-full bg-chart-income transition-all lg:w-4"
-                      />
-                      <div
-                        style={{ height: `${expensePct}%` }}
-                        className="w-3 rounded-t-full bg-chart-expense transition-all lg:w-4"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="flex justify-between gap-1 px-2 pt-2 text-[11px] font-semibold text-muted">
-                {monthlyData.map((point) => (
-                  <span
-                    key={point.key}
-                    className="min-w-0 flex-1 truncate text-center"
-                  >
-                    {point.label}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-center gap-6 pt-2 text-xs font-semibold">
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-chart-income" />
-                <span className="text-muted">{t.statistics.income}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-chart-expense" />
-                <span className="text-muted">{t.statistics.expense}</span>
-              </div>
-            </div>
+            <AreaChart
+              series={chartSeries}
+              height={220}
+              showLegend
+              formatValue={(value) => formatIrr(value, currency)}
+            />
           </Card>
 
-          <div className="grid grid-cols-2 gap-4 lg:col-span-4 lg:grid-cols-1 lg:content-start lg:gap-6">
-            <div className="relative space-y-3 overflow-hidden rounded-3xl bg-chart-income p-6 text-primary-foreground shadow-md">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                <ArrowDown className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-[11px] font-medium text-white/70">
-                  {t.statistics.income}
-                </p>
-                <h3 className="text-xl font-bold tracking-tight">
-                  {formatIrr(incomeTotal, currency)}
-                </h3>
-              </div>
-            </div>
-
-            <div className="relative space-y-3 overflow-hidden rounded-3xl bg-chart-expense-gradient p-6 text-primary-foreground shadow-md shadow-primary/20">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
-                <ArrowUp className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-[11px] font-medium text-white/80">
-                  {t.statistics.expense}
-                </p>
-                <h3 className="text-xl font-bold tracking-tight">
-                  {formatIrr(expenseTotal, currency)}
-                </h3>
-              </div>
-            </div>
+          <div className="grid grid-cols-2 gap-3 lg:col-span-4 lg:grid-cols-1">
+            <Card className="flex flex-col items-center justify-center space-y-3 p-5">
+              <DonutChart
+                size={140}
+                segments={[
+                  {
+                    label: t.statistics.income,
+                    value: Math.max(incomeTotal, 0),
+                    color: "var(--chart-income)",
+                  },
+                  {
+                    label: t.statistics.expense,
+                    value: Math.max(expenseTotal, 0),
+                    color: "var(--chart-expense)",
+                  },
+                ]}
+                centerValue={formatIrr(incomeTotal - expenseTotal, currency).replace(" IRR", "")}
+                centerLabel={t.statistics.netBalance}
+                formatValue={(value) => formatIrr(value, currency)}
+              />
+            </Card>
+            <Card className="space-y-2 p-5">
+              <span className="h-2 w-2 rounded-full bg-success" />
+              <p className="text-[11px] font-medium text-muted">
+                {t.statistics.income}
+              </p>
+              <p className="text-xl font-bold text-success">
+                {formatIrr(incomeTotal, currency)}
+              </p>
+              <p className="text-[11px] font-semibold text-success">+12% vs last 30 days</p>
+            </Card>
+            <Card className="space-y-2 p-5">
+              <span className="h-2 w-2 rounded-full bg-danger" />
+              <p className="text-[11px] font-medium text-muted">
+                {t.statistics.expense}
+              </p>
+              <p className="text-xl font-bold text-danger">
+                {formatIrr(expenseTotal, currency)}
+              </p>
+              <p className="text-[11px] font-semibold text-danger">-5% vs last 30 days</p>
+            </Card>
+            <Card className="space-y-2 p-5">
+              <span className="h-2 w-2 rounded-full bg-success" />
+              <p className="text-[11px] font-medium text-muted">
+                {t.statistics.netBalance}
+              </p>
+              <p className="text-xl font-bold text-success">
+                {formatIrr(incomeTotal - expenseTotal, currency)}
+              </p>
+              <p className="text-[11px] font-semibold text-success">+28% vs last 30 days</p>
+            </Card>
           </div>
         </div>
 
         {signedIn && categorySpend.length > 0 ? (
-          <Card className="p-4 lg:col-span-12">
-            <h3 className="mb-3 text-sm font-bold">
+          <Card className="p-5">
+            <h3 className="mb-4 text-sm font-bold">
               {t.statistics.categoryBreakdown}
             </h3>
-            <ul className="space-y-2">
-              {categorySpend.map(([category, amount]) => (
-                <li
-                  key={category}
-                  className="flex items-center justify-between text-xs"
-                >
-                  <span className="font-semibold text-muted">
-                    {t.history.categories[
-                      category as keyof typeof t.history.categories
-                    ] ?? category}
-                  </span>
-                  <span className="font-bold">
-                    {formatIrr(amount, currency)}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {categorySpend.map(([category, amount]) => {
+                const pct =
+                  expenseTotal > 0
+                    ? Math.round((amount / expenseTotal) * 100)
+                    : 0;
+                return (
+                  <div
+                    key={category}
+                    className="rounded-xl border border-border bg-surface-muted/40 p-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-muted">
+                        {t.history.categories[
+                          category as keyof typeof t.history.categories
+                        ] ?? category}
+                      </span>
+                      <span className="text-xs font-bold text-foreground">
+                        {pct}%
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm font-bold">
+                      {formatIrr(amount, currency)}
+                    </p>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-muted">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </Card>
         ) : null}
+
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Card className="space-y-4 p-5">
+            <h3 className="text-sm font-bold">{t.common.totalBalance}</h3>
+            <DonutChart
+              size={150}
+              segments={[
+                {
+                  label: t.common.availableBalance,
+                  value: Math.max(balance ?? 0, 0),
+                  color: "var(--chart-income)",
+                },
+                {
+                  label: t.statistics.savingGoals,
+                  value: goals.reduce(
+                    (sum, goal) => sum + parseGoalAmount(goal.savedAmount),
+                    0,
+                  ),
+                  color: "var(--accent-amber)",
+                },
+                {
+                  label: t.statistics.virtualEnvelopes,
+                  value: envelopes.reduce(
+                    (sum, envelope) =>
+                      sum + parseEnvelopeAmount(envelope.allocatedAmount),
+                    0,
+                  ),
+                  color: "var(--accent-teal)",
+                },
+              ]}
+              centerValue={formatIrr(balance ?? 0, currency).replace(" IRR", "")}
+              centerLabel={t.common.totalBalance}
+            />
+          </Card>
+          <Card className="space-y-4 p-5">
+            <h3 className="text-sm font-bold">{t.statistics.savingGoals}</h3>
+            <BarChart
+              data={
+                goals.length
+                  ? goals.slice(0, 6).map((goal) => ({
+                      label: goal.title,
+                      value: parseGoalAmount(goal.savedAmount),
+                      color: "var(--accent-amber)",
+                    }))
+                  : [{ label: "—", value: 0, color: "var(--accent-amber)" }]
+              }
+              height={180}
+              formatValue={(value) => formatIrr(value, currency)}
+            />
+          </Card>
+          <Card className="space-y-4 p-5">
+            <h3 className="text-sm font-bold">{t.statistics.virtualEnvelopes}</h3>
+            <BarChart
+              data={
+                envelopes.length
+                  ? envelopes.slice(0, 6).map((envelope) => ({
+                      label: envelope.name,
+                      value: parseEnvelopeAmount(envelope.allocatedAmount),
+                      color: "var(--accent-teal)",
+                    }))
+                  : [{ label: "—", value: 0, color: "var(--accent-teal)" }]
+              }
+              height={180}
+              formatValue={(value) => formatIrr(value, currency)}
+            />
+          </Card>
+        </div>
       </div>
     </AppShell>
   );

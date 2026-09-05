@@ -11,6 +11,7 @@ import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 import { WalletBalance } from "@/features/wallet/components/WalletBalance";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
+import { flashToast } from "@/shared/ui/Toast";
 import {
   normalizeAccountNumber,
   normalizeShabaNumber,
@@ -21,16 +22,23 @@ import {
   validateAccountNumber,
   validateShabaNumber,
   validateWithdrawAmount,
+  listRecentAccountNumbers,
+  listRecentShabaNumbers,
   type WithdrawDestination,
 } from "@/features/withdrawal/lib/withdraw";
 import {
   TRANSACTION_CATEGORIES,
   type TransactionCategory,
 } from "@/features/wallet/lib/transactionMeta";
+import { ProgressBar } from "@/shared/ui/ProgressBar";
+import { RecentValueList } from "@/shared/ui/RecentValueList";
+import { Spinner } from "@/shared/ui/Spinner";
+import { localizeDigits } from "@/shared/ui/latinDigits";
+import type { SpendingLimitSummary } from "@/features/spending-limits/lib/spendingLimits";
 
 export function WithdrawForm() {
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const {
     status,
     balance,
@@ -48,23 +56,52 @@ export function WithdrawForm() {
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [savedDestinations, setSavedDestinations] = useState<
-    import("@/features/financial-destinations/lib/destinations").FinancialDestination[]
-  >([]);
-  const [recentDestinations, setRecentDestinations] = useState<
-    import("@/features/financial-destinations/lib/destinations").FinancialDestination[]
-  >([]);
+  const [dailyLimit, setDailyLimit] = useState<SpendingLimitSummary | null>(
+    null,
+  );
+  const [accountFocused, setAccountFocused] = useState(false);
+  const [shabaFocused, setShabaFocused] = useState(false);
+  const [recentAccounts, setRecentAccounts] = useState<string[]>([]);
+  const [recentShabas, setRecentShabas] = useState<string[]>([]);
 
   useEffect(() => {
     setAccountNumber(getSavedAccountNumber());
     setShabaNumber(getSavedShabaNumber());
+    setRecentAccounts(listRecentAccountNumbers());
+    setRecentShabas(listRecentShabaNumbers());
     if (getStoredToken()) {
       void Promise.all([
         api.getSavedDestinations().catch(() => []),
         api.getRecentDestinations().catch(() => []),
-      ]).then(([savedList, recentList]) => {
-        setSavedDestinations(savedList);
-        setRecentDestinations(recentList);
+        api.getSpendingLimits().catch(() => [] as SpendingLimitSummary[]),
+      ]).then(async ([savedList, recentList, limits]) => {
+        setDailyLimit(
+          limits.find((item) => item.type === "DAILY_WITHDRAWAL") ?? null,
+        );
+        const candidates = [...savedList, ...recentList].filter(
+          (item) => item.type === "BANK_ACCOUNT" || item.type === "SHABA",
+        );
+        const revealed = await Promise.all(
+          candidates.slice(0, 8).map((item) =>
+            api.getDestinationValue(item.id).catch(() => null),
+          ),
+        );
+        const accounts = revealed
+          .filter(
+            (item): item is { type: "BANK_ACCOUNT"; accountNumber: string } =>
+              item?.type === "BANK_ACCOUNT",
+          )
+          .map((item) => item.accountNumber);
+        const shabas = revealed
+          .filter(
+            (item): item is { type: "SHABA"; shabaNumber: string } =>
+              item?.type === "SHABA",
+          )
+          .map((item) => item.shabaNumber);
+        setRecentAccounts((current) =>
+          [...new Set([...current, ...accounts])],
+        );
+        setRecentShabas((current) => [...new Set([...current, ...shabas])]);
       });
     }
   }, [destination]);
@@ -152,6 +189,12 @@ export function WithdrawForm() {
         balance: String(remaining),
         currency: typeof result.currency === "string" ? result.currency : "IRR",
       });
+      if (trimmedReason) params.set("reason", trimmedReason);
+      if (category) params.set("category", category);
+      flashToast({
+        title: t.withdrawal.withdrawalSuccessful,
+        description: t.messages.success.withdrawalSuccess,
+      });
       router.push(`/transfer/success?${params.toString()}`);
     } catch (err: unknown) {
       setError(localizeError(err, t.messages, "withdrawalFailed"));
@@ -173,7 +216,7 @@ export function WithdrawForm() {
         label={t.common.availableBalance}
       />
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="flex gap-6 border-b border-border">
         <button
           type="button"
           onClick={() => {
@@ -181,10 +224,10 @@ export function WithdrawForm() {
             setFieldError(null);
             setError("");
           }}
-          className={`rounded-xl border py-2.5 text-xs font-bold transition cursor-pointer hover:border-primary/40 active:scale-95 ${
+          className={`-mb-px cursor-pointer border-b-2 px-1 pb-2 text-sm font-semibold transition ${
             destination === "account"
-              ? "border-primary bg-primary-soft text-primary"
-              : "border-border bg-surface-muted text-muted hover:bg-border"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted hover:text-foreground"
           }`}
         >
           {t.withdrawal.accountNumber}
@@ -196,102 +239,75 @@ export function WithdrawForm() {
             setFieldError(null);
             setError("");
           }}
-          className={`rounded-xl border py-2.5 text-xs font-bold transition cursor-pointer hover:border-primary/40 active:scale-95 ${
+          className={`-mb-px cursor-pointer border-b-2 px-1 pb-2 text-sm font-semibold transition ${
             destination === "shaba"
-              ? "border-primary bg-primary-soft text-primary"
-              : "border-border bg-surface-muted text-muted hover:bg-border"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted hover:text-foreground"
           }`}
         >
           {t.withdrawal.shabaNumber}
         </button>
       </div>
 
-      {(() => {
-        const currentType =
-          destination === "account" ? "BANK_ACCOUNT" : "SHABA";
-        const allMatching = [
-          ...savedDestinations.filter((d) => d.type === currentType),
-          ...recentDestinations.filter(
-            (d) =>
-              d.type === currentType &&
-              !savedDestinations.some((s) => s.id === d.id),
-          ),
-        ];
-
-        if (allMatching.length === 0) return null;
-
-        return (
-          <div className="space-y-1.5">
-            <span className="text-[11px] font-semibold text-muted">
-              {destination === "account"
-                ? t.destinations.accountNumber
-                : t.destinations.shabaNumber}
-              :
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {allMatching.map((item) => {
-                const masked = item.maskedValue;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      void api.getDestinationValue(item.id).then((value) => {
-                        if (value.type === "BANK_ACCOUNT") {
-                          setAccountNumber(value.accountNumber);
-                          saveAccountNumber(value.accountNumber);
-                        } else if (value.type === "SHABA") {
-                          setShabaNumber(value.shabaNumber);
-                          saveShabaNumber(value.shabaNumber);
-                        }
-                        setFieldError(null);
-                      });
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-foreground transition hover:border-primary/50 hover:bg-primary-soft hover:text-primary active:scale-95 cursor-pointer"
-                  >
-                    <span>{item.label}</span>
-                    {masked ? (
-                      <span className="font-mono text-[10px] text-muted">
-                        ({masked})
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
-
       {destination === "account" ? (
-        <TextField
-          label={t.withdrawal.accountNumber}
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder={t.withdrawal.accountNumberPlaceholder}
-          value={accountNumber}
-          error={fieldError}
-          onChange={(e) => {
-            const next = e.target.value;
-            setAccountNumber(next);
-            setFieldError(null);
-            saveAccountNumber(next);
-          }}
-        />
+        <div>
+          <TextField
+            label={t.withdrawal.accountNumber}
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder={t.withdrawal.accountNumberPlaceholder}
+            value={accountNumber}
+            error={fieldError}
+            onFocus={() => setAccountFocused(true)}
+            onBlur={() => setAccountFocused(false)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setAccountNumber(next);
+              setFieldError(null);
+              saveAccountNumber(next);
+              setRecentAccounts(listRecentAccountNumbers());
+            }}
+          />
+          <RecentValueList
+            open={accountFocused}
+            values={recentAccounts.filter((item) => item !== accountNumber)}
+            onSelect={(value) => {
+              setAccountNumber(value);
+              saveAccountNumber(value);
+              setFieldError(null);
+              setAccountFocused(false);
+            }}
+          />
+        </div>
       ) : (
-        <TextField
-          label={t.withdrawal.shabaNumber}
-          autoComplete="off"
-          placeholder={t.withdrawal.shabaNumberPlaceholder}
-          value={shabaNumber}
-          error={fieldError}
-          onChange={(e) => {
-            const next = e.target.value;
-            setShabaNumber(next);
-            setFieldError(null);
-            saveShabaNumber(next);
-          }}
-        />
+        <div>
+          <TextField
+            label={t.withdrawal.shabaNumber}
+            autoComplete="off"
+            placeholder={t.withdrawal.shabaNumberPlaceholder}
+            value={shabaNumber}
+            error={fieldError}
+            onFocus={() => setShabaFocused(true)}
+            onBlur={() => setShabaFocused(false)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setShabaNumber(next);
+              setFieldError(null);
+              saveShabaNumber(next);
+              setRecentShabas(listRecentShabaNumbers());
+            }}
+          />
+          <RecentValueList
+            open={shabaFocused}
+            values={recentShabas.filter((item) => item !== shabaNumber)}
+            onSelect={(value) => {
+              setShabaNumber(value);
+              saveShabaNumber(value);
+              setFieldError(null);
+              setShabaFocused(false);
+            }}
+          />
+        </div>
       )}
 
       <TextField
@@ -300,23 +316,31 @@ export function WithdrawForm() {
         min="1"
         step="1"
         inputMode="numeric"
-        placeholder="10000"
+        placeholder={localizeDigits("10000", language)}
         value={amount}
         onChange={(e) => {
           setAmount(e.target.value);
           setError("");
         }}
+        rightIcon={
+          <span className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold text-muted">IRR</span>
+            {status === "ready" && balance !== null ? (
+              <button
+                type="button"
+                onClick={() => setAmount(String(Math.trunc(balance)))}
+                className="text-xs font-bold text-primary hover:underline"
+              >
+                {t.withdrawal.maxWithdraw}
+              </button>
+            ) : null}
+          </span>
+        }
+        className="pe-20 ltr:text-start"
       />
 
       <Select
-        label={
-          <span>
-            {t.withdrawal.paymentCategory}{" "}
-            <span className="font-normal text-muted/80">
-              ({t.withdrawal.paymentCategoryOptional})
-            </span>
-          </span>
-        }
+        label={t.withdrawal.paymentCategoryOptional}
         value={category}
         onChange={(val) => setCategory(val)}
         placeholder={t.withdrawal.paymentCategoryOptional}
@@ -343,17 +367,31 @@ export function WithdrawForm() {
       )}
 
       <Button type="submit" disabled={loading || status === "unauthenticated"}>
-        {loading ? t.withdrawal.processing : t.withdrawal.withdrawBtn}
+        {loading ? (
+          <Spinner size="sm" label={t.withdrawal.processing} />
+        ) : (
+          t.withdrawal.withdrawBtn
+        )}
       </Button>
 
-      {status === "ready" && balance !== null && (
+      {dailyLimit ? (
+        <div className="space-y-2 border-t border-border pt-3">
+          <div className="flex items-center justify-between text-[11px] font-medium text-muted">
+            <span>{t.withdrawal.dailyRemaining}</span>
+            <span className="font-bold text-foreground">
+              {formatIrr(dailyLimit.remainingAmount, dailyLimit.currency)}
+            </span>
+          </div>
+          <ProgressBar
+            value={dailyLimit.usedAmount}
+            max={dailyLimit.maxAmount}
+          />
+        </div>
+      ) : status === "ready" && balance !== null ? (
         <p className="text-center text-[11px] font-medium text-muted">
-          {t.withdrawal.maxWithdraw.replace(
-            "{max}",
-            formatIrr(balance, currency),
-          )}
+          {t.withdrawal.maxWithdraw}: {formatIrr(balance, currency)}
         </p>
-      )}
+      ) : null}
     </form>
   );
 }

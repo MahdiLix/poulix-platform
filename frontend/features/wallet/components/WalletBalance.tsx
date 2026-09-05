@@ -31,7 +31,7 @@ export function WalletBalance({
     variant === "hero" || variant === "heading"
       ? t.common.availableBalance
       : t.common.currentBalance;
-  const displayLabel = label || defaultLabel;
+  const displayLabel = label === undefined ? defaultLabel : label;
 
   const muted = variant === "hero" ? "text-white/70" : "text-muted";
   const strong =
@@ -109,7 +109,7 @@ export function WalletBalance({
 
   const amountClass =
     variant === "hero"
-      ? "text-4xl font-extrabold tracking-tight"
+      ? "amount text-3xl font-bold tracking-tight lg:text-4xl"
       : variant === "panel"
         ? "text-xl font-extrabold tracking-tight"
         : "text-3xl font-extrabold tracking-tight text-foreground";
@@ -118,23 +118,34 @@ export function WalletBalance({
     <div
       className={cn(
         "space-y-1",
-        variant === "panel" ? "text-start" : "text-center",
+        variant === "panel" || variant === "hero" ? "text-start" : "text-center",
       )}
     >
-      <p
-        className={cn(
-          "text-xs font-medium tracking-wide",
-          variant === "hero"
-            ? "text-white/70"
-            : variant === "panel"
+      {displayLabel ? (
+        <p
+          className={cn(
+            "text-xs font-medium tracking-wide",
+            variant === "hero"
               ? "text-white/70"
-              : "text-muted",
-          variant === "heading" && "font-semibold tracking-wider uppercase",
+              : variant === "panel"
+                ? "text-white/70"
+                : "text-muted",
+            variant === "heading" && "font-semibold tracking-wider uppercase",
+          )}
+        >
+          {displayLabel}
+        </p>
+      ) : null}
+      <p className={amountClass}>
+        {variant === "hero" ? (
+          <>
+            {formatIrr(balance ?? 0, "").trim()}{" "}
+            <span className="text-warning">{currency}</span>
+          </>
+        ) : (
+          formatIrr(balance ?? 0, currency)
         )}
-      >
-        {displayLabel}
       </p>
-      <p className={amountClass}>{formatIrr(balance ?? 0, currency)}</p>
     </div>
   );
 }

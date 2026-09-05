@@ -1,22 +1,24 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import Link from "next/link";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Check, CircleAlert } from "lucide-react";
 import { AppShell } from "@/shared/layout/AppShell";
 import { HeaderBar } from "@/shared/layout/HeaderBar";
-import { Button } from "@/shared/ui/Button";
+import { ButtonLink } from "@/shared/ui/Button";
+import { PageSpinner } from "@/shared/ui/Spinner";
 import { Card } from "@/shared/ui/Card";
 import { api } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { formatMessage, localizeError } from "@/shared/i18n/localizeError";
 import { WalletBalance } from "@/features/wallet/components/WalletBalance";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
+import { useToast } from "@/shared/ui/Toast";
 
 function DepositCallbackContent() {
   const searchParams = useSearchParams();
   const { t } = useLanguage();
+  const { pushToast } = useToast();
   const authority =
     searchParams.get("Authority") || searchParams.get("authority") || "";
   const gatewayStatus =
@@ -26,6 +28,17 @@ function DepositCallbackContent() {
     "pending" | "paid" | "cancelled" | "failed"
   >("pending");
   const [message, setMessage] = useState<string>(t.deposit.confirmingPayment);
+  const toastedRef = useRef(false);
+
+  function notify(toast: {
+    title: string;
+    description: string;
+    variant?: "success" | "danger" | "warning";
+  }) {
+    if (toastedRef.current) return;
+    toastedRef.current = true;
+    pushToast(toast);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +64,11 @@ function DepositCallbackContent() {
               ? t.messages.paymentAlreadyVerified
               : t.messages.paymentVerified,
           );
+          notify({
+            title: t.deposit.depositSuccessful,
+            description: t.messages.success.depositSuccess,
+            variant: "success",
+          });
           await refresh();
           return;
         }
@@ -58,6 +76,11 @@ function DepositCallbackContent() {
         if (response.status === "CANCELLED" || response.status === "NOK") {
           setResult("cancelled");
           setMessage(t.messages.paymentCancelledDetail);
+          notify({
+            title: t.deposit.depositCancelled,
+            description: t.messages.paymentCancelledDetail,
+            variant: "warning",
+          });
           await refresh();
           return;
         }
@@ -68,11 +91,23 @@ function DepositCallbackContent() {
             status: response.status || "unknown",
           }),
         );
+        notify({
+          title: t.deposit.depositFailed,
+          description: formatMessage(t.messages.paymentStatus, {
+            status: response.status || "unknown",
+          }),
+          variant: "danger",
+        });
         await refresh();
       } catch (err) {
         if (cancelled) return;
         setResult("failed");
         setMessage(localizeError(err, t.messages, "paymentVerificationFailed"));
+        notify({
+          title: t.deposit.depositFailed,
+          description: localizeError(err, t.messages, "paymentVerificationFailed"),
+          variant: "danger",
+        });
         await refresh();
       }
     }
@@ -81,11 +116,11 @@ function DepositCallbackContent() {
     return () => {
       cancelled = true;
     };
-  }, [authority, gatewayStatus, refresh, t]);
+  }, [authority, gatewayStatus, pushToast, refresh, t]);
 
   return (
-    <AppShell showBottomNav={false} variant="hero">
-      <HeaderBar title={t.deposit.depositStatus} backHref="/" variant="hero" />
+    <AppShell showBottomNav={false}>
+      <HeaderBar title={t.deposit.depositStatus} backHref="/" />
 
       <div className="flex flex-1 flex-col justify-between space-y-6 p-6 lg:mx-auto lg:w-full lg:max-w-md">
         <Card className="mt-2 space-y-6 p-6 text-center shadow-2xl">
@@ -160,9 +195,7 @@ function DepositCallbackContent() {
           )}
         </Card>
 
-        <Link href="/">
-          <Button>{t.common.backToWallet}</Button>
-        </Link>
+        <ButtonLink href="/">{t.common.backToWallet}</ButtonLink>
       </div>
     </AppShell>
   );
@@ -173,7 +206,7 @@ export default function DepositCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div className="p-8 text-center text-muted">{t.common.loading}</div>
+        <PageSpinner label={t.common.loading} />
       }
     >
       <DepositCallbackContent />

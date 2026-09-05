@@ -115,10 +115,45 @@ export function getSavedAccountNumber(): string {
   return saved;
 }
 
-export function saveAccountNumber(raw: string) {
-  const value = normalizeAccountNumber(raw);
-  if (!/^\d{10,18}$/.test(value)) return;
-  writeCookie(ACCOUNT_NUMBER_COOKIE, value);
+const ACCOUNT_RECENTS_KEY = "poulix_recent_account_numbers";
+const SHABA_RECENTS_KEY = "poulix_recent_shaba_numbers";
+const MAX_RECENTS = 8;
+
+function readRecentList(key: string): string[] {
+  if (!isBrowser()) return [];
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeRecentList(key: string, values: string[]) {
+  if (!isBrowser()) return;
+  window.localStorage.setItem(key, JSON.stringify(values.slice(0, MAX_RECENTS)));
+}
+
+function rememberValue(key: string, value: string) {
+  if (!value) return;
+  const next = [value, ...readRecentList(key).filter((item) => item !== value)];
+  writeRecentList(key, next);
+}
+
+export function listRecentAccountNumbers(): string[] {
+  const saved = getSavedAccountNumber();
+  const recents = readRecentList(ACCOUNT_RECENTS_KEY);
+  return [...new Set([saved, ...recents].filter(Boolean))];
+}
+
+export function listRecentShabaNumbers(): string[] {
+  const saved = getSavedShabaNumber();
+  const recents = readRecentList(SHABA_RECENTS_KEY);
+  return [...new Set([saved, ...recents].filter(Boolean))];
 }
 
 export function getSavedShabaNumber(): string {
@@ -129,8 +164,16 @@ export function getSavedShabaNumber(): string {
   return saved;
 }
 
+export function saveAccountNumber(raw: string) {
+  const value = normalizeAccountNumber(raw);
+  if (!/^\d{10,18}$/.test(value)) return;
+  writeCookie(ACCOUNT_NUMBER_COOKIE, value);
+  rememberValue(ACCOUNT_RECENTS_KEY, value);
+}
+
 export function saveShabaNumber(raw: string) {
   const value = normalizeShabaNumber(raw);
   if (!/^IR\d{24}$/.test(value)) return;
   writeCookie(SHABA_NUMBER_COOKIE, value);
+  rememberValue(SHABA_RECENTS_KEY, value);
 }

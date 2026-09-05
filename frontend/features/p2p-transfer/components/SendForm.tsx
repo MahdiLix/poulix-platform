@@ -2,15 +2,16 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { Send, Eye, EyeOff, Check, User } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { TextField } from "@/shared/ui/TextField";
 import { Select } from "@/shared/ui/Select";
+import { Badge } from "@/shared/ui/Badge";
 import { api, getStoredToken } from "@/shared/api";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
-import { WalletBalance } from "@/features/wallet/components/WalletBalance";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
-import { localizeError, formatMessage } from "@/shared/i18n/localizeError";
+import { localizeError } from "@/shared/i18n/localizeError";
 import {
   TRANSACTION_CATEGORIES,
   type TransactionCategory,
@@ -20,11 +21,12 @@ import {
   validateTransferAmount,
   writeSendConfirmPayload,
 } from "@/features/p2p-transfer/lib/transfer";
-import type { FinancialDestination } from "@/features/financial-destinations/lib/destinations";
+import type { TransferRecipient } from "@/features/p2p-transfer/lib/transfer";
+import { localizeDigits } from "@/shared/ui/latinDigits";
 
 export function SendForm() {
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const {
     status,
     balance,
@@ -39,27 +41,36 @@ export function SendForm() {
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [recentRecipients, setRecentRecipients] = useState<
-    FinancialDestination[]
-  >([]);
+  const [balanceVisible, setBalanceVisible] = useState(true);
+  const [recipientUser, setRecipientUser] = useState<TransferRecipient | null>(
+    null,
+  );
+  const [recipientLoading, setRecipientLoading] = useState(false);
 
   useEffect(() => {
-    if (!getStoredToken()) return;
-    void Promise.all([
-      api.getRecentDestinations().catch(() => []),
-      api.getSavedDestinations().catch(() => []),
-    ]).then(([recentList, savedList]) => {
-      const merged = [
-        ...savedList.filter((item) => item.type === "P2P_USER"),
-        ...recentList.filter(
-          (item) =>
-            item.type === "P2P_USER" &&
-            !savedList.some((s) => s.id === item.id),
-        ),
-      ];
-      setRecentRecipients(merged.slice(0, 8));
-    });
-  }, []);
+    const trimmed = recipient.trim();
+    if (!trimmed || trimmed.length < 3) {
+      setRecipientUser(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setRecipientLoading(true);
+      api
+        .lookupUser(trimmed)
+        .then((result) => {
+          if (result.found) {
+            setRecipientUser(result.user);
+          } else {
+            setRecipientUser(null);
+          }
+        })
+        .catch(() => setRecipientUser(null))
+        .finally(() => setRecipientLoading(false));
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [recipient]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -119,59 +130,119 @@ export function SendForm() {
     }
   }
 
+  const balanceDisplay =
+    status === "ready" && balance !== null ? formatIrr(balance, currency) : null;
+
   return (
-    <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
-      <WalletBalance
-        status={status}
-        balance={balance}
-        currency={currency}
-        error={balanceError}
-        onRetry={() => void refresh()}
-        variant="compact"
-        label={t.common.availableBalance}
-      />
-
-      {recentRecipients.length > 0 ? (
-        <div className="space-y-1.5">
-          <span className="text-[11px] font-semibold text-muted">
-            {t.destinations.recentTitle}:
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {recentRecipients.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  setRecipient(item.recipientUsername ?? item.label);
-                  setFieldError(null);
-                }}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-foreground transition hover:border-primary/50 hover:bg-primary-soft hover:text-primary active:scale-95 cursor-pointer"
-              >
-                <span>{item.label}</span>
-                {item.recipientUsername &&
-                item.recipientUsername !== item.label ? (
-                  <span className="font-mono text-[10px] text-muted">
-                    (@{item.recipientUsername})
-                  </span>
-                ) : null}
-              </button>
-            ))}
-          </div>
+    <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
+      <div className="flex items-start gap-4">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] bg-primary-soft text-primary">
+          <Send className="h-5 w-5 rtl:rotate-180" />
         </div>
-      ) : null}
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base font-semibold text-foreground">
+            {t.send.sendToUser}
+          </h2>
+          <p className="mt-0.5 text-xs text-muted">{t.send.sendSubtitle}</p>
+        </div>
+      </div>
 
-      <TextField
-        label={t.send.recipient}
-        autoComplete="off"
-        placeholder={t.send.recipientPlaceholder}
-        value={recipient}
-        error={fieldError}
-        onChange={(e) => {
-          setRecipient(e.target.value);
-          setFieldError(null);
-          setError("");
-        }}
-      />
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <p className="text-[11px] font-semibold tracking-wider text-muted uppercase">
+            {t.common.availableBalance}
+          </p>
+          <button
+            type="button"
+            onClick={() => setBalanceVisible((v) => !v)}
+            className="cursor-pointer rounded-lg p-1 text-muted transition hover:bg-surface-muted hover:text-foreground"
+            aria-label="Toggle balance visibility"
+          >
+            {balanceVisible ? (
+              <Eye className="h-3.5 w-3.5" />
+            ) : (
+              <EyeOff className="h-3.5 w-3.5" />
+            )}
+          </button>
+        </div>
+        <div className="min-h-[2.5rem]">
+          {status === "loading" || status === "idle" ? (
+            <p className="amount text-2xl font-bold tracking-tight text-foreground">
+              {t.common.loadingBalance}
+            </p>
+          ) : status === "error" ? (
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-medium text-danger">
+                {balanceError || t.common.couldNotLoadBalance}
+              </p>
+              <button
+                type="button"
+                onClick={() => void refresh()}
+                className="text-xs font-semibold text-primary hover:underline"
+              >
+                {t.common.retry}
+              </button>
+            </div>
+          ) : status === "unauthenticated" ? (
+            <p className="text-sm font-semibold text-foreground">
+              {t.common.signInToViewBalance}
+            </p>
+          ) : balanceVisible ? (
+            <p className="amount text-2xl font-bold tracking-tight text-foreground">
+              {balanceDisplay}
+            </p>
+          ) : (
+            <p className="amount text-2xl font-bold tracking-widest text-foreground">
+              ••••••
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <TextField
+          label={t.send.recipient}
+          autoComplete="off"
+          placeholder={t.send.recipientPlaceholder}
+          value={recipient}
+          error={fieldError}
+          onChange={(e) => {
+            setRecipient(e.target.value);
+            setFieldError(null);
+            setError("");
+          }}
+        />
+
+        {recipientLoading ? (
+          <div className="flex items-center gap-2 rounded-xl border border-border bg-surface-muted px-3 py-2.5">
+            <div className="h-9 w-9 animate-pulse rounded-full bg-surface" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-3 w-24 animate-pulse rounded bg-surface" />
+              <div className="h-2.5 w-32 animate-pulse rounded bg-surface" />
+            </div>
+          </div>
+        ) : recipientUser ? (
+          <div className="flex items-center gap-3 rounded-xl border border-success/20 bg-success-soft px-3 py-2.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-success text-white">
+              <User className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-foreground">
+                {recipientUser.username}
+              </p>
+              <p className="truncate text-xs text-muted">
+                {recipientUser.email}
+              </p>
+            </div>
+            <Badge variant="success" className="shrink-0">
+              <span className="flex items-center gap-1">
+                <Check className="h-3 w-3" />
+                Verified user
+              </span>
+            </Badge>
+          </div>
+        ) : null}
+      </div>
 
       <TextField
         label={t.send.amountIrr}
@@ -179,31 +250,21 @@ export function SendForm() {
         min="1"
         step="1"
         inputMode="numeric"
-        placeholder="10000"
+        placeholder={localizeDigits("10000", language)}
         value={amount}
+        hint={
+          balance !== null && balance > 0
+            ? `Min ${localizeDigits("10,000", language)} · Max ${formatIrr(balance, currency, language)}`
+            : `Min ${localizeDigits("10,000", language)}`
+        }
         onChange={(e) => {
           setAmount(e.target.value);
           setError("");
         }}
       />
 
-      {balance !== null && balance > 0 ? (
-        <p className="text-[11px] font-medium text-muted">
-          {formatMessage(t.withdrawal.maxWithdraw, {
-            max: formatIrr(balance, currency),
-          })}
-        </p>
-      ) : null}
-
       <Select
-        label={
-          <span>
-            {t.withdrawal.paymentCategory}{" "}
-            <span className="font-normal text-muted/80">
-              ({t.withdrawal.paymentCategoryOptional})
-            </span>
-          </span>
-        }
+        label={t.withdrawal.paymentCategoryOptional}
         value={category}
         onChange={(val) => setCategory(val)}
         placeholder={t.withdrawal.paymentCategoryOptional}
@@ -216,12 +277,22 @@ export function SendForm() {
         ]}
       />
 
-      <TextField
-        label={t.withdrawal.paymentReason}
-        placeholder={t.withdrawal.paymentReasonPlaceholder}
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-      />
+      <div>
+        <label
+          htmlFor="payment-reason"
+          className="mb-1.5 block text-[11px] font-medium tracking-wide text-muted"
+        >
+          {t.withdrawal.paymentReason}
+        </label>
+        <textarea
+          id="payment-reason"
+          rows={3}
+          placeholder={t.withdrawal.paymentReasonPlaceholder}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          className="w-full resize-none rounded-[10px] border border-border bg-surface-muted px-3.5 py-2.5 text-sm text-foreground transition placeholder:text-muted/70 hover:border-primary/30 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+        />
+      </div>
 
       {error ? (
         <div className="rounded-xl bg-danger-soft p-3 text-center text-xs font-semibold text-danger">
@@ -229,7 +300,7 @@ export function SendForm() {
         </div>
       ) : null}
 
-      <Button type="submit" className="w-full" disabled={loading}>
+      <Button type="submit" className="h-12 w-full text-base" disabled={loading}>
         {loading ? t.send.lookingUpRecipient : t.send.continueBtn}
       </Button>
     </form>

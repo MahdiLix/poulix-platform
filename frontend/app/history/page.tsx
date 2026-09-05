@@ -1,18 +1,41 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type ComponentType, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, FileText } from "lucide-react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Download,
+  FileText,
+  Layers,
+  PiggyBank,
+} from "lucide-react";
 import { AppShell } from "@/shared/layout/AppShell";
 import { HeaderBar } from "@/shared/layout/HeaderBar";
 import { Button } from "@/shared/ui/Button";
+import { Badge } from "@/shared/ui/Badge";
 import { Card } from "@/shared/ui/Card";
+import { PageSpinner } from "@/shared/ui/Spinner";
+import { SearchInput } from "@/shared/ui/SearchInput";
 import { Select } from "@/shared/ui/Select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/shared/ui/Table";
 import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
-import { formatDisplayDate } from "@/shared/i18n/dates";
+import { formatDisplayDate, formatDisplayDateTime } from "@/shared/i18n/dates";
 import { localizeError, formatMessage } from "@/shared/i18n/localizeError";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
+import type {
+  TranslationDictionary,
+  Language,
+} from "@/shared/i18n/messages/types";
+import { cn } from "@/shared/cn";
 import {
   isTransactionCategory,
   type TransactionCategory,
@@ -33,18 +56,64 @@ type Transaction = {
 
 type HistoryStatus = "loading" | "ready" | "unauthenticated" | "error";
 
+type LucideIcon = ComponentType<{ className?: string }>;
+
+const ROWS_PER_PAGE = 10;
+
+const PILL_OPTIONS = [
+  { value: "ALL", label: "All", matches: ["ALL"] as string[] },
+  { value: "DEPOSIT", label: "Deposit", matches: ["DEPOSIT"] as string[] },
+  {
+    value: "WITHDRAWAL",
+    label: "Withdrawal",
+    matches: ["WITHDRAWAL"] as string[],
+  },
+  {
+    value: "TRANSFER_OUT",
+    label: "Transfer sent",
+    matches: ["TRANSFER_OUT"] as string[],
+  },
+  {
+    value: "TRANSFER_IN",
+    label: "Transfer received",
+    matches: ["TRANSFER_IN"] as string[],
+  },
+  {
+    value: "GOALS",
+    label: "Goals",
+    matches: ["GOAL_CONTRIBUTE", "GOAL_RELEASE"] as string[],
+  },
+  {
+    value: "ENVELOPES",
+    label: "Envelopes",
+    matches: ["ENVELOPE_ALLOCATE", "ENVELOPE_RELEASE"] as string[],
+  },
+];
+
 export default function HistoryPage() {
   const { t, language } = useLanguage();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [status, setStatus] = useState<HistoryStatus>("loading");
   const [error, setError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState("ALL");
+  const [pillFilter, setPillFilter] = useState("ALL");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [typeFilter, pillFilter, search]);
 
   const filteredTransactions = useMemo(() => {
     const query = search.trim().toLowerCase();
+    const pillMatches =
+      PILL_OPTIONS.find((p) => p.value === pillFilter)?.matches ?? [pillFilter];
+
     return transactions.filter((tx) => {
       if (typeFilter !== "ALL" && tx.type !== typeFilter) {
+        return false;
+      }
+      if (pillFilter !== "ALL" && !pillMatches.includes(tx.type)) {
         return false;
       }
       if (!query) {
@@ -55,9 +124,28 @@ export default function HistoryPage() {
         tx.counterpartyUser?.username?.toLowerCase() ??
         tx.counterpartyUser?.email?.toLowerCase() ??
         "";
-      return reason.includes(query) || counterparty.includes(query);
+      const id = tx.id.toLowerCase();
+      return (
+        reason.includes(query) ||
+        counterparty.includes(query) ||
+        id.includes(query)
+      );
     });
-  }, [transactions, typeFilter, search]);
+  }, [transactions, typeFilter, pillFilter, search]);
+
+  const paginatedTransactions = useMemo(() => {
+    const start = (page - 1) * ROWS_PER_PAGE;
+    return filteredTransactions.slice(start, start + ROWS_PER_PAGE);
+  }, [filteredTransactions, page]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredTransactions.length / ROWS_PER_PAGE),
+  );
+  const pageNumbers = useMemo(
+    () => getPageNumbers(page, totalPages, 5),
+    [page, totalPages],
+  );
 
   useEffect(() => {
     void loadHistory();
@@ -98,13 +186,26 @@ export default function HistoryPage() {
 
   return (
     <AppShell>
-      <HeaderBar title={t.history.historyTitle} backHref="/" />
+      <HeaderBar
+        title={t.history.historyTitle}
+        backHref="/"
+        subtitle="Every deposit, transfer, withdrawal, goal, and envelope movement."
+        trailing={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => alert("Export not yet implemented")}
+            className="w-auto gap-1.5"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export
+          </Button>
+        }
+      />
 
-      <div className="flex-1 space-y-4 p-6 lg:mx-auto lg:w-full lg:max-w-4xl lg:p-8">
+      <div className="flex-1 space-y-4 p-4 lg:p-6">
         {status === "loading" ? (
-          <div className="py-12 text-center text-xs font-semibold text-muted">
-            {t.history.loadingHistory}
-          </div>
+          <PageSpinner label={t.history.loadingHistory} />
         ) : status === "unauthenticated" ? (
           <div className="space-y-4 py-16 text-center lg:mx-auto lg:max-w-md">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-surface-muted text-muted">
@@ -136,32 +237,21 @@ export default function HistoryPage() {
               {t.common.retry}
             </Button>
           </div>
-        ) : transactions.length === 0 ? (
-          <div className="space-y-3 py-16 text-center lg:mx-auto lg:max-w-md">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-surface-muted text-muted">
-              <FileText className="h-7 w-7" />
-            </div>
-            <p className="text-sm font-bold text-foreground">
-              {t.history.noTransactionsYet}
-            </p>
-            <p className="mx-auto max-w-[200px] text-xs text-muted">
-              {t.history.noTransactionsSub}
-            </p>
-          </div>
         ) : (
-          <div className="space-y-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t.history.searchPlaceholder}
-                className="flex-1 rounded-2xl border border-border bg-surface px-4 py-3 text-sm font-medium text-foreground transition hover:border-primary/40 focus:ring-2 focus:ring-primary focus:outline-none"
-              />
+          <Card className="space-y-4 p-4 lg:p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+              <div className="flex-1">
+                <SearchInput
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search reason, recipient, or ID..."
+                />
+              </div>
               <Select
+                label="Type"
                 value={typeFilter}
                 onChange={(val) => setTypeFilter(val)}
-                className="sm:w-56"
+                className="lg:w-56"
                 options={[
                   { value: "ALL", label: t.history.filterAll },
                   { value: "DEPOSIT", label: t.history.deposit },
@@ -181,95 +271,402 @@ export default function HistoryPage() {
                 ]}
               />
             </div>
-            {filteredTransactions.map((tx) => {
-              const isIncoming =
-                tx.type === "DEPOSIT" ||
-                tx.type === "TRANSFER_IN" ||
-                tx.type === "GOAL_RELEASE" ||
-                tx.type === "ENVELOPE_RELEASE";
-              const formattedDate = formatDisplayDate(tx.createdAt, language);
-              const categoryLabel =
-                tx.category && isTransactionCategory(tx.category)
-                  ? t.history.categories[tx.category as TransactionCategory]
-                  : null;
 
-              let title = t.history.deposit;
-              if (tx.type === "WITHDRAWAL") {
-                title = t.history.withdrawal;
-              } else if (tx.type === "TRANSFER_OUT") {
-                title = tx.counterpartyUser?.username
-                  ? formatMessage(t.history.toUser, {
-                      name: tx.counterpartyUser.username,
-                    })
-                  : t.history.transferSent;
-              } else if (tx.type === "TRANSFER_IN") {
-                title = tx.counterpartyUser?.username
-                  ? formatMessage(t.history.fromUser, {
-                      name: tx.counterpartyUser.username,
-                    })
-                  : t.history.transferReceived;
-              } else if (tx.type === "GOAL_CONTRIBUTE") {
-                title = t.goals.goalContribute;
-              } else if (tx.type === "GOAL_RELEASE") {
-                title = t.goals.goalRelease;
-              } else if (tx.type === "ENVELOPE_ALLOCATE") {
-                title = t.envelopes.envelopeAllocate;
-              } else if (tx.type === "ENVELOPE_RELEASE") {
-                title = t.envelopes.envelopeRelease;
-              }
-
-              return (
-                <Card
-                  key={tx.id}
-                  className="flex items-center justify-between rounded-2xl p-4 transition hover:shadow-md"
+            <div className="flex flex-wrap gap-2">
+              {PILL_OPTIONS.map((pill) => (
+                <button
+                  key={pill.value}
+                  type="button"
+                  onClick={() => setPillFilter(pill.value)}
+                  className={cn(
+                    "rounded-full px-3.5 py-1.5 text-xs font-semibold transition active:scale-95",
+                    pillFilter === pill.value
+                      ? "bg-primary text-primary-foreground"
+                      : "border border-border bg-surface text-foreground hover:bg-surface-muted",
+                  )}
                 >
-                  <div className="flex items-center gap-3.5">
-                    <div
-                      className={`flex h-11 w-11 items-center justify-center rounded-full ${
-                        isIncoming
-                          ? "bg-success-soft text-success"
-                          : "bg-primary-soft text-primary"
-                      }`}
-                    >
-                      {isIncoming ? (
-                        <ArrowDown className="h-5 w-5" />
-                      ) : (
-                        <ArrowUp className="h-5 w-5" />
-                      )}
-                    </div>
-                    <div>
-                      <h3 className="text-xs font-bold text-foreground lg:text-sm">
-                        {title}
-                      </h3>
-                      <p className="text-[11px] font-medium text-muted">
-                        {formattedDate}
-                      </p>
-                      {categoryLabel || tx.reason ? (
-                        <p className="mt-0.5 text-[11px] font-medium text-muted">
-                          {categoryLabel ? <span>{categoryLabel}</span> : null}
-                          {categoryLabel && tx.reason ? (
-                            <span className="mx-1">·</span>
-                          ) : null}
-                          {tx.reason ? <span>{tx.reason}</span> : null}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
+                  {pill.label}
+                </button>
+              ))}
+            </div>
 
-                  <span
-                    className={`text-sm font-extrabold lg:text-base ${
-                      isIncoming ? "text-success" : "text-foreground"
-                    }`}
+            {filteredTransactions.length === 0 ? (
+              <div className="space-y-3 py-12 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-surface-muted text-muted">
+                  <FileText className="h-7 w-7" />
+                </div>
+                <p className="text-sm font-bold text-foreground">
+                  {transactions.length === 0
+                    ? t.history.noTransactionsYet
+                    : "No matching transactions"}
+                </p>
+                <p className="mx-auto max-w-[220px] text-xs text-muted">
+                  {transactions.length === 0
+                    ? t.history.noTransactionsSub
+                    : "Try a different search or filter."}
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Desktop table */}
+                <div className="hidden lg:block">
+                  <Table>
+                    <TableHead>
+                      <TableHeaderCell>Type</TableHeaderCell>
+                      <TableHeaderCell>Details</TableHeaderCell>
+                      <TableHeaderCell>Category</TableHeaderCell>
+                      <TableHeaderCell>Amount</TableHeaderCell>
+                      <TableHeaderCell>Date</TableHeaderCell>
+                      <TableHeaderCell>Status</TableHeaderCell>
+                    </TableHead>
+                    <TableBody>
+                      {paginatedTransactions.map((tx) => {
+                        const row = buildTxRow(tx, t, language);
+                        return (
+                          <TableRow key={tx.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className={cn(
+                                    "flex h-8 w-8 items-center justify-center rounded-full",
+                                    row.iconBg,
+                                  )}
+                                >
+                                  <row.Icon
+                                    className={cn("h-4 w-4", row.iconColor)}
+                                  />
+                                </div>
+                                <span className="text-xs font-semibold">
+                                  {row.typeLabel}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-xs font-semibold text-foreground">
+                                {row.title}
+                              </div>
+                              {row.details ? (
+                                <div className="text-xs text-muted">
+                                  {row.details}
+                                </div>
+                              ) : null}
+                              {row.counterparty ? (
+                                <div className="text-[11px] text-muted">
+                                  {t.history.counterparty}:{" "}
+                                  <bdi>{row.counterparty}</bdi>
+                                </div>
+                              ) : null}
+                              <div className="font-mono text-[10px] text-muted">
+                                {t.history.transactionId}: {tx.id}
+                              </div>
+                            </TableCell>
+                            <TableCell>{row.categoryBadge}</TableCell>
+                            <TableCell
+                              className={cn(
+                                "text-xs font-bold",
+                                row.amountColor,
+                              )}
+                            >
+                              {row.amountPrefix}
+                              {formatIrr(Math.abs(parseAmount(tx.amount)))}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted">
+                              {row.formattedDateTime}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="success" className="text-[10px]">
+                                {t.withdrawal.completed}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile cards */}
+                <div className="space-y-3 lg:hidden">
+                  {paginatedTransactions.map((tx) => {
+                    const row = buildTxRow(tx, t, language);
+                    const meta = [row.title, row.details]
+                      .filter(Boolean)
+                      .join(" · ");
+
+                    return (
+                      <div
+                        key={tx.id}
+                        className="flex items-start justify-between rounded-2xl border border-border bg-surface p-4"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={cn(
+                              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+                              row.iconBg,
+                            )}
+                          >
+                            <row.Icon
+                              className={cn("h-5 w-5", row.iconColor)}
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="text-xs font-bold text-foreground">
+                              {row.typeLabel}
+                            </h3>
+                            {meta ? (
+                              <p className="text-[11px] font-medium text-muted">
+                                {meta}
+                              </p>
+                            ) : null}
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              {row.categoryBadge}
+                              <Badge
+                                variant="success"
+                                className="text-[10px]"
+                              >
+                                {t.withdrawal.completed}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="text-[11px] font-medium text-muted">
+                            {row.formattedDate}
+                          </p>
+                          <p
+                            className={cn(
+                              "text-sm font-extrabold",
+                              row.amountColor,
+                            )}
+                          >
+                            {row.amountPrefix}
+                            {formatIrr(Math.abs(parseAmount(tx.amount)))}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            <div className="flex flex-col items-center justify-between gap-3 border-t border-border pt-4 sm:flex-row">
+              <span className="text-xs text-muted">
+                Showing {paginatedTransactions.length} of{" "}
+                {filteredTransactions.length}
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-auto"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  Previous
+                </Button>
+                {pageNumbers.map((num) => (
+                  <Button
+                    key={num}
+                    variant={page === num ? "primary" : "outline"}
+                    size="sm"
+                    className="h-9 w-9 px-0"
+                    onClick={() => setPage(num)}
                   >
-                    {isIncoming ? "+" : "-"}
-                    {formatIrr(parseAmount(tx.amount))}
-                  </span>
-                </Card>
-              );
-            })}
-          </div>
+                    {num}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-auto"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </Card>
         )}
       </div>
     </AppShell>
   );
+}
+
+function buildTxRow(
+  tx: Transaction,
+  t: TranslationDictionary,
+  language: Language,
+) {
+  const formattedDate = formatDisplayDate(tx.createdAt, language);
+  const formattedDateTime = formatDisplayDateTime(tx.createdAt, language);
+  const categoryLabel =
+    tx.category && isTransactionCategory(tx.category)
+      ? t.history.categories[tx.category as TransactionCategory]
+      : null;
+
+  const amount = parseAmount(tx.amount);
+
+  let title: string;
+  let typeLabel: string;
+  let Icon: LucideIcon;
+  let iconBg: string;
+  let iconColor: string;
+  let amountColor: string;
+  let amountPrefix: string;
+
+  switch (tx.type) {
+    case "DEPOSIT":
+      title = t.history.deposit;
+      typeLabel = t.history.deposit;
+      Icon = ArrowDownLeft;
+      iconBg = "bg-success-soft";
+      iconColor = "text-success";
+      amountColor = "text-success";
+      amountPrefix = "+";
+      break;
+    case "WITHDRAWAL":
+      title = t.history.withdrawal;
+      typeLabel = t.history.withdrawal;
+      Icon = ArrowUpRight;
+      iconBg = "bg-danger-soft";
+      iconColor = "text-danger";
+      amountColor = "text-danger";
+      amountPrefix = "-";
+      break;
+    case "TRANSFER_OUT":
+      title = tx.counterpartyUser?.username
+        ? formatMessage(t.history.toUser, {
+            name: tx.counterpartyUser.username,
+          })
+        : t.history.transferSent;
+      typeLabel = t.history.transferSent;
+      Icon = ArrowUpRight;
+      iconBg = "bg-danger-soft";
+      iconColor = "text-danger";
+      amountColor = "text-danger";
+      amountPrefix = "-";
+      break;
+    case "TRANSFER_IN":
+      title = tx.counterpartyUser?.username
+        ? formatMessage(t.history.fromUser, {
+            name: tx.counterpartyUser.username,
+          })
+        : t.history.transferReceived;
+      typeLabel = t.history.transferReceived;
+      Icon = ArrowDownLeft;
+      iconBg = "bg-success-soft";
+      iconColor = "text-success";
+      amountColor = "text-success";
+      amountPrefix = "+";
+      break;
+    case "GOAL_CONTRIBUTE":
+      title = t.goals.goalContribute;
+      typeLabel = t.goals.goalContribute;
+      Icon = PiggyBank;
+      iconBg = "bg-accent-amber-soft";
+      iconColor = "text-accent-amber";
+      amountColor = "text-danger";
+      amountPrefix = "-";
+      break;
+    case "GOAL_RELEASE":
+      title = t.goals.goalRelease;
+      typeLabel = t.goals.goalRelease;
+      Icon = ArrowDownLeft;
+      iconBg = "bg-success-soft";
+      iconColor = "text-success";
+      amountColor = "text-success";
+      amountPrefix = "+";
+      break;
+    case "ENVELOPE_ALLOCATE":
+      title = t.envelopes.envelopeAllocate;
+      typeLabel = t.envelopes.envelopeAllocate;
+      Icon = Layers;
+      iconBg = "bg-accent-teal-soft";
+      iconColor = "text-accent-teal";
+      amountColor = "text-danger";
+      amountPrefix = "-";
+      break;
+    case "ENVELOPE_RELEASE":
+      title = t.envelopes.envelopeRelease;
+      typeLabel = t.envelopes.envelopeRelease;
+      Icon = ArrowDownLeft;
+      iconBg = "bg-success-soft";
+      iconColor = "text-success";
+      amountColor = "text-success";
+      amountPrefix = "+";
+      break;
+    default:
+      title = tx.type.replace(/_/g, " ");
+      typeLabel = tx.type.replace(/_/g, " ");
+      Icon = amount >= 0 ? ArrowDownLeft : ArrowUpRight;
+      iconBg = amount >= 0 ? "bg-success-soft" : "bg-danger-soft";
+      iconColor = amount >= 0 ? "text-success" : "text-danger";
+      amountColor = amount >= 0 ? "text-success" : "text-danger";
+      amountPrefix = amount >= 0 ? "+" : "-";
+  }
+
+  const details = tx.reason ? tx.reason : null;
+
+  const categoryBadge = categoryLabel ? (
+    <Badge
+      variant="default"
+      className={cn("rounded-full text-[10px]", categoryBadgeClass(tx.category))}
+    >
+      {categoryLabel}
+    </Badge>
+  ) : (
+    <span className="text-xs text-muted">-</span>
+  );
+
+  return {
+    Icon,
+    iconBg,
+    iconColor,
+    amountColor,
+    amountPrefix,
+    formattedDate,
+    formattedDateTime,
+    title,
+    typeLabel,
+    details,
+    categoryBadge,
+    counterparty:
+      tx.counterpartyUser?.username || tx.counterpartyUser?.email || null,
+  };
+}
+
+function categoryBadgeClass(category?: string | null): string {
+  switch (category) {
+    case "RENT":
+      return "bg-warning-soft text-warning";
+    case "SHOPPING":
+      return "bg-accent-purple-soft text-accent-purple";
+    case "GIFT":
+      return "bg-accent-rose-soft text-accent-rose";
+    case "DINNER":
+    case "LUNCH":
+      return "bg-danger-soft text-danger";
+    case "TRANSPORTATION":
+      return "bg-accent-teal-soft text-accent-teal";
+    case "FAMILY_SUPPORT":
+      return "bg-secondary-soft text-secondary";
+    case "OTHER":
+      return "bg-surface-muted text-muted";
+    default:
+      return "bg-surface-muted text-muted";
+  }
+}
+
+function getPageNumbers(page: number, total: number, max = 5): number[] {
+  if (total <= 0) return [];
+  if (total <= max) return Array.from({ length: total }, (_, i) => i + 1);
+  let start = Math.max(1, page - Math.floor(max / 2));
+  const end = Math.min(total, start + max - 1);
+  if (end - start + 1 < max) {
+    start = Math.max(1, end - max + 1);
+  }
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
 }

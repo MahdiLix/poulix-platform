@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Vazirmatn } from "next/font/google";
 import { ThemeProvider } from "@/shared/theme/ThemeProvider";
 import { LanguageProvider } from "@/shared/i18n/LanguageProvider";
+import { UserProvider } from "@/shared/user/UserProvider";
+import { ToastProvider } from "@/shared/ui/Toast";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -27,7 +29,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1d4ed8",
+  themeColor: "#2b6beb",
   width: "device-width",
   initialScale: 1,
 };
@@ -50,7 +52,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full bg-canvas font-sans text-foreground">
         <ThemeProvider>
-          <LanguageProvider>{children}</LanguageProvider>
+          <LanguageProvider>
+            <UserProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </UserProvider>
+          </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>

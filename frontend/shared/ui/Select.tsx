@@ -87,7 +87,7 @@ export function Select({
           aria-haspopup="listbox"
           aria-expanded={isOpen}
           className={cn(
-            "flex w-full items-center justify-between rounded-2xl border bg-surface px-4 py-3 text-sm font-medium transition text-start cursor-pointer hover:border-primary/40 focus:ring-2 focus:ring-primary focus:outline-none",
+            "flex h-10 w-full items-center justify-between rounded-[10px] border bg-surface px-3.5 text-sm font-medium transition text-start cursor-pointer hover:border-primary/40 focus:ring-2 focus:ring-primary/20 focus:outline-none",
             error ? "border-danger" : "border-border",
             disabled && "opacity-60 cursor-not-allowed",
             isOpen && "ring-2 ring-primary border-primary",

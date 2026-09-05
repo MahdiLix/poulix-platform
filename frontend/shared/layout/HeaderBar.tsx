@@ -14,6 +14,7 @@ type HeaderBarProps = {
   trailing?: ReactNode;
   variant?: "plain" | "hero";
   showNotifications?: boolean;
+  subtitle?: string;
 };
 
 export function HeaderBar({
@@ -21,59 +22,61 @@ export function HeaderBar({
   backHref,
   trailing,
   variant = "plain",
-  showNotifications = true,
+  showNotifications = false,
+  subtitle,
 }: HeaderBarProps) {
   const isHero = variant === "hero";
 
   return (
     <header
       className={cn(
-        "flex items-center justify-between px-6 pt-6 pb-4",
-        isHero ? "text-primary-foreground" : "text-foreground",
+        "relative flex items-center gap-3 px-4 py-4 lg:px-6",
+        isHero
+          ? "text-primary-foreground"
+          : "bg-background text-foreground",
       )}
     >
       {backHref ? (
         <Link
           href={backHref}
           className={cn(
-            "flex h-10 w-10 cursor-pointer items-center justify-center rounded-full transition active:scale-95",
+            "absolute start-4 z-10 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-[10px] transition active:scale-95 lg:start-6",
             isHero
-              ? "bg-white/10 text-primary-foreground hover:bg-white/20 active:bg-white/30"
-              : "bg-surface-muted text-foreground hover:bg-border active:bg-border",
+              ? "bg-white/10 text-primary-foreground hover:bg-white/20"
+              : "border border-border bg-surface text-foreground hover:border-primary/30",
           )}
         >
-          <ChevronLeft className="h-5 w-5 rtl:rotate-180" />
+          <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
         </Link>
-      ) : (
-        <div className="h-10 w-10" />
-      )}
+      ) : null}
 
-      <h1 className="text-base font-bold">{title}</h1>
-
-      <div className="flex items-center gap-2">
-        {showNotifications ? (
-          <NotificationBell
-            className={
-              isHero
-                ? "bg-white/10 text-primary-foreground hover:bg-white/20 active:bg-white/30"
-                : undefined
-            }
-          />
+      <div
+        className={cn(
+          "min-w-0 flex-1 px-12 text-center",
+          !backHref && "px-0 text-start",
+        )}
+      >
+        <h1 className="truncate text-lg font-bold tracking-tight lg:text-xl">
+          {title}
+        </h1>
+        {subtitle ? (
+          <p
+            className={cn(
+              "mt-0.5 truncate text-xs font-medium lg:text-sm",
+              isHero ? "text-white/70" : "text-muted",
+            )}
+          >
+            {subtitle}
+          </p>
         ) : null}
-        <LanguageToggle
-          className={
-            isHero
-              ? "bg-white/10 text-primary-foreground hover:bg-white/20 active:bg-white/30"
-              : undefined
-          }
-        />
-        <ThemeToggle
-          className={
-            isHero
-              ? "bg-white/10 text-primary-foreground hover:bg-white/20 active:bg-white/30"
-              : undefined
-          }
-        />
+      </div>
+
+      <div className="absolute end-4 z-10 flex shrink-0 items-center gap-1.5 lg:end-6">
+        {showNotifications ? <NotificationBell /> : null}
+        <div className="hidden items-center gap-1.5 sm:flex lg:hidden">
+          <LanguageToggle variant="compact" />
+          <ThemeToggle variant="compact" />
+        </div>
         {trailing}
       </div>
     </header>

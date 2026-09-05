@@ -18,7 +18,7 @@ export function BottomNav() {
   ];
 
   return (
-    <nav className="sticky bottom-0 z-40 mt-auto w-full border-t border-border bg-surface px-4 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] dark:shadow-[0_-8px_24px_rgba(0,0,0,0.28)] lg:hidden">
+    <nav className="sticky bottom-0 z-40 mt-auto w-full border-t border-border bg-surface/95 px-2 py-1.5 backdrop-blur-md lg:hidden">
       <div className="flex items-center justify-around">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
@@ -30,14 +30,24 @@ export function BottomNav() {
               href={item.href}
               aria-label={item.label}
               className={cn(
-                "flex min-w-14 cursor-pointer flex-col items-center justify-center rounded-xl px-3 py-1.5 transition-colors hover:bg-surface-muted active:scale-95",
-                isActive
-                  ? "font-bold text-primary"
-                  : "text-muted hover:text-foreground",
+                "flex min-w-14 cursor-pointer flex-col items-center justify-center rounded-[10px] px-3 py-1.5 transition hover:bg-surface-muted active:scale-95",
+                isActive ? "text-primary" : "text-muted hover:text-foreground",
               )}
             >
-              <Icon className="h-6 w-6" />
-              <span className="mt-0.5 text-[10px] font-medium">
+              <div
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-[10px] transition",
+                  isActive && "bg-primary-soft",
+                )}
+              >
+                <Icon className="h-5 w-5" />
+              </div>
+              <span
+                className={cn(
+                  "mt-0.5 text-[10px] font-medium",
+                  isActive && "font-semibold",
+                )}
+              >
                 {item.label}
               </span>
             </Link>

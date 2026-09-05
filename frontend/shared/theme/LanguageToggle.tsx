@@ -1,28 +1,60 @@
 "use client";
 
-import { Globe } from "lucide-react";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { cn } from "@/shared/cn";
 
-export function LanguageToggle({ className }: { className?: string }) {
-  const { language, toggleLanguage } = useLanguage();
+export function LanguageToggle({
+  className,
+  variant = "default",
+}: {
+  className?: string;
+  variant?: "default" | "sidebar" | "compact";
+}) {
+  const { language, setLanguage } = useLanguage();
+  const isSidebar = variant === "sidebar";
+  const isCompact = variant === "compact" || isSidebar;
+
+  const buttons = [
+    { id: "en" as const, label: "EN" },
+    { id: "fa" as const, label: "FA" },
+  ];
 
   return (
-    <button
-      type="button"
-      onClick={toggleLanguage}
-      aria-label={
-        language === "en" ? "Switch to Persian" : "تغییر زبان به انگلیسی"
-      }
+    <div
       className={cn(
-        "flex h-10 items-center justify-center rounded-full bg-surface-muted text-foreground transition hover:bg-border active:scale-95 cursor-pointer max-[460px]:w-10 max-[460px]:px-0 min-[461px]:px-3.5",
+        "inline-flex items-center rounded-full p-0.5",
+        isSidebar
+          ? "bg-white/10"
+          : "border border-border bg-surface-muted/80",
         className,
       )}
+      role="group"
+      aria-label="Language"
     >
-      <Globe className="h-5 w-5 shrink-0" />
-      <span className="hidden min-[461px]:inline text-xs font-bold ms-1.5">
-        {language === "en" ? "FA | فارسی" : "EN | English"}
-      </span>
-    </button>
+      {buttons.map((item) => {
+        const active = language === item.id;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setLanguage(item.id)}
+            aria-pressed={active}
+            className={cn(
+              "inline-flex cursor-pointer items-center justify-center rounded-full font-semibold tracking-wide transition active:scale-95",
+              isCompact ? "h-6 min-w-7 px-1.5 text-[10px]" : "h-7 min-w-8 px-2 text-[11px]",
+              active
+                ? isSidebar
+                  ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                  : "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
+                : isSidebar
+                  ? "text-sidebar-muted hover:text-sidebar-foreground"
+                  : "text-muted hover:text-foreground",
+            )}
+          >
+            {item.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }

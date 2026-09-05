@@ -13,19 +13,20 @@ export default function AppleIcon() {
         alignItems: "center",
         justifyContent: "center",
         background:
-          "linear-gradient(180deg, #1554c0 0%, #0e3d9a 50%, #082056 100%)",
-        borderRadius: 36,
+          "linear-gradient(180deg, #4d76ff 0%, #2d5cfe 50%, #1a3fd4 100%)",
+        borderRadius: 40,
       }}
     >
       <span
         style={{
           color: "#ffffff",
-          fontSize: 96,
+          fontSize: 72,
           fontWeight: 800,
           fontFamily: "system-ui, sans-serif",
+          letterSpacing: "-0.04em",
         }}
       >
-        P
+        Px
       </span>
     </div>,
     size,

@@ -140,16 +140,26 @@ export type TranslationDictionary = {
     done: string;
     loading: string;
     currency: string;
+    welcomeToPoulix: string;
+    pageNotFound: string;
+    pageNotFoundSub: string;
+    goHome: string;
   };
   nav: {
     home: string;
     statistic: string;
     history: string;
     profile: string;
+    overview: string;
+    moveMoney: string;
+    plan: string;
+    account: string;
+    topUp: string;
   };
   home: {
     topUp: string;
     send: string;
+    withdraw: string;
     request: string;
     history: string;
     paymentList: string;
@@ -159,6 +169,48 @@ export type TranslationDictionary = {
     specialOffer: string;
     specialOfferDesc: string;
     requestMoneyAlert: string;
+    financialWallet: string;
+    preferences: string;
+    searchPlaceholder: string;
+    quickStats: string;
+    recentActivity: string;
+    balanceOverview: string;
+    totalTransactions: string;
+    totalSent: string;
+    totalReceived: string;
+    activeGoals: string;
+    thisMonth: string;
+    topUpNow: string;
+    monthlyChange: string;
+    lastMonthBalance: string;
+    administrator: string;
+    noRecentActivity: string;
+    topUpDesc: string;
+    sendDesc: string;
+    requestDesc: string;
+    historyDesc: string;
+    withdrawDesc: string;
+    scheduledDesc: string;
+    goalsDesc: string;
+    envelopesDesc: string;
+    destinationsDesc: string;
+    securityDesc: string;
+    overviewEyebrow: string;
+    greeting: string;
+    welcomeToPoulix: string;
+    walletInsight: string;
+    walletInsightFlat: string;
+    allocated: string;
+    spendable: string;
+    cashFlow: string;
+    viewAllHistory: string;
+    netThisMonth: string;
+    spent: string;
+    received: string;
+    income: string;
+    expense: string;
+    incomeVsExpense: string;
+    lastUpdated: string;
     services: {
       internet: string;
       electricity: string;
@@ -174,6 +226,7 @@ export type TranslationDictionary = {
     welcomeTitle: string;
     loginSub: string;
     joinTitle: string;
+    registerHeading: string;
     registerSub: string;
     usernameOrEmail: string;
     username: string;
@@ -188,6 +241,14 @@ export type TranslationDictionary = {
     createOne: string;
     alreadyHaveAccount: string;
     signInLink: string;
+    loginHeadline: string;
+    registerHeadline: string;
+    loginTagline: string;
+    registerTagline: string;
+    adminNote: string;
+    proofZarinpal: string;
+    proofTransfers: string;
+    proofLimits: string;
   };
   deposit: {
     depositTitle: string;
@@ -233,6 +294,11 @@ export type TranslationDictionary = {
     paymentReasonPlaceholder: string;
     paymentCategory: string;
     paymentCategoryOptional: string;
+    savedBankTitle: string;
+    withdrawInfo: string;
+    dailyRemaining: string;
+    dailyLimitLabel: string;
+    usedLabel: string;
   };
   send: {
     sendTitle: string;
@@ -260,6 +326,13 @@ export type TranslationDictionary = {
     dateTime: string;
     completed: string;
     backToEdit: string;
+    verified: string;
+    fromWallet: string;
+    remainingAfterSend: string;
+    cannotBeUndone: string;
+    seeDetail: string;
+    doneBackToWallet: string;
+    statusLabel: string;
   };
   scheduled: {
     title: string;
@@ -268,6 +341,10 @@ export type TranslationDictionary = {
     createTitle: string;
     createHeading: string;
     createSub: string;
+    nextRuns: string;
+    limitOk: string;
+    limitOkHint: string;
+    pausedNote: string;
     detailTitle: string;
     loading: string;
     signInRequired: string;
@@ -306,6 +383,9 @@ export type TranslationDictionary = {
     createTitle: string;
     createHeading: string;
     createSub: string;
+    goalPreview: string;
+    noContributionsHint: string;
+    contributeAfterCreate: string;
     detailTitle: string;
     loading: string;
     signInRequired: string;
@@ -389,6 +469,8 @@ export type TranslationDictionary = {
     emptyTitle: string;
     emptySub: string;
     markAllRead: string;
+    filterAll: string;
+    unread: string;
     categories: {
       SUCCESS: string;
       WARNING: string;
@@ -420,6 +502,8 @@ export type TranslationDictionary = {
     emptySaved: string;
     emptyRecent: string;
     addSaved: string;
+    useCount: string;
+    lastUsed: string;
     friendlyName: string;
     destinationType: string;
     accountNumber: string;
@@ -476,6 +560,8 @@ export type TranslationDictionary = {
     memberSince: string;
     accountStatus: string;
     activeSessions: string;
+    virtualKeyboard: string;
+    virtualKeyboardHint: string;
   };
   admin: {
     title: string;
@@ -523,6 +609,14 @@ export type TranslationDictionary = {
     recentActivity: string;
     recentSecurity: string;
     openAdmin: string;
+    offerManagement: string;
+    offerTitleLabel: string;
+    offerDescLabel: string;
+    offerPercentLabel: string;
+    saveOffer: string;
+    offerSaved: string;
+    dashboardWelcome: string;
+    usersOnPlatform: string;
     statuses: {
       ACTIVE: string;
       DISABLED: string;
@@ -553,6 +647,8 @@ export type TranslationDictionary = {
     fromUser: string;
     reasonLabel: string;
     categoryLabel: string;
+    transactionId: string;
+    counterparty: string;
     filterAll: string;
     searchPlaceholder: string;
     categories: {
@@ -575,6 +671,16 @@ export type TranslationDictionary = {
     samplePreview: string;
     categoryBreakdown: string;
     envelopeAllocation: string;
+    totalIncome: string;
+    totalExpenses: string;
+    netBalance: string;
+    totalTransactions: string;
+    days7: string;
+    days30: string;
+    days90: string;
+    days1y: string;
+    savingGoals: string;
+    virtualEnvelopes: string;
   };
   messages: AppMessages;
 };

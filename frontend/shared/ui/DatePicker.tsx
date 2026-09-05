@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { DayPicker } from "react-day-picker";
-import "react-day-picker/style.css";
+import DatePicker, { DateObject } from "react-multi-date-picker";
+import gregorian from "react-date-object/calendars/gregorian";
+import gregorian_en from "react-date-object/locales/gregorian_en";
+import persian from "react-date-object/calendars/persian";
+import persian_fa from "react-date-object/locales/persian_fa";
 import { Calendar as CalendarIcon, X } from "lucide-react";
-import { format, parseISO } from "date-fns";
 import { cn } from "@/shared/cn";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { formatDisplayDate } from "@/shared/i18n/dates";
@@ -23,7 +25,15 @@ export type DatePickerProps = {
   allowClear?: boolean;
 };
 
-export function DatePicker({
+function toIsoDate(date: DateObject) {
+  const jsDate = date.toDate();
+  const year = jsDate.getFullYear();
+  const month = String(jsDate.getMonth() + 1).padStart(2, "0");
+  const day = String(jsDate.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function AppDatePicker({
   label,
   value,
   onChange,
@@ -39,9 +49,9 @@ export function DatePicker({
   const { language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const parsedDate = value ? parseISO(value) : undefined;
-  const isValidDate = parsedDate && !isNaN(parsedDate.getTime());
+  const parsedDate = value ? new Date(`${value}T00:00:00`) : undefined;
+  const isValidDate = parsedDate && !Number.isNaN(parsedDate.getTime());
+  const isPersian = language === "fa";
 
   useEffect(() => {
     if (!isOpen) return;
@@ -56,9 +66,7 @@ export function DatePicker({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsOpen(false);
-      }
+      if (event.key === "Escape") setIsOpen(false);
     }
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -69,21 +77,6 @@ export function DatePicker({
     };
   }, [isOpen]);
 
-  function handleSelect(date: Date | undefined) {
-    if (date) {
-      const isoStr = format(date, "yyyy-MM-dd");
-      onChange(isoStr);
-    } else {
-      onChange("");
-    }
-    setIsOpen(false);
-  }
-
-  function handleClear(e: React.MouseEvent) {
-    e.stopPropagation();
-    onChange("");
-  }
-
   return (
     <div className={cn("relative space-y-1", className)} ref={containerRef}>
       {label ? (
@@ -92,64 +85,69 @@ export function DatePicker({
         </label>
       ) : null}
 
-      <div className="relative">
-        <button
-          type="button"
-          id={id}
-          disabled={disabled}
-          onClick={() => setIsOpen((prev) => !prev)}
-          aria-haspopup="dialog"
-          aria-expanded={isOpen}
-          className={cn(
-            "flex w-full items-center justify-between rounded-2xl border bg-surface px-4 py-3 text-sm font-medium transition text-start cursor-pointer hover:border-primary/40 focus:ring-2 focus:ring-primary focus:outline-none",
-            error ? "border-danger" : "border-border",
-            disabled && "opacity-60 cursor-not-allowed",
-            isOpen && "ring-2 ring-primary border-primary",
-          )}
-        >
-          <span className="flex items-center gap-2.5 truncate">
-            <CalendarIcon className="h-4 w-4 text-primary shrink-0" />
-            <span
-              className={cn(
-                "truncate",
-                isValidDate ? "text-foreground font-semibold" : "text-muted",
-              )}
-            >
-              {isValidDate ? formatDisplayDate(value!, language) : placeholder}
+      <DatePicker
+        id={id}
+        calendar={isPersian ? persian : gregorian}
+        locale={isPersian ? persian_fa : gregorian_en}
+        value={isValidDate ? parsedDate : undefined}
+        minDate={minDate}
+        maxDate={maxDate}
+        disabled={disabled}
+        calendarPosition="bottom-center"
+        containerClassName="w-full"
+        onChange={(date: DateObject | DateObject[] | null) => {
+          if (date && !Array.isArray(date)) {
+            onChange(toIsoDate(date));
+          } else {
+            onChange("");
+          }
+          setIsOpen(false);
+        }}
+        render={(_value, openCalendar) => (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              if (disabled) return;
+              setIsOpen((prev) => !prev);
+              openCalendar();
+            }}
+            aria-haspopup="dialog"
+            aria-expanded={isOpen}
+            className={cn(
+              "flex h-10 w-full items-center justify-between rounded-[10px] border bg-surface px-3.5 text-sm font-medium transition text-start cursor-pointer hover:border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none",
+              error ? "border-danger" : "border-border",
+              disabled && "cursor-not-allowed opacity-60",
+              isOpen && "ring-2 ring-primary border-primary",
+            )}
+          >
+            <span className="flex items-center gap-2.5 truncate">
+              <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
+              <span
+                className={cn(
+                  "truncate",
+                  isValidDate ? "font-semibold text-foreground" : "text-muted",
+                )}
+              >
+                {isValidDate ? formatDisplayDate(value!, language) : placeholder}
+              </span>
             </span>
-          </span>
-
-          <span className="flex items-center gap-1.5 ms-2">
             {allowClear && isValidDate && !disabled ? (
               <span
                 role="button"
                 tabIndex={0}
-                onClick={handleClear}
-                className="rounded-full p-1 text-muted hover:bg-surface-muted hover:text-foreground transition"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onChange("");
+                }}
+                className="ms-2 rounded-full p-1 text-muted transition hover:bg-surface-muted hover:text-foreground"
               >
                 <X className="h-3.5 w-3.5" />
               </span>
             ) : null}
-          </span>
-        </button>
-
-        {isOpen && !disabled ? (
-          <div className="absolute inset-x-0 sm:inset-x-auto sm:start-0 top-full z-50 mt-1.5 rounded-2xl border border-border bg-surface p-3 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-150">
-            <DayPicker
-              mode="single"
-              selected={isValidDate ? parsedDate : undefined}
-              onSelect={handleSelect}
-              startMonth={minDate}
-              endMonth={maxDate}
-              disabled={[
-                ...(minDate ? [{ before: minDate }] : []),
-                ...(maxDate ? [{ after: maxDate }] : []),
-              ]}
-              className="poulix-calendar text-foreground"
-            />
-          </div>
-        ) : null}
-      </div>
+          </button>
+        )}
+      />
 
       {error ? (
         <p className="text-xs font-medium text-danger">{error}</p>
@@ -157,3 +155,5 @@ export function DatePicker({
     </div>
   );
 }
+
+export { AppDatePicker as DatePicker };

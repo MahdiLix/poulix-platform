@@ -12,19 +12,20 @@ export default function Icon() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#1d4ed8",
+        background: "linear-gradient(180deg, #4d76ff 0%, #2d5cfe 55%, #1a3fd4 100%)",
         borderRadius: 8,
       }}
     >
       <span
         style={{
           color: "#ffffff",
-          fontSize: 20,
+          fontSize: 15,
           fontWeight: 800,
           fontFamily: "system-ui, sans-serif",
+          letterSpacing: "-0.04em",
         }}
       >
-        P
+        Px
       </span>
     </div>,
     size,

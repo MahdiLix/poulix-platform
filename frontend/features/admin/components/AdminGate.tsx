@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { PageSpinner } from "@/shared/ui/Spinner";
 import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 
@@ -42,8 +43,8 @@ export function AdminGate({ children }: { children: ReactNode }) {
 
   if (!allowed) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-canvas text-sm font-semibold text-muted">
-        {t.admin.checkingAccess}
+      <div className="flex min-h-screen items-center justify-center bg-canvas">
+        <PageSpinner label={t.admin.checkingAccess} />
       </div>
     );
   }

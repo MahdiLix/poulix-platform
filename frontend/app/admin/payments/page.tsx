@@ -1,18 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, Clock, CreditCard, XCircle } from "lucide-react";
 import { AdminShell } from "@/features/admin/components/AdminShell";
-import { Card } from "@/shared/ui/Card";
-import { Button } from "@/shared/ui/Button";
+import { Button, ButtonLink } from "@/shared/ui/Button";
+import { PageSpinner } from "@/shared/ui/Spinner";
+import { Badge } from "@/shared/ui/Badge";
+import { StatCard } from "@/shared/ui/StatCard";
 import { TextField } from "@/shared/ui/TextField";
 import { Select } from "@/shared/ui/Select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/shared/ui/Table";
 import { api } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatIrr } from "@/features/wallet/lib/wallet";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import type { AdminPayment } from "@/features/admin/lib/admin";
+
+function statusBadgeVariant(status: string): "success" | "warning" | "danger" | "muted" {
+  if (status === "PAID") return "success";
+  if (status === "PENDING") return "warning";
+  if (status === "FAILED") return "danger";
+  return "muted";
+}
 
 export default function AdminPaymentsPage() {
   const { t, language } = useLanguage();
@@ -46,8 +63,42 @@ export default function AdminPaymentsPage() {
     };
   }, [q, status, page, t.messages]);
 
+  const { paid, pending, failed } = useMemo(() => {
+    let paid = 0;
+    let pending = 0;
+    let failed = 0;
+    for (const item of items) {
+      if (item.status === "PAID") paid += 1;
+      else if (item.status === "PENDING") pending += 1;
+      else if (item.status === "FAILED") failed += 1;
+    }
+    return { paid, pending, failed };
+  }, [items]);
+
   return (
-    <AdminShell title={t.admin.paymentsTitle}>
+    <AdminShell title={t.admin.paymentsTitle} subtitle={t.admin.subtitle}>
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="Total Payments" value={String(total)} icon={CreditCard} />
+        <StatCard
+          label="Successful"
+          value={String(paid)}
+          icon={CheckCircle2}
+          iconClassName="bg-success-soft text-success"
+        />
+        <StatCard
+          label="Pending"
+          value={String(pending)}
+          icon={Clock}
+          iconClassName="bg-accent-amber-soft text-accent-amber"
+        />
+        <StatCard
+          label="Failed"
+          value={String(failed)}
+          icon={XCircle}
+          iconClassName="bg-danger-soft text-danger"
+        />
+      </div>
+
       <div className="mb-4 flex flex-col gap-3 sm:flex-row">
         <TextField
           label={t.admin.search}
@@ -73,41 +124,83 @@ export default function AdminPaymentsPage() {
           ]}
         />
       </div>
-      {error ? <Card className="p-4 text-sm text-danger">{error}</Card> : null}
+
+      {error ? (
+        <div className="mb-4 rounded-xl bg-danger-soft p-4 text-sm text-danger">
+          {error}
+        </div>
+      ) : null}
       {loading ? (
-        <p className="text-sm text-muted">{t.common.loading}</p>
+        <PageSpinner label={t.common.loading} />
       ) : items.length === 0 ? (
-        <Card className="p-6 text-sm text-muted">{t.admin.empty}</Card>
+        <div className="rounded-2xl border border-border p-8 text-center text-sm text-muted">
+          {t.admin.empty}
+        </div>
       ) : (
-        <ul className="space-y-2">
-          {items.map((item) => (
-            <li key={item.id}>
-              <Link href={`/admin/payments/${item.id}`}>
-                <Card className="p-4 text-xs transition hover:bg-surface-muted">
-                  <p className="font-bold">
-                    {item.status} · {formatIrr(item.amount)}
-                  </p>
-                  <p className="text-muted">
-                    {item.user.username} · {item.refId ?? "—"} ·{" "}
-                    {formatDisplayDateTime(item.createdAt, language)}
-                  </p>
-                </Card>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <Table>
+          <TableHead>
+            <TableHeaderCell>ID</TableHeaderCell>
+            <TableHeaderCell>User</TableHeaderCell>
+            <TableHeaderCell>Amount</TableHeaderCell>
+            <TableHeaderCell>Gateway</TableHeaderCell>
+            <TableHeaderCell>{t.admin.status}</TableHeaderCell>
+            <TableHeaderCell>Created At</TableHeaderCell>
+            <TableHeaderCell>Actions</TableHeaderCell>
+          </TableHead>
+          <TableBody>
+            {items.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell className="font-mono text-xs text-muted">
+                  #{item.id.slice(0, 6)}
+                </TableCell>
+                <TableCell className="font-semibold">
+                  {item.user.username}
+                </TableCell>
+                <TableCell className="font-bold">
+                  {formatIrr(item.amount)}
+                </TableCell>
+                <TableCell className="text-xs text-muted">
+                  ZarinPal{item.refId ? ` · ${item.refId}` : ""}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={statusBadgeVariant(item.status)}>
+                    {item.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-xs text-muted">
+                  {formatDisplayDateTime(item.createdAt, language)}
+                </TableCell>
+                <TableCell>
+                  <ButtonLink
+                    href={`/admin/payments/${item.id}`}
+                    size="sm"
+                    variant="outline"
+                    className="w-auto"
+                  >
+                    View
+                  </ButtonLink>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
+
       {total > 20 ? (
         <div className="mt-4 flex gap-2">
           <Button
-            variant="ghost"
+            variant="outline"
+            size="sm"
+            className="w-auto"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
           >
             {t.admin.prev}
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
+            size="sm"
+            className="w-auto"
             disabled={page * 20 >= total}
             onClick={() => setPage((p) => p + 1)}
           >

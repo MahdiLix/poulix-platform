@@ -1,11 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { CheckCircle2, Wallet } from "lucide-react";
 import { AdminShell } from "@/features/admin/components/AdminShell";
-import { Card } from "@/shared/ui/Card";
-import { Button } from "@/shared/ui/Button";
+import { Button, ButtonLink } from "@/shared/ui/Button";
+import { PageSpinner } from "@/shared/ui/Spinner";
+import { Badge } from "@/shared/ui/Badge";
+import { StatCard } from "@/shared/ui/StatCard";
 import { TextField } from "@/shared/ui/TextField";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/shared/ui/Table";
 import { api } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
@@ -44,52 +54,107 @@ export default function AdminWithdrawalsPage() {
     };
   }, [q, page, t.messages]);
 
+  const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
+
   return (
-    <AdminShell title={t.admin.withdrawalsTitle}>
-      <TextField
-        label={t.admin.search}
-        value={q}
-        onChange={(e) => {
-          setPage(1);
-          setQ(e.target.value);
-        }}
-      />
+    <AdminShell title={t.admin.withdrawalsTitle} subtitle={t.admin.subtitle}>
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="Total Withdrawals" value={String(total)} icon={Wallet} />
+        <StatCard
+          label="Successful"
+          value={String(items.length)}
+          icon={CheckCircle2}
+          iconClassName="bg-success-soft text-success"
+        />
+        <StatCard label="Total Amount" value={formatIrr(totalAmount)} />
+        <StatCard label="Page" value={`${page}`} />
+      </div>
+
+      <div className="mb-4">
+        <TextField
+          label={t.admin.search}
+          value={q}
+          onChange={(e) => {
+            setPage(1);
+            setQ(e.target.value);
+          }}
+        />
+      </div>
+
       {error ? (
-        <Card className="mt-4 p-4 text-sm text-danger">{error}</Card>
+        <div className="mb-4 rounded-xl bg-danger-soft p-4 text-sm text-danger">
+          {error}
+        </div>
       ) : null}
       {loading ? (
-        <p className="mt-4 text-sm text-muted">{t.common.loading}</p>
+        <PageSpinner label={t.common.loading} />
       ) : items.length === 0 ? (
-        <Card className="mt-4 p-6 text-sm text-muted">{t.admin.empty}</Card>
+        <div className="rounded-2xl border border-border p-8 text-center text-sm text-muted">
+          {t.admin.empty}
+        </div>
       ) : (
-        <ul className="mt-4 space-y-2">
-          {items.map((item) => (
-            <li key={item.id}>
-              <Link href={`/admin/transactions/${item.id}`}>
-                <Card className="p-4 text-xs transition hover:bg-surface-muted">
-                  <p className="font-bold">{formatIrr(item.amount)}</p>
-                  <p className="text-muted">
-                    {item.user.username} ·{" "}
-                    {formatDisplayDateTime(item.createdAt, language)}
-                  </p>
-                  {item.reason ? <p>{item.reason}</p> : null}
-                </Card>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <Table>
+          <TableHead>
+            <TableHeaderCell>ID</TableHeaderCell>
+            <TableHeaderCell>User</TableHeaderCell>
+            <TableHeaderCell>Method</TableHeaderCell>
+            <TableHeaderCell>Amount</TableHeaderCell>
+            <TableHeaderCell>{t.admin.status}</TableHeaderCell>
+            <TableHeaderCell>Created At</TableHeaderCell>
+            <TableHeaderCell>Actions</TableHeaderCell>
+          </TableHead>
+          <TableBody>
+            {items.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell className="font-mono text-xs text-muted">
+                  #{item.id.slice(0, 6)}
+                </TableCell>
+                <TableCell className="font-semibold">
+                  {item.user.username}
+                </TableCell>
+                <TableCell className="text-xs text-muted">
+                  Bank Transfer
+                </TableCell>
+                <TableCell className="font-bold">
+                  {formatIrr(item.amount)}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="success">Success</Badge>
+                </TableCell>
+                <TableCell className="text-xs text-muted">
+                  {formatDisplayDateTime(item.createdAt, language)}
+                </TableCell>
+                <TableCell>
+                  <ButtonLink
+                    href={`/admin/transactions/${item.id}`}
+                    size="sm"
+                    variant="outline"
+                    className="w-auto"
+                  >
+                    View
+                  </ButtonLink>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
+
       {total > 20 ? (
         <div className="mt-4 flex gap-2">
           <Button
-            variant="ghost"
+            variant="outline"
+            size="sm"
+            className="w-auto"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
           >
             {t.admin.prev}
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
+            size="sm"
+            className="w-auto"
             disabled={page * 20 >= total}
             onClick={() => setPage((p) => p + 1)}
           >

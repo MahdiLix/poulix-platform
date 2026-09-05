@@ -1,12 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { ShieldAlert, UserPlus, UserCheck, Users } from "lucide-react";
 import { AdminShell } from "@/features/admin/components/AdminShell";
+import { UserStatusActions } from "@/features/admin/components/UserStatusActions";
+import { Badge } from "@/shared/ui/Badge";
+import { PageSpinner } from "@/shared/ui/Spinner";
+import { Button, ButtonLink } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
-import { Button } from "@/shared/ui/Button";
 import { TextField } from "@/shared/ui/TextField";
 import { Select } from "@/shared/ui/Select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/shared/ui/Table";
+import { StatCard } from "@/shared/ui/StatCard";
 import { api } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
@@ -22,9 +34,11 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     void api
       .getAdminUsers({ q, status, page })
       .then((data) => {
@@ -43,82 +57,169 @@ export default function AdminUsersPage() {
     return () => {
       cancelled = true;
     };
-  }, [q, status, page, t.messages]);
+  }, [q, status, page, t.messages, reloadKey]);
+
+  const activeCount = items.filter((u) => u.status === "ACTIVE").length;
+  const blockedCount = items.filter(
+    (u) => u.status === "DISABLED" || u.status === "LOCKED",
+  ).length;
 
   return (
     <AdminShell title={t.admin.usersTitle}>
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-        <TextField
-          label={t.admin.search}
-          value={q}
-          onChange={(e) => {
-            setPage(1);
-            setQ(e.target.value);
-          }}
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard
+          label={t.admin.totalUsers}
+          value={String(total)}
+          icon={Users}
         />
-        <Select
-          label={t.admin.status}
-          value={status}
-          onChange={(val) => {
-            setPage(1);
-            setStatus(val);
-          }}
-          options={[
-            { value: "", label: t.admin.allStatuses },
-            { value: "ACTIVE", label: t.admin.statuses.ACTIVE },
-            { value: "DISABLED", label: t.admin.statuses.DISABLED },
-            { value: "LOCKED", label: t.admin.statuses.LOCKED },
-          ]}
+        <StatCard
+          label={t.admin.activeUsers}
+          value={String(activeCount)}
+          icon={UserCheck}
+        />
+        <StatCard
+          label={t.admin.statuses.DISABLED}
+          value={String(blockedCount)}
+          icon={ShieldAlert}
+          iconClassName="bg-danger-soft text-danger"
+        />
+        <StatCard
+          label="New this month"
+          value={String(items.length)}
+          icon={UserPlus}
         />
       </div>
 
-      {error ? <Card className="p-4 text-sm text-danger">{error}</Card> : null}
-      {loading ? (
-        <p className="text-sm text-muted">{t.common.loading}</p>
-      ) : null}
-      {!loading && items.length === 0 ? (
-        <Card className="p-6 text-sm text-muted">{t.admin.empty}</Card>
-      ) : (
-        <ul className="space-y-3">
-          {items.map((user) => (
-            <li key={user.id}>
-              <Link href={`/admin/users/${user.id}`}>
-                <Card className="flex items-center justify-between p-4 transition hover:bg-surface-muted">
-                  <div>
-                    <p className="text-sm font-bold">{user.username}</p>
-                    <p className="text-xs text-muted">{user.email}</p>
-                  </div>
-                  <div className="text-end text-xs">
-                    <p>{t.admin.statuses[user.status]}</p>
-                    <p className="font-semibold">
-                      {user.wallet ? formatIrr(user.wallet.balance) : "—"}
-                    </p>
-                  </div>
-                </Card>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {total > 20 ? (
-        <div className="mt-4 flex gap-2">
-          <Button
-            variant="ghost"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            {t.admin.prev}
-          </Button>
-          <Button
-            variant="ghost"
-            disabled={page * 20 >= total}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            {t.admin.next}
-          </Button>
+      <Card className="space-y-4 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <TextField
+            label={t.admin.search}
+            value={q}
+            onChange={(e) => {
+              setPage(1);
+              setQ(e.target.value);
+            }}
+          />
+          <Select
+            label={t.admin.status}
+            value={status}
+            onChange={(val) => {
+              setPage(1);
+              setStatus(val);
+            }}
+            options={[
+              { value: "", label: t.admin.allStatuses },
+              { value: "ACTIVE", label: t.admin.statuses.ACTIVE },
+              { value: "DISABLED", label: t.admin.statuses.DISABLED },
+              { value: "LOCKED", label: t.admin.statuses.LOCKED },
+            ]}
+          />
         </div>
-      ) : null}
+
+        {error ? (
+          <div className="rounded-xl bg-danger-soft p-4 text-sm text-danger">
+            {error}
+          </div>
+        ) : null}
+        {loading ? (
+          <PageSpinner label={t.common.loading} />
+        ) : null}
+
+        {!loading && items.length === 0 ? (
+          <div className="rounded-2xl border border-border p-8 text-center text-sm text-muted">
+            {t.admin.empty}
+          </div>
+        ) : !loading ? (
+          <Table className="border-0">
+            <TableHead>
+              <TableHeaderCell>ID</TableHeaderCell>
+              <TableHeaderCell>Name</TableHeaderCell>
+              <TableHeaderCell>Email</TableHeaderCell>
+              <TableHeaderCell>Role</TableHeaderCell>
+              <TableHeaderCell>Status</TableHeaderCell>
+              <TableHeaderCell>Balance</TableHeaderCell>
+              <TableHeaderCell>Actions</TableHeaderCell>
+            </TableHead>
+            <TableBody>
+              {items.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-mono text-xs text-muted">
+                    #{user.id.slice(0, 6)}
+                  </TableCell>
+                  <TableCell className="font-semibold">{user.username}</TableCell>
+                  <TableCell className="text-muted">{user.email}</TableCell>
+                  <TableCell>
+                    {user.role === "ADMIN" ? (
+                      <Badge className="bg-foreground text-surface">
+                        ADMIN
+                      </Badge>
+                    ) : (
+                      <Badge variant="muted">{user.role ?? "USER"}</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        user.status === "ACTIVE"
+                          ? "success"
+                          : user.status === "LOCKED"
+                            ? "danger"
+                            : "warning"
+                      }
+                    >
+                      {t.admin.statuses[user.status]}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="font-semibold">
+                    {user.wallet ? formatIrr(user.wallet.balance) : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col items-end gap-2">
+                      <ButtonLink
+                        href={`/admin/users/${user.id}`}
+                        size="sm"
+                        variant="secondary"
+                        className="w-auto"
+                      >
+                        View
+                      </ButtonLink>
+                      <UserStatusActions
+                        userId={user.id}
+                        status={user.status}
+                        compact
+                        onUpdated={() => setReloadKey((key) => key + 1)}
+                      />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : null}
+
+        {total > 20 ? (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-auto"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              {t.admin.prev}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-auto"
+              disabled={page * 20 >= total}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              {t.admin.next}
+            </Button>
+          </div>
+        ) : null}
+      </Card>
     </AdminShell>
   );
 }

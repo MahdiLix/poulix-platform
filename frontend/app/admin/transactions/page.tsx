@@ -1,19 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowDownLeft, ArrowUpRight, Download, ListChecks, XCircle } from "lucide-react";
 import { AdminShell } from "@/features/admin/components/AdminShell";
-import { Card } from "@/shared/ui/Card";
-import { Button } from "@/shared/ui/Button";
+import { Button, ButtonLink } from "@/shared/ui/Button";
+import { PageSpinner } from "@/shared/ui/Spinner";
+import { Badge } from "@/shared/ui/Badge";
+import { StatCard } from "@/shared/ui/StatCard";
 import { TextField } from "@/shared/ui/TextField";
 import { Select } from "@/shared/ui/Select";
 import { DatePicker } from "@/shared/ui/DatePicker";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/shared/ui/Table";
 import { api } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatIrr } from "@/features/wallet/lib/wallet";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import type { AdminTransaction } from "@/features/admin/lib/admin";
+
+const INCOME_TYPES = new Set(["DEPOSIT", "TRANSFER_IN", "GOAL_RELEASE", "ENVELOPE_RELEASE"]);
 
 export default function AdminTransactionsPage() {
   const { t, language } = useLanguage();
@@ -55,89 +67,176 @@ export default function AdminTransactionsPage() {
     };
   }, [q, type, from, to, page, t.messages]);
 
+  const { deposits, withdrawals, transfers } = useMemo(() => {
+    let deposits = 0;
+    let withdrawals = 0;
+    let transfers = 0;
+    for (const item of items) {
+      if (item.type === "DEPOSIT") deposits += 1;
+      else if (item.type === "WITHDRAWAL") withdrawals += 1;
+      else if (item.type.startsWith("TRANSFER")) transfers += 1;
+    }
+    return { deposits, withdrawals, transfers };
+  }, [items]);
+
   return (
-    <AdminShell title={t.admin.transactionsTitle}>
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-        <TextField
-          label={t.admin.search}
-          value={q}
-          onChange={(e) => {
-            setPage(1);
-            setQ(e.target.value);
-          }}
+    <AdminShell title={t.admin.transactionsTitle} subtitle={t.admin.subtitle}>
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="Total" value={String(total)} icon={ListChecks} />
+        <StatCard
+          label="Deposits"
+          value={String(deposits)}
+          icon={ArrowDownLeft}
+          iconClassName="bg-success-soft text-success"
         />
-        <Select
-          label={t.admin.type}
-          value={type}
-          onChange={(val) => {
-            setPage(1);
-            setType(val);
-          }}
-          options={[
-            { value: "", label: t.admin.allTypes },
-            { value: "DEPOSIT", label: "DEPOSIT" },
-            { value: "WITHDRAWAL", label: "WITHDRAWAL" },
-            { value: "TRANSFER_OUT", label: "TRANSFER_OUT" },
-            { value: "TRANSFER_IN", label: "TRANSFER_IN" },
-            { value: "GOAL_CONTRIBUTE", label: "GOAL_CONTRIBUTE" },
-            { value: "GOAL_RELEASE", label: "GOAL_RELEASE" },
-            { value: "ENVELOPE_ALLOCATE", label: "ENVELOPE_ALLOCATE" },
-            { value: "ENVELOPE_RELEASE", label: "ENVELOPE_RELEASE" },
-          ]}
+        <StatCard
+          label="Withdrawals"
+          value={String(withdrawals)}
+          icon={ArrowUpRight}
+          iconClassName="bg-accent-amber-soft text-accent-amber"
         />
-        <DatePicker
-          label={t.admin.fromDate}
-          value={from}
-          onChange={(val) => {
-            setPage(1);
-            setFrom(val);
-          }}
-        />
-        <DatePicker
-          label={t.admin.toDate}
-          value={to}
-          onChange={(val) => {
-            setPage(1);
-            setTo(val);
-          }}
+        <StatCard
+          label="Transfers"
+          value={String(transfers)}
+          icon={XCircle}
+          iconClassName="bg-accent-purple-soft text-accent-purple"
         />
       </div>
-      {error ? <Card className="p-4 text-sm text-danger">{error}</Card> : null}
+
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <TextField
+            label={t.admin.search}
+            value={q}
+            onChange={(e) => {
+              setPage(1);
+              setQ(e.target.value);
+            }}
+          />
+          <Select
+            label={t.admin.type}
+            value={type}
+            onChange={(val) => {
+              setPage(1);
+              setType(val);
+            }}
+            options={[
+              { value: "", label: t.admin.allTypes },
+              { value: "DEPOSIT", label: "DEPOSIT" },
+              { value: "WITHDRAWAL", label: "WITHDRAWAL" },
+              { value: "TRANSFER_OUT", label: "TRANSFER_OUT" },
+              { value: "TRANSFER_IN", label: "TRANSFER_IN" },
+              { value: "GOAL_CONTRIBUTE", label: "GOAL_CONTRIBUTE" },
+              { value: "GOAL_RELEASE", label: "GOAL_RELEASE" },
+              { value: "ENVELOPE_ALLOCATE", label: "ENVELOPE_ALLOCATE" },
+              { value: "ENVELOPE_RELEASE", label: "ENVELOPE_RELEASE" },
+            ]}
+          />
+          <DatePicker
+            label={t.admin.fromDate}
+            value={from}
+            onChange={(val) => {
+              setPage(1);
+              setFrom(val);
+            }}
+          />
+          <DatePicker
+            label={t.admin.toDate}
+            value={to}
+            onChange={(val) => {
+              setPage(1);
+              setTo(val);
+            }}
+          />
+        </div>
+        <Button variant="outline" size="sm" className="w-auto shrink-0">
+          <Download className="me-1.5 h-3.5 w-3.5" />
+          Export
+        </Button>
+      </div>
+
+      {error ? (
+        <div className="mb-4 rounded-xl bg-danger-soft p-4 text-sm text-danger">
+          {error}
+        </div>
+      ) : null}
       {loading ? (
-        <p className="text-sm text-muted">{t.common.loading}</p>
+        <PageSpinner label={t.common.loading} />
       ) : items.length === 0 ? (
-        <Card className="p-6 text-sm text-muted">{t.admin.empty}</Card>
+        <div className="rounded-2xl border border-border p-8 text-center text-sm text-muted">
+          {t.admin.empty}
+        </div>
       ) : (
-        <ul className="space-y-2">
-          {items.map((item) => (
-            <li key={item.id}>
-              <Link href={`/admin/transactions/${item.id}`}>
-                <Card className="p-4 text-xs transition hover:bg-surface-muted">
-                  <p className="font-bold">
-                    {item.type} · {formatIrr(item.amount)}
-                  </p>
-                  <p className="text-muted">
-                    {item.user.username} ·{" "}
+        <Table>
+          <TableHead>
+            <TableHeaderCell>ID</TableHeaderCell>
+            <TableHeaderCell>{t.admin.type}</TableHeaderCell>
+            <TableHeaderCell>User</TableHeaderCell>
+            <TableHeaderCell>Amount</TableHeaderCell>
+            <TableHeaderCell>Created At</TableHeaderCell>
+            <TableHeaderCell>Actions</TableHeaderCell>
+          </TableHead>
+          <TableBody>
+            {items.map((item) => {
+              const isIncome = INCOME_TYPES.has(item.type);
+              return (
+                <TableRow key={item.id}>
+                  <TableCell className="font-mono text-xs text-muted">
+                    #{item.id.slice(0, 6)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={isIncome ? "success" : "info"}>
+                      {item.type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="font-semibold">
+                    {item.user.username}
+                  </TableCell>
+                  <TableCell
+                    className={
+                      isIncome
+                        ? "font-bold text-success"
+                        : "font-bold text-foreground"
+                    }
+                  >
+                    {isIncome ? "+" : "-"}
+                    {formatIrr(item.amount)}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted">
                     {formatDisplayDateTime(item.createdAt, language)}
-                  </p>
-                  {item.reason ? <p>{item.reason}</p> : null}
-                </Card>
-              </Link>
-            </li>
-          ))}
-        </ul>
+                  </TableCell>
+                  <TableCell>
+                    <ButtonLink
+                      href={`/admin/transactions/${item.id}`}
+                      size="sm"
+                      variant="outline"
+                      className="w-auto"
+                    >
+                      View
+                    </ButtonLink>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
       )}
+
       {total > 20 ? (
         <div className="mt-4 flex gap-2">
           <Button
-            variant="ghost"
+            variant="outline"
+            size="sm"
+            className="w-auto"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
           >
             {t.admin.prev}
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
+            size="sm"
+            className="w-auto"
             disabled={page * 20 >= total}
             onClick={() => setPage((p) => p + 1)}
           >

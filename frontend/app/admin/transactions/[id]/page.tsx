@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { AdminShell } from "@/features/admin/components/AdminShell";
+import { PageSpinner } from "@/shared/ui/Spinner";
 import { Card } from "@/shared/ui/Card";
 import { api } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
@@ -43,7 +44,7 @@ export default function AdminTransactionDetailPage() {
       {error ? (
         <Card className="p-4 text-sm text-danger">{error}</Card>
       ) : !item ? (
-        <p className="text-sm text-muted">{t.common.loading}</p>
+        <PageSpinner label={t.common.loading} />
       ) : (
         <Card className="space-y-2 p-4 text-sm">
           <p className="text-lg font-bold">

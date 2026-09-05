@@ -48,6 +48,12 @@ import type {
   AdminUserDetail,
   AdminUserSummary,
 } from "@/features/admin/lib/admin";
+import {
+  DEFAULT_TOKEN_MAX_AGE_SECONDS,
+  getTokenMaxAgeSeconds,
+  isPublicAuthPath,
+  notifySessionExpired,
+} from "@/shared/user/session";
 
 export type AuthUser = {
   id: string;
@@ -94,7 +100,6 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 const ACCESS_TOKEN_COOKIE = "poulix_access_token";
 const LEGACY_TOKEN_STORAGE_KEY = "poulix_access_token";
-const DEFAULT_TOKEN_MAX_AGE_SECONDS = 900;
 
 function isAuthSessionEndpoint(endpoint: string) {
   const path = endpoint.split("?")[0].replace(/^\/api/, "");
@@ -125,24 +130,7 @@ function cookieAttributeString(maxAgeSeconds: number) {
 }
 
 function tokenMaxAgeSeconds(token: string) {
-  try {
-    const payloadSegment = token.split(".")[1];
-    if (!payloadSegment) {
-      return DEFAULT_TOKEN_MAX_AGE_SECONDS;
-    }
-
-    const normalized = payloadSegment.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
-    const payload = JSON.parse(atob(padded)) as { exp?: number };
-
-    if (typeof payload.exp === "number") {
-      return Math.max(1, payload.exp - Math.floor(Date.now() / 1000));
-    }
-  } catch {
-    // Fall back to the backend default JWT lifetime.
-  }
-
-  return DEFAULT_TOKEN_MAX_AGE_SECONDS;
+  return getTokenMaxAgeSeconds(token, DEFAULT_TOKEN_MAX_AGE_SECONDS);
 }
 
 function clearLegacyLocalStorageToken() {
@@ -204,21 +192,30 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   // Failed login/register is 401 and must not wipe an existing session.
   if (response.status === 401 && attachToken) {
     removeStoredToken();
-    if (
-      isBrowser() &&
-      window.location.pathname !== "/login" &&
-      window.location.pathname !== "/register"
-    ) {
-      window.location.href = "/login";
+    notifySessionExpired();
+    if (isBrowser() && !isPublicAuthPath(window.location.pathname)) {
+      window.location.assign("/login");
+      return new Promise(() => {});
     }
   }
 
-  const data = await response.json().catch(() => null);
+  const contentType = response.headers.get("content-type") || "";
+  const data = contentType.includes("application/json")
+    ? await response.json().catch(() => null)
+    : await response.text().catch(() => null);
 
   if (!response.ok) {
     const errorMsg =
-      data?.message || response.statusText || "An error occurred";
-    throw new Error(Array.isArray(errorMsg) ? errorMsg.join(", ") : errorMsg);
+      (data && typeof data === "object" && "message" in data
+        ? (data as { message?: unknown }).message
+        : null) ||
+      response.statusText ||
+      "An error occurred";
+    throw new Error(Array.isArray(errorMsg) ? errorMsg.join(", ") : String(errorMsg));
+  }
+
+  if (typeof data === "string") {
+    throw new Error("An error occurred");
   }
 
   return data;
@@ -535,10 +532,12 @@ export const api = {
   getAdminSecurityEvents: (params?: {
     q?: string;
     page?: number;
+    pageSize?: number;
   }): Promise<AdminPaginated<AdminSecurityEvent>> => {
     const query = new URLSearchParams();
     if (params?.q) query.set("q", params.q);
     if (params?.page) query.set("page", String(params.page));
+    if (params?.pageSize) query.set("pageSize", String(params.pageSize));
     const suffix = query.toString() ? `?${query.toString()}` : "";
     return fetchWithAuth(`/admin/security-events${suffix}`);
   },

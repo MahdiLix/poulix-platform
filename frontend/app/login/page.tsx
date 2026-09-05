@@ -1,15 +1,27 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { AppShell } from "@/shared/layout/AppShell";
-import { HeaderBar } from "@/shared/layout/HeaderBar";
+import {
+  Eye,
+  EyeOff,
+  Lock,
+  CreditCard,
+  Send,
+  ShieldCheck,
+  User,
+} from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { TextField } from "@/shared/ui/TextField";
+import { Spinner } from "@/shared/ui/Spinner";
+import { ThemeToggle } from "@/shared/theme/ThemeToggle";
+import { LanguageToggle } from "@/shared/theme/LanguageToggle";
+import { BrandLogo } from "@/shared/brand/BrandLogo";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
+import { flashToast } from "@/shared/ui/Toast";
+import { getStoredToken } from "@/shared/api";
 import {
   loginAndStoreSession,
   validateIdentifier,
@@ -17,7 +29,6 @@ import {
 } from "@/features/auth/lib/auth";
 
 export default function LoginPage() {
-  const router = useRouter();
   const { t } = useLanguage();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -26,13 +37,18 @@ export default function LoginPage() {
     password?: string | null;
   }>({});
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (getStoredToken()) {
+      window.location.replace("/");
+    }
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
-    setSuccess("");
 
     const nextErrors = {
       identifier: validateIdentifier(identifier, t.messages),
@@ -46,85 +62,170 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const res = await loginAndStoreSession(
+      await loginAndStoreSession(
         { identifier, password },
         t.messages,
       );
-      setSuccess(`${t.common.welcomeBack}, ${res.user.email}`);
-      router.push(res.user.role === "ADMIN" ? "/admin" : "/");
-      router.refresh();
+      flashToast({
+        title: t.messages.success.loginSuccess,
+        description: t.common.welcomeToPoulix,
+      });
+      window.location.assign("/");
     } catch (err: unknown) {
       setError(localizeError(err, t.messages, "loginFailed"));
-    } finally {
       setLoading(false);
     }
   }
 
   return (
-    <AppShell showBottomNav={false}>
-      <HeaderBar title={t.auth.welcomeTitle} backHref="/" />
-
-      <div className="flex flex-1 flex-col justify-center space-y-6 p-6 lg:mx-auto lg:w-full lg:max-w-md">
-        <div className="space-y-1 text-center">
-          <h2 className="text-2xl font-extrabold text-foreground">
-            {t.auth.welcomeTitle}
-          </h2>
-          <p className="text-sm text-muted">{t.auth.loginSub}</p>
+    <div className="flex min-h-screen flex-col bg-canvas lg:flex-row">
+      <div className="relative hidden w-72 shrink-0 flex-col justify-between bg-sidebar p-7 text-sidebar-foreground xl:w-80 xl:p-8 lg:flex">
+        <div className="flex items-center gap-3">
+          <BrandLogo size={40} priority />
+          <div>
+            <p className="text-base font-bold tracking-tight">{t.common.appName}</p>
+            <p className="text-[11px] text-sidebar-muted">{t.home.financialWallet}</p>
+          </div>
         </div>
-
-        <Card className="space-y-4 p-6">
-          {error ? (
-            <div className="rounded-xl bg-danger-soft p-3 text-xs font-medium text-danger">
-              {error}
-            </div>
-          ) : null}
-
-          {success ? (
-            <div className="rounded-xl bg-success-soft p-3 text-xs font-medium text-success">
-              {success}
-            </div>
-          ) : null}
-
-          <form onSubmit={handleSubmit} className="space-y-3" noValidate>
-            <TextField
-              label={t.auth.usernameOrEmail}
-              name="identifier"
-              autoComplete="username"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="user@example.com"
-              error={fieldErrors.identifier}
-              disabled={loading}
-            />
-
-            <TextField
-              label={t.auth.password}
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              error={fieldErrors.password}
-              disabled={loading}
-            />
-
-            <Button type="submit" disabled={loading}>
-              {loading ? t.auth.signingIn : t.auth.signInBtn}
-            </Button>
-          </form>
-        </Card>
-
-        <p className="text-center text-sm text-muted">
-          {t.auth.dontHaveAccount}{" "}
-          <Link
-            href="/register"
-            className="font-semibold text-primary hover:underline active:opacity-80"
-          >
-            {t.auth.createOne}
-          </Link>
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold leading-snug tracking-tight">
+            {t.auth.loginHeadline.replace(/\.$/, "")}
+            <span className="text-primary">.</span>
+          </h2>
+          <p className="text-xs leading-relaxed text-sidebar-muted">
+            {t.auth.loginTagline}
+          </p>
+          <ul className="space-y-2 text-xs text-sidebar-muted">
+            <li className="flex items-center gap-2">
+              <CreditCard className="h-3.5 w-3.5 shrink-0 text-primary" />
+              {t.auth.proofZarinpal}
+            </li>
+            <li className="flex items-center gap-2">
+              <Send className="h-3.5 w-3.5 shrink-0 text-primary" />
+              {t.auth.proofTransfers}
+            </li>
+            <li className="flex items-center gap-2">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary" />
+              {t.auth.proofLimits}
+            </li>
+          </ul>
+        </div>
+        <p className="text-[11px] text-sidebar-muted">
+          English and Persian · Light and dark supported
         </p>
       </div>
-    </AppShell>
+
+      <div className="flex flex-1 flex-col">
+        <div className="flex items-center justify-end gap-2 p-4 lg:p-6">
+          <LanguageToggle />
+          <ThemeToggle />
+        </div>
+
+        <div className="flex flex-1 flex-col items-center justify-center px-6 pb-10">
+          <div className="w-full max-w-md space-y-6">
+            <div className="mb-2 flex items-center gap-3 lg:hidden">
+              <BrandLogo size={40} />
+              <p className="text-lg font-bold">{t.common.appName}</p>
+            </div>
+
+            <Card className="space-y-5 rounded-3xl p-6 lg:p-8">
+              <div className="space-y-1">
+                <h2 className="text-2xl font-bold tracking-tight text-foreground">
+                  {t.auth.welcomeTitle}
+                </h2>
+                <p className="text-sm text-muted">{t.auth.loginSub}</p>
+              </div>
+
+              {error ? (
+                <div className="rounded-xl bg-danger-soft p-3 text-xs font-medium text-danger">
+                  {error}
+                </div>
+              ) : null}
+
+              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                <TextField
+                  label={t.auth.username}
+                  name="identifier"
+                  autoComplete="username"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder="sara"
+                  error={fieldErrors.identifier}
+                  disabled={loading}
+                  leftIcon={<User className="h-4 w-4" />}
+                />
+
+                <TextField
+                  label={t.auth.password}
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  error={fieldErrors.password}
+                  disabled={loading}
+                  leftIcon={<Lock className="h-4 w-4" />}
+                  rightIcon={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="rounded p-1 text-muted transition hover:bg-surface-muted hover:text-foreground"
+                      aria-label="Toggle password visibility"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  }
+                />
+
+                <Button type="submit" disabled={loading}>
+                  {loading ? (
+                    <Spinner size="sm" label={t.auth.signingIn} />
+                  ) : (
+                    t.auth.signInBtn
+                  )}
+                </Button>
+              </form>
+
+              <p className="text-center text-sm text-muted">
+                {t.auth.dontHaveAccount}{" "}
+                <Link
+                  href="/register"
+                  className="font-semibold text-primary hover:underline"
+                >
+                  {t.auth.createOne}
+                </Link>
+                .
+              </p>
+
+              <div className="flex items-start gap-2 border-t border-border pt-4 text-xs text-muted">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <p>
+                  {t.auth.adminNote.split("Admin Console")[0]}
+                  <span className="font-semibold text-primary underline">
+                    {t.admin.title}
+                  </span>
+                  {t.auth.adminNote.split("Admin Console")[1] ?? ""}
+                </p>
+              </div>
+            </Card>
+
+            <p className="text-center">
+              <Link
+                href="/"
+                className="text-xs font-medium text-muted hover:text-foreground"
+              >
+                ← {t.common.backToWallet}
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

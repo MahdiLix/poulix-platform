@@ -34,6 +34,16 @@ export function proxy(request: NextRequest) {
   );
 
   if (isPublic) {
+    const token = request.cookies.get("poulix_access_token")?.value;
+    if (
+      token &&
+      (pathname === "/login" ||
+        pathname === "/register" ||
+        pathname.startsWith("/login/") ||
+        pathname.startsWith("/register/"))
+    ) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
     return NextResponse.next();
   }
 

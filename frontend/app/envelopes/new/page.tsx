@@ -10,14 +10,13 @@ export default function NewEnvelopePage() {
   const { t } = useLanguage();
 
   return (
-    <AppShell showBottomNav={false} variant="hero">
+    <AppShell showBottomNav={false}>
       <HeaderBar
         title={t.envelopes.createTitle}
         backHref="/envelopes"
-        variant="hero"
       />
 
-      <div className="mt-2 flex flex-1 flex-col space-y-6 rounded-t-[36px] bg-background p-6 lg:mx-auto lg:w-full lg:max-w-lg lg:rounded-3xl lg:shadow-xl lg:my-6">
+      <div className="mx-auto flex w-full flex-1 flex-col space-y-6 p-4 lg:max-w-xl lg:p-6">
         <div className="pt-2 text-center">
           <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-primary">
             <Layers className="h-6 w-6" />

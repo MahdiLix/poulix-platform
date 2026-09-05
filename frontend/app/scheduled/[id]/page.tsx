@@ -126,7 +126,7 @@ export default function ScheduledPaymentDetailPage() {
     <AppShell showBottomNav={false}>
       <HeaderBar title={t.scheduled.detailTitle} backHref="/scheduled" />
 
-      <div className="space-y-4 p-6 lg:mx-auto lg:w-full lg:max-w-lg">
+      <div className="space-y-4 p-6 lg:mx-auto lg:w-full lg:max-w-5xl">
         <Card className="space-y-4 p-5">
           <div className="flex items-center justify-between">
             <span

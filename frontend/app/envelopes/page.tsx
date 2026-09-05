@@ -1,27 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Layers, Plus } from "lucide-react";
+import { ArrowDown, Plus } from "lucide-react";
 import { AppShell } from "@/shared/layout/AppShell";
 import { HeaderBar } from "@/shared/layout/HeaderBar";
 import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
+import { PageSpinner } from "@/shared/ui/Spinner";
 import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
+import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import { formatIrr } from "@/features/wallet/lib/wallet";
 import { EnvelopeCard } from "@/features/envelopes/components/EnvelopeCard";
-import { WalletBalance } from "@/features/wallet/components/WalletBalance";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
-import type { Envelope } from "@/features/envelopes/lib/envelopes";
+import type { Envelope, EnvelopeMovement } from "@/features/envelopes/lib/envelopes";
 import { parseEnvelopeAmount } from "@/features/envelopes/lib/envelopes";
+
+const ENVELOPE_COLORS = [
+  "#1a7a68",
+  "#4a8ea8",
+  "#c4a05a",
+  "#c45c4a",
+  "#7c6bc4",
+  "#2ea88f",
+];
 
 type PageStatus = "loading" | "ready" | "unauthenticated" | "error";
 
+type AllocationSegment = {
+  envelope: Envelope;
+  color: string;
+  percent: number;
+};
+
 export default function EnvelopesPage() {
-  const { t } = useLanguage();
-  const { status, balance, currency, error, refresh } = useWalletBalance();
+  const { t, language } = useLanguage();
+  const { status, balance, currency, error: walletError } = useWalletBalance();
   const [envelopes, setEnvelopes] = useState<Envelope[]>([]);
   const [totalAllocated, setTotalAllocated] = useState(0);
   const [pageStatus, setPageStatus] = useState<PageStatus>("loading");
@@ -33,7 +49,7 @@ export default function EnvelopesPage() {
 
   async function loadEnvelopes() {
     if (!getStoredToken()) {
-      setPageStatus("unauthenticated");
+      window.location.replace("/login");
       return;
     }
 
@@ -49,7 +65,7 @@ export default function EnvelopesPage() {
       setPageStatus("ready");
     } catch (err) {
       if (!getStoredToken()) {
-        setPageStatus("unauthenticated");
+        window.location.replace("/login");
         return;
       }
       setListError(localizeError(err, t.messages, "failedToLoadEnvelopes"));
@@ -60,81 +76,117 @@ export default function EnvelopesPage() {
   const availableBalance = balance ?? 0;
   const totalWealth = availableBalance + totalAllocated;
 
+  const segments: AllocationSegment[] = useMemo(() => {
+    if (totalAllocated <= 0 || envelopes.length === 0) return [];
+    return envelopes.map((envelope, i) => ({
+      envelope,
+      color: ENVELOPE_COLORS[i % ENVELOPE_COLORS.length],
+      percent: parseEnvelopeAmount(envelope.allocatedAmount) / totalAllocated,
+    }));
+  }, [envelopes, totalAllocated]);
+
+  const lastAllocations: (EnvelopeMovement & { envelopeName: string })[] = useMemo(() => {
+    const items = envelopes
+      .flatMap((envelope) =>
+        (envelope.movements || []).map((movement) => ({
+          ...movement,
+          envelopeName: envelope.name,
+        })),
+      )
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 4);
+    return items;
+  }, [envelopes]);
+
   return (
-    <AppShell showBottomNav={false} variant="hero">
+    <AppShell showBottomNav={false}>
       <HeaderBar
         title={t.envelopes.title}
         backHref="/"
-        variant="hero"
+        subtitle={t.envelopes.description}
         trailing={
-          <Link
-            href="/envelopes/new"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-primary-foreground transition hover:bg-white/20"
-          >
-            <Plus className="h-5 w-5" />
+          <Link href="/envelopes/new">
+            <Button size="sm" className="gap-1">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Create Envelope</span>
+            </Button>
           </Link>
         }
       />
 
-      <div className="mt-2 flex flex-1 flex-col space-y-4 rounded-t-[36px] bg-background p-6 lg:mx-auto lg:w-full lg:max-w-lg lg:rounded-3xl lg:shadow-xl lg:my-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft text-primary">
-            <Layers className="h-6 w-6" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-foreground">
-              {t.envelopes.subtitle}
-            </h2>
-            <p className="text-xs font-medium text-muted">
-              {t.envelopes.description}
-            </p>
-          </div>
-        </div>
-
-        <Card className="space-y-3 p-4">
-          <WalletBalance
-            status={status}
-            balance={balance}
-            currency={currency}
-            error={error}
-            onRetry={() => void refresh()}
-            variant="compact"
-            label={t.envelopes.availableBalance}
-          />
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="rounded-xl bg-surface-muted p-3">
-              <p className="font-semibold text-muted">
+      <div className="mx-auto flex w-full flex-1 flex-col space-y-6 p-4 lg:max-w-5xl lg:p-6">
+        <Card className="space-y-5 p-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                {t.envelopes.availableBalance}
+              </p>
+              <p className="mt-1 text-lg font-bold text-success">
+                {status === "ready" ? formatIrr(availableBalance, currency) : "—"}
+              </p>
+              {status === "error" && walletError ? (
+                <p className="mt-1 text-[10px] font-medium text-danger">
+                  {walletError}
+                </p>
+              ) : null}
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
                 {t.envelopes.allocatedInEnvelopes}
               </p>
-              <p className="text-sm font-bold text-foreground">
+              <p className="mt-1 text-lg font-bold text-warning">
                 {formatIrr(totalAllocated, currency)}
               </p>
             </div>
-            <div className="rounded-xl bg-surface-muted p-3">
-              <p className="font-semibold text-muted">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
                 {t.envelopes.totalWealth}
               </p>
-              <p className="text-sm font-bold text-foreground">
+              <p className="mt-1 text-lg font-bold text-foreground">
                 {formatIrr(totalWealth, currency)}
               </p>
             </div>
           </div>
+
+          {segments.length > 0 ? (
+            <div className="space-y-3">
+              <div className="flex h-4 w-full overflow-hidden rounded-full bg-surface-muted">
+                {segments.map((segment, i) => (
+                  <div
+                    key={segment.envelope.id}
+                    className="h-full"
+                    style={{
+                      width: `${segment.percent * 100}%`,
+                      backgroundColor: ENVELOPE_COLORS[i % ENVELOPE_COLORS.length],
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+                {segments.map((segment, i) => (
+                  <div key={segment.envelope.id} className="flex items-center gap-1.5">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{
+                        backgroundColor: ENVELOPE_COLORS[i % ENVELOPE_COLORS.length],
+                      }}
+                    />
+                    <span className="font-medium text-foreground">
+                      {segment.envelope.name}
+                    </span>
+                    <span className="text-muted">
+                      {(segment.percent * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </Card>
 
         {pageStatus === "loading" ? (
-          <p className="py-8 text-center text-xs font-semibold text-muted">
-            {t.envelopes.loading}
-          </p>
-        ) : pageStatus === "unauthenticated" ? (
-          <div className="space-y-3 py-8 text-center">
-            <p className="text-sm font-bold text-foreground">
-              {t.envelopes.signInRequired}
-            </p>
-            <Link href="/login">
-              <Button className="w-full">{t.common.signIn}</Button>
-            </Link>
-          </div>
-        ) : pageStatus === "error" ? (
+          <PageSpinner label={t.envelopes.loading} />
+        ) : pageStatus === "unauthenticated" ? null : pageStatus === "error" ? (
           <div className="space-y-3 py-8 text-center">
             <div className="rounded-xl bg-danger-soft p-3 text-xs font-semibold text-danger">
               {listError}
@@ -151,14 +203,60 @@ export default function EnvelopesPage() {
             <p className="text-xs text-muted">{t.envelopes.emptySub}</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {envelopes.map((envelope) => (
-              <EnvelopeCard key={envelope.id} envelope={envelope} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            {envelopes.map((envelope, i) => (
+              <EnvelopeCard
+                key={envelope.id}
+                envelope={envelope}
+                color={ENVELOPE_COLORS[i % ENVELOPE_COLORS.length]}
+              />
             ))}
           </div>
         )}
 
-        <Link href="/envelopes/new" className="block">
+        {pageStatus === "ready" && lastAllocations.length > 0 ? (
+          <Card className="space-y-3 p-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-foreground">Last allocations</h3>
+              <Link href="/history" className="text-xs font-semibold text-primary hover:underline">
+                {t.home.seeMore}
+              </Link>
+            </div>
+            <div className="space-y-2">
+              {lastAllocations.map((movement) => (
+                <div
+                  key={movement.id}
+                  className="flex items-center justify-between rounded-xl bg-surface-muted p-3 text-xs"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success-soft text-success">
+                      <ArrowDown className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-foreground">
+                        {movement.type === "ALLOCATE" ? "Allocated to" : "Released from"} {movement.envelopeName}
+                      </p>
+                      {movement.type === "ALLOCATE" ? (
+                        <p className="text-muted">Budget allocation</p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="text-end">
+                    <p className="font-bold text-success">
+                      {movement.type === "ALLOCATE" ? "+" : "-"}
+                      {formatIrr(parseEnvelopeAmount(movement.amount))}
+                    </p>
+                    <p className="text-[10px] text-muted">
+                      {formatDisplayDateTime(movement.createdAt, language)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : null}
+
+        <Link href="/envelopes/new" className="block lg:hidden">
           <Button className="w-full">{t.envelopes.createBtn}</Button>
         </Link>
       </div>

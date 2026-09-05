@@ -1,23 +1,96 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { Bell, CheckCheck } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  ArrowDownLeft,
+  ArrowUpRight,
+  CalendarClock,
+  CheckCheck,
+  PiggyBank,
+  Send,
+  Shield,
+  Target,
+  Wallet,
+} from "lucide-react";
 import { AppShell } from "@/shared/layout/AppShell";
 import { HeaderBar } from "@/shared/layout/HeaderBar";
-import { Button } from "@/shared/ui/Button";
+import { Button, ButtonLink } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
+import { cn } from "@/shared/cn";
 import {
   notificationCategoryClass,
   notificationContent,
 } from "@/features/notifications/lib/notificationContent";
-import type { Notification } from "@/features/notifications/lib/notifications";
+import type {
+  Notification,
+  NotificationCategory,
+  NotificationType,
+} from "@/features/notifications/lib/notifications";
 
 type PageStatus = "loading" | "ready" | "unauthenticated" | "error";
+type Filter = "ALL" | NotificationCategory;
+
+const FILTERS: Filter[] = ["ALL", "SUCCESS", "WARNING", "ERROR", "INFO"];
+
+function notificationIcon(type: NotificationType) {
+  switch (type) {
+    case "DEPOSIT_SUCCESS":
+      return ArrowDownLeft;
+    case "WITHDRAWAL_SUCCESS":
+      return ArrowUpRight;
+    case "TRANSFER_SUCCESS":
+    case "TRANSFER_FAILED":
+      return Send;
+    case "TRANSFER_RECEIVED":
+      return ArrowDownLeft;
+    case "SCHEDULED_PAYMENT_SUCCESS":
+    case "SCHEDULED_PAYMENT_FAILED":
+      return CalendarClock;
+    case "GOAL_PROGRESS":
+      return Target;
+    case "GOAL_COMPLETED":
+      return PiggyBank;
+    case "SECURITY_WARNING":
+      return Shield;
+    case "SPENDING_LIMIT_WARNING":
+      return AlertTriangle;
+    default:
+      return Wallet;
+  }
+}
+
+function iconTileClass(category: NotificationCategory) {
+  switch (category) {
+    case "SUCCESS":
+      return "bg-primary-soft text-primary";
+    case "WARNING":
+      return "bg-warning-soft text-warning";
+    case "ERROR":
+      return "bg-danger-soft text-danger";
+    default:
+      return "bg-surface-muted text-muted";
+  }
+}
+
+function filterDotClass(filter: Filter) {
+  switch (filter) {
+    case "SUCCESS":
+      return "bg-primary";
+    case "WARNING":
+      return "bg-warning";
+    case "ERROR":
+      return "bg-danger";
+    case "INFO":
+      return "bg-muted";
+    default:
+      return "";
+  }
+}
 
 export default function NotificationsPage() {
   const { t, language } = useLanguage();
@@ -25,6 +98,7 @@ export default function NotificationsPage() {
   const [pageStatus, setPageStatus] = useState<PageStatus>("loading");
   const [listError, setListError] = useState<string | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
+  const [filter, setFilter] = useState<Filter>("ALL");
 
   useEffect(() => {
     void loadNotifications();
@@ -89,44 +163,38 @@ export default function NotificationsPage() {
   }
 
   const hasUnread = notifications.some((n) => !n.isRead);
+  const filtered = useMemo(
+    () =>
+      filter === "ALL"
+        ? notifications
+        : notifications.filter((item) => item.category === filter),
+    [filter, notifications],
+  );
 
   return (
-    <AppShell showBottomNav={false} variant="hero">
+    <AppShell showBottomNav={false}>
       <HeaderBar
         title={t.notifications.title}
         backHref="/"
-        variant="hero"
+        subtitle={t.notifications.subtitle}
         showNotifications={false}
         trailing={
           hasUnread ? (
-            <button
-              type="button"
-              onClick={() => void markAllAsRead()}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-auto gap-1.5"
               disabled={markingAll}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-primary-foreground transition hover:bg-white/20 disabled:opacity-60"
-              aria-label={t.notifications.markAllRead}
+              onClick={() => void markAllAsRead()}
             >
-              <CheckCheck className="h-5 w-5" />
-            </button>
+              <CheckCheck className="h-4 w-4" />
+              <span className="hidden sm:inline">{t.notifications.markAllRead}</span>
+            </Button>
           ) : null
         }
       />
 
-      <div className="mt-2 flex flex-1 flex-col space-y-4 rounded-t-[36px] bg-background p-6 lg:mx-auto lg:w-full lg:max-w-lg lg:rounded-3xl lg:shadow-xl lg:my-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft text-primary">
-            <Bell className="h-6 w-6" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-foreground">
-              {t.notifications.subtitle}
-            </h2>
-            <p className="text-xs font-medium text-muted">
-              {t.notifications.description}
-            </p>
-          </div>
-        </div>
-
+      <div className="mx-auto flex w-full flex-1 flex-col space-y-6 p-4 lg:max-w-5xl lg:p-6">
         {pageStatus === "loading" ? (
           <p className="py-8 text-center text-xs font-semibold text-muted">
             {t.notifications.loading}
@@ -138,9 +206,7 @@ export default function NotificationsPage() {
             <p className="text-sm font-semibold text-foreground">
               {t.notifications.signInRequired}
             </p>
-            <Link href="/login">
-              <Button>{t.common.signIn}</Button>
-            </Link>
+            <ButtonLink href="/login">{t.common.signIn}</ButtonLink>
           </Card>
         ) : null}
 
@@ -153,71 +219,103 @@ export default function NotificationsPage() {
           </Card>
         ) : null}
 
-        {pageStatus === "ready" && notifications.length === 0 ? (
-          <Card className="space-y-2 p-8 text-center">
-            <p className="text-sm font-bold text-foreground">
-              {t.notifications.emptyTitle}
-            </p>
-            <p className="text-xs text-muted">{t.notifications.emptySub}</p>
-          </Card>
-        ) : null}
-
-        {pageStatus === "ready" && notifications.length > 0 ? (
-          <ul className="space-y-3">
-            {notifications.map((notification, index) => {
-              const content = notificationContent(notification, t);
-              return (
-                <li
-                  key={notification.id}
-                  className={`transition-all duration-300 animate-in fade-in slide-in-from-bottom-2 ${
-                    notification.isRead ? "opacity-75" : ""
-                  }`}
-                  style={{ animationDelay: `${index * 40}ms` }}
-                >
+        {pageStatus === "ready" ? (
+          <Card className="overflow-hidden p-0">
+            <div className="flex flex-wrap gap-2 border-b border-border px-4 py-3">
+              {FILTERS.map((item) => {
+                const active = filter === item;
+                return (
                   <button
+                    key={item}
                     type="button"
-                    onClick={() => void markAsRead(notification)}
-                    className="w-full text-left rtl:text-right"
+                    onClick={() => setFilter(item)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "border border-border bg-surface text-muted hover:border-primary/30 hover:text-foreground",
+                    )}
                   >
-                    <Card
-                      className={`space-y-2 p-4 transition hover:bg-surface-muted ${
-                        notification.isRead ? "" : "ring-1 ring-primary/20"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1">
-                          <p className="text-sm font-bold text-foreground">
-                            {content.title}
-                          </p>
-                          <p className="text-xs text-muted">
-                            {content.message}
-                          </p>
-                        </div>
-                        {!notification.isRead ? (
-                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                        ) : null}
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${notificationCategoryClass(
-                            notification.category,
-                          )}`}
-                        >
-                          {t.notifications.categories[notification.category]}
-                        </span>
-                        <time className="text-[10px] font-medium text-muted">
-                          {formatDisplayDateTime(
-                            notification.createdAt,
-                            language,
-                          )}
-                        </time>
-                      </div>
-                    </Card>
+                    {item !== "ALL" && !active ? (
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          filterDotClass(item),
+                        )}
+                      />
+                    ) : null}
+                    {item === "ALL"
+                      ? t.notifications.filterAll
+                      : t.notifications.categories[item]}
                   </button>
-                </li>
-              );
-            })}
-          </ul>
+                );
+              })}
+            </div>
+
+            {filtered.length === 0 ? (
+              <div className="space-y-1 px-5 py-10 text-center">
+                <p className="text-sm font-bold text-foreground">
+                  {t.notifications.emptyTitle}
+                </p>
+                <p className="text-xs text-muted">{t.notifications.emptySub}</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {filtered.map((notification) => {
+                  const content = notificationContent(notification, t);
+                  const Icon = notificationIcon(notification.type);
+                  return (
+                    <button
+                      key={notification.id}
+                      type="button"
+                      onClick={() => void markAsRead(notification)}
+                      className="flex w-full items-center gap-4 px-5 py-4 text-start transition hover:bg-surface-muted"
+                    >
+                      <div
+                        className={cn(
+                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]",
+                          iconTileClass(notification.category),
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-foreground">
+                          {content.title}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted">
+                          {content.message}
+                        </p>
+                      </div>
+                      <span
+                        className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold sm:inline ${notificationCategoryClass(
+                          notification.category,
+                        )}`}
+                      >
+                        {t.notifications.categories[notification.category]}
+                      </span>
+                      <time className="hidden shrink-0 text-[11px] font-medium text-muted md:block">
+                        {formatDisplayDateTime(
+                          notification.createdAt,
+                          language,
+                        )}
+                      </time>
+                      {!notification.isRead ? (
+                        <span className="flex shrink-0 items-center gap-1">
+                          <span className="h-2 w-2 rounded-full bg-primary" />
+                          <span className="hidden text-[10px] font-bold uppercase tracking-wide text-primary lg:inline">
+                            {t.notifications.unread}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="h-2 w-2 shrink-0" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
         ) : null}
       </div>
     </AppShell>

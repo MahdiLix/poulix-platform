@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Landmark, Plus, Trash2 } from "lucide-react";
+import { CreditCard, Hash, Landmark, Plus, Trash2, User } from "lucide-react";
 import { AppShell } from "@/shared/layout/AppShell";
 import { HeaderBar } from "@/shared/layout/HeaderBar";
 import { Button } from "@/shared/ui/Button";
@@ -11,19 +11,46 @@ import { TextField } from "@/shared/ui/TextField";
 import { Select } from "@/shared/ui/Select";
 import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
+import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import { localizeError } from "@/shared/i18n/localizeError";
 import type {
   CreateSavedDestinationPayload,
+  DestinationValueResponse,
   FinancialDestination,
   FinancialDestinationType,
 } from "@/features/financial-destinations/lib/destinations";
 
 type PageStatus = "loading" | "ready" | "unauthenticated" | "error";
 
+function destinationIcon(type: FinancialDestinationType) {
+  if (type === "P2P_USER") return User;
+  if (type === "BANK_ACCOUNT") return Landmark;
+  if (type === "SHABA") return Hash;
+  return CreditCard;
+}
+
+function revealedLabel(value?: DestinationValueResponse | null) {
+  if (!value) return null;
+  if (value.type === "BANK_ACCOUNT") return value.accountNumber;
+  if (value.type === "SHABA") return value.shabaNumber;
+  if (value.type === "CARD") return value.cardNumber;
+  return value.recipientUsername;
+}
+
+function destinationBadgeClass(type: FinancialDestinationType) {
+  if (type === "P2P_USER") return "bg-primary-soft text-primary";
+  if (type === "BANK_ACCOUNT") return "bg-warning-soft text-warning";
+  if (type === "SHABA") return "bg-surface-muted text-muted";
+  return "bg-danger-soft text-danger";
+}
+
 export default function DestinationsPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [saved, setSaved] = useState<FinancialDestination[]>([]);
   const [recent, setRecent] = useState<FinancialDestination[]>([]);
+  const [revealed, setRevealed] = useState<
+    Record<string, DestinationValueResponse>
+  >({});
   const [pageStatus, setPageStatus] = useState<PageStatus>("loading");
   const [error, setError] = useState<string | null>(null);
   const [label, setLabel] = useState("");
@@ -54,6 +81,18 @@ export default function DestinationsPage() {
       ]);
       setSaved(savedData);
       setRecent(recentData.filter((item) => !item.isSaved));
+      const all = [...savedData, ...recentData];
+      const values = await Promise.all(
+        all.slice(0, 16).map(async (item) => {
+          const value = await api.getDestinationValue(item.id).catch(() => null);
+          return [item.id, value] as const;
+        }),
+      );
+      const next: Record<string, DestinationValueResponse> = {};
+      for (const [id, value] of values) {
+        if (value) next[id] = value;
+      }
+      setRevealed(next);
       setPageStatus("ready");
     } catch (err) {
       if (!getStoredToken()) {
@@ -103,18 +142,13 @@ export default function DestinationsPage() {
 
   return (
     <AppShell showBottomNav={false}>
-      <HeaderBar title={t.destinations.title} backHref="/" />
+      <HeaderBar
+        title={t.destinations.title}
+        backHref="/"
+        subtitle={t.destinations.description}
+      />
 
-      <div className="flex flex-1 flex-col space-y-4 p-6 lg:mx-auto lg:max-w-lg">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft text-primary">
-            <Landmark className="h-6 w-6" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold">{t.destinations.subtitle}</h2>
-            <p className="text-xs text-muted">{t.destinations.description}</p>
-          </div>
-        </div>
+      <div className="flex flex-1 flex-col space-y-4 p-4 lg:mx-auto lg:max-w-6xl lg:p-6">
 
         {pageStatus === "unauthenticated" ? (
           <Card className="p-6 text-center">
@@ -132,11 +166,11 @@ export default function DestinationsPage() {
         ) : null}
 
         {pageStatus === "ready" ? (
-          <>
-            <Card className="space-y-3 p-4">
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Card className="space-y-3 p-5 lg:col-span-2">
               <h3 className="text-sm font-bold">{t.destinations.savedTitle}</h3>
               {saved.length === 0 ? (
-                <p className="text-xs text-muted">
+                <p className="py-8 text-center text-xs text-muted">
                   {t.destinations.emptySaved}
                 </p>
               ) : (
@@ -144,28 +178,67 @@ export default function DestinationsPage() {
                   {saved.map((item) => (
                     <li
                       key={item.id}
-                      className="flex items-center justify-between rounded-xl bg-surface-muted p-3"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-3"
                     >
-                      <div>
-                        <p className="text-sm font-semibold">{item.label}</p>
-                        <p className="text-xs text-muted">
-                          {t.destinations.types[item.type]} · {item.maskedValue}
-                        </p>
+                      <div className="flex min-w-0 items-center gap-3">
+                        {(() => {
+                          const Icon = destinationIcon(item.type);
+                          return (
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+                              <Icon className="h-4 w-4" />
+                            </div>
+                          );
+                        })()}
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="truncate text-sm font-semibold">
+                              {item.label}
+                            </p>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${destinationBadgeClass(item.type)}`}
+                            >
+                              {t.destinations.types[item.type]}
+                            </span>
+                          </div>
+                          <p className="font-mono text-xs text-muted">
+                            {revealedLabel(revealed[item.id]) ?? item.maskedValue}
+                          </p>
+                          <p className="text-[10px] text-muted">
+                            {t.destinations.useCount}: {item.useCount} ·{" "}
+                            {t.destinations.lastUsed}:{" "}
+                            {formatDisplayDateTime(item.lastUsedAt, language)}
+                          </p>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => void handleDelete(item.id)}
-                        className="text-muted hover:text-danger"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Link
+                          href={
+                            item.type === "P2P_USER" ? "/send" : "/transfer"
+                          }
+                        >
+                          <Button size="sm" variant="secondary" className="w-auto">
+                            {item.type === "P2P_USER"
+                              ? t.home.send
+                              : t.home.withdraw}
+                          </Button>
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => void handleDelete(item.id)}
+                          className="text-muted hover:text-danger"
+                          aria-label="Delete destination"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
               )}
             </Card>
 
-            <Card className="space-y-3 p-4">
+            <div className="space-y-4">
+            <Card className="space-y-3 p-5">
               <h3 className="text-sm font-bold">
                 {t.destinations.recentTitle}
               </h3>
@@ -181,8 +254,11 @@ export default function DestinationsPage() {
                       className="rounded-xl bg-surface-muted p-3 text-xs"
                     >
                       <p className="font-semibold">{item.label}</p>
-                      <p className="text-muted">
-                        {t.destinations.types[item.type]} · {item.maskedValue}
+                      <p className="font-mono text-muted">
+                        {revealedLabel(revealed[item.id]) ?? item.maskedValue}
+                      </p>
+                      <p className="mt-1 text-[10px] text-muted">
+                        {t.destinations.types[item.type]} · {t.destinations.useCount}: {item.useCount}
                       </p>
                     </li>
                   ))}
@@ -190,7 +266,7 @@ export default function DestinationsPage() {
               )}
             </Card>
 
-            <Card className="space-y-3 p-4">
+            <Card className="space-y-3 p-5">
               <h3 className="text-sm font-bold flex items-center gap-2">
                 <Plus className="h-4 w-4" />
                 {t.destinations.addSaved}
@@ -251,7 +327,8 @@ export default function DestinationsPage() {
                 </Button>
               </form>
             </Card>
-          </>
+            </div>
+          </div>
         ) : null}
       </div>
     </AppShell>

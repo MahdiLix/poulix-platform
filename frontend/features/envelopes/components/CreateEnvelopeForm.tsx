@@ -7,6 +7,7 @@ import { TextField } from "@/shared/ui/TextField";
 import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
+import { flashToast } from "@/shared/ui/Toast";
 import { validateEnvelopeName } from "@/features/envelopes/lib/envelopes";
 
 export function CreateEnvelopeForm() {
@@ -41,7 +42,12 @@ export function CreateEnvelopeForm() {
         name: name.trim(),
         description: description.trim() || undefined,
       });
-      router.push(`/envelopes/${envelope.id}`);
+      const envelopeId = envelope?.id;
+      if (!envelopeId) {
+        throw new Error(t.messages.envelopeCreateFailed);
+      }
+      flashToast({ title: t.messages.success.envelopeCreated });
+      router.replace(`/envelopes/${envelopeId}`);
     } catch (err) {
       setError(localizeError(err, t.messages, "envelopeCreateFailed"));
     } finally {

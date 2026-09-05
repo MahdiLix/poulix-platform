@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Clock, Lock, Shield } from "lucide-react";
 import { useParams } from "next/navigation";
 import { AppShell } from "@/shared/layout/AppShell";
 import { HeaderBar } from "@/shared/layout/HeaderBar";
 import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
+import { PageSpinner } from "@/shared/ui/Spinner";
 import { TextField } from "@/shared/ui/TextField";
 import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
@@ -13,6 +15,7 @@ import { formatDisplayDate, formatDisplayDateTime } from "@/shared/i18n/dates";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
+import { useToast } from "@/shared/ui/Toast";
 import {
   goalProgressPercent,
   goalRemainingAmount,
@@ -25,9 +28,11 @@ import {
 export default function GoalDetailPage() {
   const params = useParams<{ id: string }>();
   const { t, language } = useLanguage();
+  const { pushToast } = useToast();
   const { balance, currency, refresh } = useWalletBalance();
   const [goal, setGoal] = useState<Goal | null>(null);
   const [amount, setAmount] = useState("");
+  const [releaseAmount, setReleaseAmount] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
@@ -74,6 +79,10 @@ export default function GoalDetailPage() {
       setAmount("");
       await refresh();
       await loadGoal();
+      pushToast({
+        title: t.goals.contributed,
+        description: t.messages.success.goalContributed,
+      });
     } catch (err) {
       setError(localizeError(err, t.messages, "goalContributeFailed"));
     } finally {
@@ -84,7 +93,7 @@ export default function GoalDetailPage() {
   async function handleRelease() {
     if (!goal) return;
 
-    const parsed = parseAmount(amount);
+    const parsed = parseAmount(releaseAmount);
     const saved = parseGoalAmount(goal.savedAmount);
     if (parsed > saved) {
       setError(t.messages.goalSavedBalanceExceeded);
@@ -102,9 +111,13 @@ export default function GoalDetailPage() {
     try {
       const response = await api.releaseFromGoal(goal.id, parsed);
       setGoal({ ...response.goal, contributions: goal.contributions });
-      setAmount("");
+      setReleaseAmount("");
       await refresh();
       await loadGoal();
+      pushToast({
+        title: t.goals.released,
+        description: t.messages.success.goalReleased,
+      });
     } catch (err) {
       setError(localizeError(err, t.messages, "goalReleaseFailed"));
     } finally {
@@ -135,9 +148,7 @@ export default function GoalDetailPage() {
     return (
       <AppShell showBottomNav={false}>
         <HeaderBar title={t.goals.detailTitle} backHref="/goals" />
-        <p className="p-8 text-center text-xs font-semibold text-muted">
-          {t.goals.loading}
-        </p>
+        <PageSpinner label={t.goals.loading} />
       </AppShell>
     );
   }
@@ -175,28 +186,29 @@ export default function GoalDetailPage() {
     <AppShell showBottomNav={false}>
       <HeaderBar title={t.goals.detailTitle} backHref="/goals" />
 
-      <div className="space-y-4 p-6 lg:mx-auto lg:w-full lg:max-w-lg">
+      <div className="space-y-4 p-6 lg:mx-auto lg:w-full lg:max-w-5xl">
         <Card className="space-y-4 p-5">
-          <div className="flex items-center justify-between">
-            <span
-              className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${toneClass}`}
-            >
-              {t.goals.statuses[goal.status]}
-            </span>
-            {goal.targetDate ? (
-              <span className="text-xs font-medium text-muted">
-                {formatDisplayDate(goal.targetDate, language)}
-              </span>
-            ) : null}
-          </div>
-
-          <div>
-            <h2 className="text-xl font-bold text-foreground">{goal.title}</h2>
-            {goal.description ? (
-              <p className="mt-1 text-xs font-medium text-muted">
-                {goal.description}
-              </p>
-            ) : null}
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-soft text-primary">
+              <Shield className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-bold text-foreground">
+                  {goal.title}
+                </h2>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${toneClass}`}
+                >
+                  {t.goals.statuses[goal.status]}
+                </span>
+              </div>
+              {goal.description ? (
+                <p className="mt-1 text-xs font-medium text-muted">
+                  {goal.description}
+                </p>
+              ) : null}
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -222,52 +234,93 @@ export default function GoalDetailPage() {
         </Card>
 
         {isActive || canRelease ? (
-          <Card className="space-y-3 p-5">
-            <TextField
-              label={t.goals.amountIrr}
-              type="number"
-              min="1"
-              step="1"
-              inputMode="numeric"
-              value={amount}
-              onChange={(e) => {
-                setAmount(e.target.value);
-                setError("");
-              }}
-            />
-            {error ? (
-              <div className="rounded-xl bg-danger-soft p-3 text-xs font-semibold text-danger">
-                {error}
-              </div>
-            ) : null}
-            <div className="grid grid-cols-2 gap-3">
-              {isActive ? (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {isActive ? (
+              <Card className="space-y-3 p-5">
+                <h3 className="text-sm font-bold">{t.goals.contributeBtn}</h3>
+                <p className="text-xs text-muted">
+                  {t.goals.availableBalance}{" "}
+                  <span className="font-bold text-primary">
+                    {formatIrr(balance ?? 0, currency)}
+                  </span>
+                </p>
+                <TextField
+                  label={t.goals.amountIrr}
+                  type="number"
+                  min="1"
+                  step="1"
+                  inputMode="numeric"
+                  value={amount}
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    setError("");
+                  }}
+                />
                 <Button
                   disabled={loading}
                   onClick={() => void handleContribute()}
                 >
                   {loading ? t.goals.processing : t.goals.contributeBtn}
                 </Button>
-              ) : (
-                <div />
-              )}
-              <Button
-                variant="secondary"
-                disabled={loading || !canRelease}
-                onClick={() => void handleRelease()}
-              >
-                {loading ? t.goals.processing : t.goals.releaseBtn}
-              </Button>
-            </div>
-            {isActive ? (
-              <Button
-                variant="secondary"
-                disabled={loading}
-                onClick={() => void handleCancel()}
-              >
-                {t.goals.cancelGoalBtn}
-              </Button>
+                <p className="flex items-center gap-1.5 text-[11px] text-muted">
+                  <Lock className="h-3.5 w-3.5" />
+                  Funds will be added to this goal.
+                </p>
+              </Card>
             ) : null}
+            {canRelease ? (
+              <Card className="space-y-3 p-5">
+                <h3 className="text-sm font-bold">{t.goals.releaseBtn}</h3>
+                <TextField
+                  label={t.goals.amountIrr}
+                  type="number"
+                  min="1"
+                  step="1"
+                  inputMode="numeric"
+                  value={releaseAmount}
+                  onChange={(e) => {
+                    setReleaseAmount(e.target.value);
+                    setError("");
+                  }}
+                />
+                <Button
+                  variant="secondary"
+                  disabled={loading}
+                  onClick={() => void handleRelease()}
+                >
+                  {loading ? t.goals.processing : t.goals.releaseBtn}
+                </Button>
+                <p className="flex items-center gap-1.5 text-[11px] text-muted">
+                  <Clock className="h-3.5 w-3.5" />
+                  Returns funds to your spendable balance.
+                </p>
+              </Card>
+            ) : null}
+          </div>
+        ) : null}
+
+        {error ? (
+          <div className="rounded-xl bg-danger-soft p-3 text-xs font-semibold text-danger">
+            {error}
+          </div>
+        ) : null}
+
+        {isActive ? (
+          <Card className="flex flex-col items-start justify-between gap-3 border-danger/40 p-5 sm:flex-row sm:items-center">
+            <div>
+              <p className="text-sm font-bold text-danger">
+                {t.goals.cancelGoalBtn}
+              </p>
+              <p className="text-xs text-muted">{t.goals.confirmCancelGoal}</p>
+            </div>
+            <Button
+              variant="danger"
+              className="w-auto"
+              disabled={loading}
+              onClick={() => void handleCancel()}
+            >
+              {t.goals.cancelGoalBtn}
+            </Button>
           </Card>
         ) : null}
 

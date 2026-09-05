@@ -13,6 +13,7 @@ import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
+import { useToast } from "@/shared/ui/Toast";
 import {
   parseEnvelopeAmount,
   statusTone,
@@ -23,6 +24,7 @@ import {
 export default function EnvelopeDetailPage() {
   const params = useParams<{ id: string }>();
   const { t, language } = useLanguage();
+  const { pushToast } = useToast();
   const { balance, currency, refresh } = useWalletBalance();
   const [envelope, setEnvelope] = useState<Envelope | null>(null);
   const [amount, setAmount] = useState("");
@@ -71,6 +73,10 @@ export default function EnvelopeDetailPage() {
       setAmount("");
       await refresh();
       await loadEnvelope();
+      pushToast({
+        title: t.envelopes.allocatedToEnvelope,
+        description: t.messages.success.envelopeAllocated,
+      });
     } catch (err) {
       setError(localizeError(err, t.messages, "envelopeAllocateFailed"));
     } finally {
@@ -106,6 +112,10 @@ export default function EnvelopeDetailPage() {
       setAmount("");
       await refresh();
       await loadEnvelope();
+      pushToast({
+        title: t.envelopes.releasedFromEnvelope,
+        description: t.messages.success.envelopeReleased,
+      });
     } catch (err) {
       setError(localizeError(err, t.messages, "envelopeReleaseFailed"));
     } finally {
@@ -168,7 +178,7 @@ export default function EnvelopeDetailPage() {
     <AppShell showBottomNav={false}>
       <HeaderBar title={t.envelopes.detailTitle} backHref="/envelopes" />
 
-      <div className="space-y-4 p-6 lg:mx-auto lg:w-full lg:max-w-lg">
+      <div className="space-y-4 p-6 lg:mx-auto lg:w-full lg:max-w-5xl">
         <Card className="space-y-4 p-5">
           <span
             className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${toneClass}`}
@@ -198,28 +208,50 @@ export default function EnvelopeDetailPage() {
         </Card>
 
         {isActive ? (
-          <Card className="space-y-3 p-5">
-            <TextField
-              label={t.envelopes.amountIrr}
-              type="number"
-              min="1"
-              step="1"
-              inputMode="numeric"
-              value={amount}
-              onChange={(e) => {
-                setAmount(e.target.value);
-                setError("");
-              }}
-            />
-            {error ? (
-              <div className="rounded-xl bg-danger-soft p-3 text-xs font-semibold text-danger">
-                {error}
-              </div>
-            ) : null}
-            <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card className="space-y-3 p-5">
+              <h3 className="text-sm font-bold">{t.envelopes.allocateBtn}</h3>
+              <p className="text-xs text-muted">
+                {t.envelopes.availableBalance}{" "}
+                <span className="font-bold text-primary">
+                  {formatIrr(balance ?? 0, currency)}
+                </span>
+              </p>
+              <TextField
+                label={t.envelopes.amountIrr}
+                type="number"
+                min="1"
+                step="1"
+                inputMode="numeric"
+                value={amount}
+                onChange={(e) => {
+                  setAmount(e.target.value);
+                  setError("");
+                }}
+              />
+              {error ? (
+                <div className="rounded-xl bg-danger-soft p-3 text-xs font-semibold text-danger">
+                  {error}
+                </div>
+              ) : null}
               <Button disabled={loading} onClick={() => void handleAllocate()}>
                 {loading ? t.envelopes.processing : t.envelopes.allocateBtn}
               </Button>
+            </Card>
+            <Card className="space-y-3 p-5">
+              <h3 className="text-sm font-bold">{t.envelopes.releaseBtn}</h3>
+              <TextField
+                label={t.envelopes.amountIrr}
+                type="number"
+                min="1"
+                step="1"
+                inputMode="numeric"
+                value={amount}
+                onChange={(e) => {
+                  setAmount(e.target.value);
+                  setError("");
+                }}
+              />
               <Button
                 variant="secondary"
                 disabled={loading || allocated === 0}
@@ -227,16 +259,23 @@ export default function EnvelopeDetailPage() {
               >
                 {loading ? t.envelopes.processing : t.envelopes.releaseBtn}
               </Button>
-            </div>
-            {allocated === 0 ? (
-              <Button
-                variant="secondary"
-                disabled={loading}
-                onClick={() => void handleCancel()}
-              >
-                {t.envelopes.cancelEnvelopeBtn}
-              </Button>
-            ) : null}
+            </Card>
+          </div>
+        ) : null}
+
+        {isActive && allocated === 0 ? (
+          <Card className="flex flex-col items-start justify-between gap-3 border-danger/40 p-5 sm:flex-row sm:items-center">
+            <p className="text-sm font-bold text-danger">
+              {t.envelopes.cancelEnvelopeBtn}
+            </p>
+            <Button
+              variant="danger"
+              className="w-auto"
+              disabled={loading}
+              onClick={() => void handleCancel()}
+            >
+              {t.envelopes.cancelEnvelopeBtn}
+            </Button>
           </Card>
         ) : null}
 

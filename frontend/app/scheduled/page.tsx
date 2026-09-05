@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarClock, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { AppShell } from "@/shared/layout/AppShell";
 import { HeaderBar } from "@/shared/layout/HeaderBar";
 import { Button } from "@/shared/ui/Button";
@@ -48,37 +48,32 @@ export default function ScheduledPaymentsPage() {
     }
   }
 
+  async function handleStatusChange(id: string, action: "pause" | "resume") {
+    try {
+      await api.updateScheduledPaymentStatus(id, action);
+      await loadPayments();
+    } catch (err) {
+      setError(localizeError(err, t.messages, "failedToLoadScheduledPayments"));
+    }
+  }
+
   return (
-    <AppShell showBottomNav={false} variant="hero">
+    <AppShell showBottomNav={false}>
       <HeaderBar
         title={t.scheduled.title}
         backHref="/"
-        variant="hero"
+        subtitle={t.scheduled.description}
         trailing={
-          <Link
-            href="/scheduled/new"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-primary-foreground transition hover:bg-white/20"
-          >
-            <Plus className="h-5 w-5" />
+          <Link href="/scheduled/new">
+            <Button size="sm" className="gap-1">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Schedule Payment</span>
+            </Button>
           </Link>
         }
       />
 
-      <div className="mt-2 flex flex-1 flex-col space-y-4 rounded-t-[36px] bg-background p-6 lg:mx-auto lg:w-full lg:max-w-lg lg:rounded-3xl lg:shadow-xl lg:my-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft text-primary">
-            <CalendarClock className="h-6 w-6" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-foreground">
-              {t.scheduled.subtitle}
-            </h2>
-            <p className="text-xs font-medium text-muted">
-              {t.scheduled.description}
-            </p>
-          </div>
-        </div>
-
+      <div className="mx-auto flex w-full flex-1 flex-col space-y-6 p-4 lg:max-w-5xl lg:p-6">
         {status === "loading" ? (
           <p className="py-8 text-center text-xs font-semibold text-muted">
             {t.scheduled.loading}
@@ -102,7 +97,10 @@ export default function ScheduledPaymentsPage() {
             </Button>
           </div>
         ) : (
-          <ScheduledPaymentList payments={payments} />
+          <ScheduledPaymentList
+            payments={payments}
+            onStatusChange={handleStatusChange}
+          />
         )}
 
         <Link href="/scheduled/new" className="block">

@@ -25,9 +25,7 @@ import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import { Pagination } from "@/shared/ui/Pagination";
 import type { AdminPayment } from "@/features/admin/lib/admin";
 
-function statusBadgeVariant(
-  status: string,
-): "success" | "warning" | "danger" | "muted" {
+function statusBadgeVariant(status: string): "success" | "warning" | "danger" | "muted" {
   if (status === "PAID") return "success";
   if (status === "PENDING") return "warning";
   if (status === "FAILED") return "danger";
@@ -81,11 +79,7 @@ export default function AdminPaymentsPage() {
   return (
     <AdminShell title={t.admin.paymentsTitle} subtitle={t.admin.subtitle}>
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard
-          label="Total Payments"
-          value={String(total)}
-          icon={CreditCard}
-        />
+        <StatCard label="Total Payments" value={String(total)} icon={CreditCard} />
         <StatCard
           label="Successful"
           value={String(paid)}
@@ -146,13 +140,13 @@ export default function AdminPaymentsPage() {
       ) : (
         <Table>
           <TableHead>
-            <TableHeaderCell>{t.common.id}</TableHeaderCell>
-            <TableHeaderCell>{t.common.user}</TableHeaderCell>
-            <TableHeaderCell>{t.common.amount}</TableHeaderCell>
-            <TableHeaderCell>{t.common.gateway}</TableHeaderCell>
+            <TableHeaderCell>ID</TableHeaderCell>
+            <TableHeaderCell>User</TableHeaderCell>
+            <TableHeaderCell>Amount</TableHeaderCell>
+            <TableHeaderCell>Gateway</TableHeaderCell>
             <TableHeaderCell>{t.admin.status}</TableHeaderCell>
-            <TableHeaderCell>{t.common.createdAt}</TableHeaderCell>
-            <TableHeaderCell>{t.common.actions}</TableHeaderCell>
+            <TableHeaderCell>Created At</TableHeaderCell>
+            <TableHeaderCell>Actions</TableHeaderCell>
           </TableHead>
           <TableBody>
             {items.map((item) => (
@@ -184,7 +178,7 @@ export default function AdminPaymentsPage() {
                     variant="outline"
                     className="w-auto"
                   >
-                    {t.common.view}
+                    View
                   </ButtonLink>
                 </TableCell>
               </TableRow>

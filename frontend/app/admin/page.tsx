@@ -38,6 +38,13 @@ import type {
   AdminUserSummary,
 } from "@/features/admin/lib/admin";
 
+function localDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function AdminDashboardPage() {
   const { t, language } = useLanguage();
   const [data, setData] = useState<AdminDashboard | null>(null);
@@ -76,7 +83,7 @@ export default function AdminDashboardPage() {
       date.setHours(0, 0, 0, 0);
       date.setDate(date.getDate() - (6 - index));
       return {
-        key: date.toISOString().slice(0, 10),
+        key: localDateKey(date),
         label: formatMonthDay(date, language),
         deposits: 0,
         withdrawals: 0,
@@ -85,7 +92,9 @@ export default function AdminDashboardPage() {
     });
     const rowByDay = new Map(rows.map((row) => [row.key, row]));
     for (const transaction of data?.recentActivity ?? []) {
-      const row = rowByDay.get(transaction.createdAt.slice(0, 10));
+      const createdAt = new Date(transaction.createdAt);
+      if (Number.isNaN(createdAt.getTime())) continue;
+      const row = rowByDay.get(localDateKey(createdAt));
       if (!row) continue;
       if (transaction.type === "DEPOSIT") row.deposits += 1;
       else if (transaction.type === "WITHDRAWAL") row.withdrawals += 1;
@@ -114,73 +123,71 @@ export default function AdminDashboardPage() {
           {/* Hero section */}
           <section className="fintech-hero relative isolate overflow-hidden rounded-[14px] p-5 text-white lg:p-6">
             <div className="fintech-grid-pattern pointer-events-none absolute inset-0 z-0 opacity-60" />
-            <div className="relative z-10 sm:pe-44">
-              <div className="grid items-center gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(10rem,34%)]">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-cyan-200">
-                      <Users className="h-5 w-5" />
-                    </span>
-                    <div>
-                      <h1 className="text-lg font-black tracking-tight sm:text-2xl">
-                        {t.admin.dashboardTitle}
-                      </h1>
-                      <p className="mt-0.5 text-xs text-blue-100/70">
-                        {t.admin.subtitle}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {[
-                      {
-                        icon: Users,
-                        value: data.users.total,
-                        label: t.admin.totalUsers,
-                      },
-                      {
-                        icon: Activity,
-                        value: transactionCount,
-                        label: t.admin.nav.transactions,
-                      },
-                      {
-                        icon: CreditCard,
-                        value: paymentCount,
-                        label: t.admin.nav.payments,
-                      },
-                      {
-                        icon: Landmark,
-                        value: data.wallets.total,
-                        label: t.admin.totalWallets,
-                      },
-                    ].map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <div
-                          key={item.label}
-                          className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.06] px-2.5 py-2 backdrop-blur-sm"
-                        >
-                          <Icon className="h-3.5 w-3.5 shrink-0 text-secondary" />
-                          <div className="min-w-0">
-                            <p className="amount text-xs font-bold">
-                              {item.value}
-                            </p>
-                            <p className="truncate text-[9px] text-blue-100/65">
-                              {item.label}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
+            <div className="relative z-10 grid items-center gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(9rem,32%)] md:grid-cols-[minmax(0,1fr)_minmax(11rem,26%)_auto]">
+              <div className="min-w-0 md:max-w-none">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-cyan-200">
+                    <Users className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h1 className="text-lg font-black tracking-tight sm:text-2xl">
+                      {t.admin.dashboardTitle}
+                    </h1>
+                    <p className="mt-0.5 text-xs text-blue-100/70">
+                      {t.admin.subtitle}
+                    </p>
                   </div>
                 </div>
-                <WalletIllustration
-                  priority
-                  className="hero-art-fade relative h-32 w-full sm:h-36"
-                />
+                <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {[
+                    {
+                      icon: Users,
+                      value: data.users.total,
+                      label: t.admin.totalUsers,
+                    },
+                    {
+                      icon: Activity,
+                      value: transactionCount,
+                      label: t.admin.nav.transactions,
+                    },
+                    {
+                      icon: CreditCard,
+                      value: paymentCount,
+                      label: t.admin.nav.payments,
+                    },
+                    {
+                      icon: Landmark,
+                      value: data.wallets.total,
+                      label: t.admin.totalWallets,
+                    },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div
+                        key={item.label}
+                        className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.06] px-2.5 py-2 backdrop-blur-sm"
+                      >
+                        <Icon className="h-3.5 w-3.5 shrink-0 text-secondary" />
+                        <div className="min-w-0">
+                          <p className="amount text-xs font-bold">
+                            {item.value}
+                          </p>
+                          <p className="truncate text-[9px] text-blue-100/65">
+                            {item.label}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="mt-3 flex items-center justify-between rounded-xl border border-white/10 bg-[#03142f]/60 px-4 py-3 backdrop-blur-sm sm:absolute sm:end-5 sm:top-5 sm:mt-0 sm:block sm:w-40">
+              <WalletIllustration
+                priority
+                className="relative h-24 w-full sm:h-32 md:h-36"
+              />
+              <div className="rounded-xl border border-white/10 bg-[#03142f]/60 px-4 py-3 backdrop-blur-sm sm:col-span-2 md:col-span-1 md:w-44">
                 <p className="text-xs font-bold">{t.admin.status}</p>
-                <p className="flex items-center gap-2 text-[10px] text-blue-100/75 sm:mt-2">
+                <p className="mt-2 flex items-center gap-2 text-[10px] text-blue-100/75">
                   <span className="h-2 w-2 rounded-full bg-secondary shadow-[0_0_12px_var(--secondary)]" />
                   {t.admin.statuses.ACTIVE}
                 </p>
@@ -473,7 +480,7 @@ export default function AdminDashboardPage() {
                           variant="secondary"
                           className="w-auto"
                         >
-                          {t.common.view}
+                          View
                         </ButtonLink>
                         <UserStatusActions
                           userId={item.id}

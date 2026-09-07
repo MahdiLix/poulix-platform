@@ -88,23 +88,17 @@ export default function AdminPaymentDetailPage() {
 
           <div className="grid gap-4 lg:grid-cols-3">
             <Card className="p-4">
-              <p className="text-[11px] font-semibold text-muted">
-                {t.common.gateway}
-              </p>
+              <p className="text-[11px] font-semibold text-muted">Gateway</p>
               <p className="mt-1 text-sm font-bold">ZarinPal</p>
             </Card>
             <Card className="p-4">
-              <p className="text-[11px] font-semibold text-muted">
-                {t.common.reference}
-              </p>
+              <p className="text-[11px] font-semibold text-muted">Reference</p>
               <p className="mt-1 break-all font-mono text-xs font-bold">
                 {item.refId ?? "—"}
               </p>
             </Card>
             <Card className="p-4">
-              <p className="text-[11px] font-semibold text-muted">
-                {t.admin.walletId}
-              </p>
+              <p className="text-[11px] font-semibold text-muted">Wallet ID</p>
               <p className="mt-1 break-all font-mono text-xs font-bold">
                 {item.walletId}
               </p>
@@ -112,25 +106,25 @@ export default function AdminPaymentDetailPage() {
           </div>
 
           <Card className="grid gap-4 p-5 sm:grid-cols-2">
-            <DetailRow label={t.admin.paymentId} value={item.id} mono />
+            <DetailRow label="Payment ID" value={item.id} mono />
             <DetailRow
-              label={t.common.createdAt}
+              label="Created"
               value={formatDisplayDateTime(item.createdAt, language)}
             />
             <DetailRow
-              label={t.common.updatedAt}
+              label="Updated"
               value={formatDisplayDateTime(item.updatedAt, language)}
             />
             <DetailRow label={t.admin.status} value={item.status} />
             <DetailRow
-              label={t.common.user}
+              label="User"
               value={`${item.user.username} (${item.user.email})`}
             />
-            <DetailRow label={t.common.amount} value={formatIrr(item.amount)} />
+            <DetailRow label="Amount" value={formatIrr(item.amount)} />
           </Card>
 
           <Card className="space-y-3 p-5">
-            <h2 className="text-sm font-bold">{t.admin.relatedTransaction}</h2>
+            <h2 className="text-sm font-bold">Related transaction</h2>
             {item.relatedTransaction ? (
               <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-muted/50 px-3 py-3">
                 <div className="flex items-center gap-3">
@@ -156,7 +150,7 @@ export default function AdminPaymentDetailPage() {
                   variant="outline"
                   className="w-auto"
                 >
-                  {t.common.view}
+                  View
                 </ButtonLink>
               </div>
             ) : (

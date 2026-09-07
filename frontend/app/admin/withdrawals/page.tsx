@@ -19,7 +19,7 @@ import {
 import { api } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
-import { formatIrr } from "@/features/wallet/lib/wallet";
+import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import { Pagination } from "@/shared/ui/Pagination";
 import type { AdminTransaction } from "@/features/admin/lib/admin";
@@ -55,16 +55,15 @@ export default function AdminWithdrawalsPage() {
     };
   }, [q, page, t.messages]);
 
-  const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
+  const totalAmount = items.reduce(
+    (sum, item) => sum + parseAmount(item.amount),
+    0,
+  );
 
   return (
     <AdminShell title={t.admin.withdrawalsTitle} subtitle={t.admin.subtitle}>
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard
-          label="Total Withdrawals"
-          value={String(total)}
-          icon={Wallet}
-        />
+        <StatCard label="Total Withdrawals" value={String(total)} icon={Wallet} />
         <StatCard
           label="Successful"
           value={String(items.length)}
@@ -100,13 +99,13 @@ export default function AdminWithdrawalsPage() {
       ) : (
         <Table>
           <TableHead>
-            <TableHeaderCell>{t.common.id}</TableHeaderCell>
-            <TableHeaderCell>{t.common.user}</TableHeaderCell>
-            <TableHeaderCell>{t.common.method}</TableHeaderCell>
-            <TableHeaderCell>{t.common.amount}</TableHeaderCell>
+            <TableHeaderCell>ID</TableHeaderCell>
+            <TableHeaderCell>User</TableHeaderCell>
+            <TableHeaderCell>Method</TableHeaderCell>
+            <TableHeaderCell>Amount</TableHeaderCell>
             <TableHeaderCell>{t.admin.status}</TableHeaderCell>
-            <TableHeaderCell>{t.common.createdAt}</TableHeaderCell>
-            <TableHeaderCell>{t.common.actions}</TableHeaderCell>
+            <TableHeaderCell>Created At</TableHeaderCell>
+            <TableHeaderCell>Actions</TableHeaderCell>
           </TableHead>
           <TableBody>
             {items.map((item) => (
@@ -118,13 +117,13 @@ export default function AdminWithdrawalsPage() {
                   {item.user.username}
                 </TableCell>
                 <TableCell className="text-xs text-muted">
-                  {t.common.bankTransfer}
+                  Bank Transfer
                 </TableCell>
                 <TableCell className="font-bold">
                   {formatIrr(item.amount)}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="success">{t.common.success}</Badge>
+                  <Badge variant="success">Success</Badge>
                 </TableCell>
                 <TableCell className="text-xs text-muted">
                   {formatDisplayDateTime(item.createdAt, language)}
@@ -136,7 +135,7 @@ export default function AdminWithdrawalsPage() {
                     variant="outline"
                     className="w-auto"
                   >
-                    {t.common.view}
+                    View
                   </ButtonLink>
                 </TableCell>
               </TableRow>

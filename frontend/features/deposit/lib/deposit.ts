@@ -1,5 +1,5 @@
 import { api, getStoredToken } from "@/shared/api";
-import { formatIrr } from "@/features/wallet/lib/wallet";
+import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import type { TranslationDictionary } from "@/shared/i18n/translations";
 import { formatMessage } from "@/shared/i18n/localizeError";
 
@@ -23,7 +23,7 @@ export function validateDepositAmount(
     return messages.depositAmountRequired;
   }
 
-  const amount = Number(trimmed);
+  const amount = parseAmount(trimmed);
   if (!Number.isInteger(amount) || amount < 1) {
     return messages.amountWholeNumberMin;
   }

@@ -1,5 +1,6 @@
 import type { TranslationDictionary } from "@/shared/i18n/translations";
 import type { DestinationValueResponse } from "@/features/financial-destinations/lib/destinations";
+import { parseAmount } from "@/features/wallet/lib/wallet";
 
 type Messages = TranslationDictionary["messages"];
 
@@ -35,7 +36,7 @@ export function validateWithdrawAmount(
     return messages.withdrawAmountRequired;
   }
 
-  const amount = Number(trimmed);
+  const amount = parseAmount(trimmed);
   if (!Number.isInteger(amount) || amount < 1) {
     return messages.amountWholeNumberMin;
   }

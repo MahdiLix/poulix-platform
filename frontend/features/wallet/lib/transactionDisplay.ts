@@ -1,9 +1,4 @@
 import type { TranslationDictionary } from "@/shared/i18n/translations";
-import { en } from "@/shared/i18n/messages/en";
-import {
-  isTransactionCategory,
-  type TransactionCategory,
-} from "@/features/wallet/lib/transactionMeta";
 
 export type TransactionType =
   | "DEPOSIT"
@@ -64,18 +59,5 @@ export function transactionReasonLabel(
     "Cannot transfer to yourself": t.messages.cannotTransferToSelf,
     "Wallet not found": t.messages.walletNotFound,
   };
-  if (isTransactionCategory(reason)) {
-    return t.history.categories[reason];
-  }
-  const categoryFromEnglish = (
-    Object.keys(t.history.categories) as TransactionCategory[]
-  ).find(
-    (key) =>
-      en.history.categories[key].toLowerCase() === reason.toLowerCase() ||
-      t.history.categories[key].toLowerCase() === reason.toLowerCase(),
-  );
-  if (categoryFromEnglish) {
-    return t.history.categories[categoryFromEnglish];
-  }
   return systemReasons[reason] ?? reason;
 }

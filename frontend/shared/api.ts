@@ -55,6 +55,7 @@ import {
   isTokenExpired,
   notifySessionExpired,
 } from "@/shared/user/session";
+import { parseAmount } from "@/features/wallet/lib/wallet";
 
 export type AuthUser = {
   id: string;
@@ -136,6 +137,10 @@ function formatEndpoint(endpoint: string): string {
     return `${API_BASE_URL}${clean}`;
   }
   return `${API_BASE_URL}/api${clean}`;
+}
+
+function paymentAmount(amount: number | string): number {
+  return parseAmount(amount);
 }
 
 function withQuery(
@@ -296,7 +301,7 @@ export const api = {
   deposit: (amount: number): Promise<DepositResponse> =>
     fetchWithAuth("/wallets/deposit", {
       method: "POST",
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ amount: paymentAmount(amount) }),
     }),
 
   completeDepositCallback: (
@@ -317,7 +322,11 @@ export const api = {
   }): Promise<WithdrawResponse> =>
     fetchWithAuth("/wallets/withdraw", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        amount: paymentAmount(data.amount),
+        envelopeId: data.envelopeId || undefined,
+      }),
     }),
 
   lookupUser: (identifier: string): Promise<LookupUserResponse> =>
@@ -334,7 +343,11 @@ export const api = {
   }): Promise<TransferResponse> =>
     fetchWithAuth("/wallets/transfer", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        amount: paymentAmount(data.amount),
+        envelopeId: data.envelopeId || undefined,
+      }),
     }),
 
   getScheduledPayments: (): Promise<ScheduledPayment[]> =>
@@ -348,7 +361,11 @@ export const api = {
   ): Promise<ScheduledPayment> =>
     fetchWithAuth("/scheduled-payments", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        amount: paymentAmount(data.amount),
+        envelopeId: data.envelopeId || undefined,
+      }),
     }),
 
   updateScheduledPaymentStatus: (
@@ -366,19 +383,22 @@ export const api = {
   createGoal: (data: CreateGoalPayload): Promise<Goal> =>
     fetchWithAuth("/goals", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        targetAmount: paymentAmount(data.targetAmount),
+      }),
     }),
 
   contributeToGoal: (id: string, amount: number): Promise<GoalActionResponse> =>
     fetchWithAuth(`/goals/${id}/contribute`, {
       method: "POST",
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ amount: paymentAmount(amount) }),
     }),
 
   releaseFromGoal: (id: string, amount: number): Promise<GoalActionResponse> =>
     fetchWithAuth(`/goals/${id}/release`, {
       method: "POST",
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ amount: paymentAmount(amount) }),
     }),
 
   cancelGoal: (id: string): Promise<Goal> =>
@@ -404,7 +424,7 @@ export const api = {
   ): Promise<EnvelopeActionResponse> =>
     fetchWithAuth(`/envelopes/${id}/allocate`, {
       method: "POST",
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ amount: paymentAmount(amount) }),
     }),
 
   releaseFromEnvelope: (
@@ -413,7 +433,7 @@ export const api = {
   ): Promise<EnvelopeActionResponse> =>
     fetchWithAuth(`/envelopes/${id}/release`, {
       method: "POST",
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ amount: paymentAmount(amount) }),
     }),
 
   cancelEnvelope: (id: string): Promise<Envelope> =>
@@ -493,7 +513,10 @@ export const api = {
   ): Promise<{ type: string; maxAmount: number }> =>
     fetchWithAuth("/spending-limits", {
       method: "PUT",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        maxAmount: paymentAmount(data.maxAmount),
+      }),
     }),
 
   getSecuritySessions: (): Promise<UserSession[]> =>

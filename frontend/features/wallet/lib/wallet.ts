@@ -1,3 +1,5 @@
+import { toRawAmountDigits } from "@/shared/ui/latinDigits";
+
 export type WalletBalanceResponse = {
   balance: string | number;
   currency?: string;
@@ -8,21 +10,29 @@ export function parseAmount(value: string | number | null | undefined): number {
     return 0;
   }
 
-  const parsed = Number(value);
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? Math.trunc(value) : 0;
+  }
+
+  const digits = toRawAmountDigits(value);
+  if (!digits) {
+    return 0;
+  }
+
+  const parsed = Number(digits);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
 export function formatIrr(
-  amount: number,
+  amount: number | string | null | undefined,
   currency = "IRR",
   locale: string | "en" | "fa" = "en-US",
 ): string {
   void locale;
-  const whole = Number.isFinite(amount) ? Math.trunc(amount) : 0;
   const formatted = new Intl.NumberFormat("en-US", {
     numberingSystem: "latn",
     maximumFractionDigits: 0,
-  }).format(whole);
+  }).format(parseAmount(amount));
   return `${formatted} ${currency}`;
 }
 
@@ -31,12 +41,8 @@ export function formatAmountDigits(
   language: "en" | "fa" = "en",
 ): string {
   void language;
-  const whole =
-    typeof amount === "number"
-      ? Math.trunc(amount)
-      : Math.trunc(Number(amount) || 0);
   return new Intl.NumberFormat("en-US", {
     numberingSystem: "latn",
     maximumFractionDigits: 0,
-  }).format(whole);
+  }).format(parseAmount(amount));
 }

@@ -1,4 +1,5 @@
 import type { TransactionCategory } from "@/features/wallet/lib/transactionMeta";
+import { parseAmount } from "@/features/wallet/lib/wallet";
 import type { TranslationDictionary } from "@/shared/i18n/translations";
 
 export type TransferRecipient = {
@@ -82,7 +83,11 @@ export function readSendConfirmPayload(): SendConfirmPayload | null {
   }
 
   try {
-    return JSON.parse(raw) as SendConfirmPayload;
+    const parsed = JSON.parse(raw) as SendConfirmPayload;
+    return {
+      ...parsed,
+      amount: parseAmount(parsed.amount),
+    };
   } catch {
     return null;
   }
@@ -95,7 +100,10 @@ export function writeSendConfirmPayload(payload: SendConfirmPayload) {
 
   window.sessionStorage.setItem(
     SEND_CONFIRM_STORAGE_KEY,
-    JSON.stringify(payload),
+    JSON.stringify({
+      ...payload,
+      amount: parseAmount(payload.amount),
+    }),
   );
 }
 

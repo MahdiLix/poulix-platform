@@ -162,9 +162,7 @@ export function SendForm() {
   }
 
   const balanceDisplay =
-    status === "ready" && balance !== null
-      ? formatIrr(balance, currency)
-      : null;
+    status === "ready" && balance !== null ? formatIrr(balance, currency) : null;
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
@@ -189,7 +187,7 @@ export function SendForm() {
             type="button"
             onClick={() => setBalanceVisible((v) => !v)}
             className="cursor-pointer rounded-lg p-1 text-muted transition hover:bg-surface-muted hover:text-foreground"
-            aria-label={t.common.toggleBalanceVisibility}
+            aria-label="Toggle balance visibility"
           >
             {balanceVisible ? (
               <Eye className="h-3.5 w-3.5" />
@@ -343,11 +341,7 @@ export function SendForm() {
         </div>
       ) : null}
 
-      <Button
-        type="submit"
-        className="h-12 w-full text-base"
-        disabled={loading}
-      >
+      <Button type="submit" className="h-12 w-full text-base" disabled={loading}>
         {loading ? t.send.lookingUpRecipient : t.send.continueBtn}
       </Button>
     </form>

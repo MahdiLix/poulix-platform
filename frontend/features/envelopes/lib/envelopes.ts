@@ -1,4 +1,5 @@
 import type { TranslationDictionary } from "@/shared/i18n/translations";
+import { parseAmount } from "@/features/wallet/lib/wallet";
 
 export type EnvelopeStatus = "ACTIVE" | "CANCELLED";
 export type EnvelopeMovementType = "ALLOCATE" | "RELEASE";
@@ -41,7 +42,7 @@ export type CreateEnvelopePayload = {
 type Messages = TranslationDictionary["messages"];
 
 export function parseEnvelopeAmount(value: string | number): number {
-  return Number(value.toString());
+  return parseAmount(value);
 }
 
 export function validateEnvelopeName(

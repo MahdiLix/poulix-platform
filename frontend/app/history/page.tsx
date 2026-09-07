@@ -112,8 +112,8 @@ export default function HistoryPage() {
 
   const filteredTransactions = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const pillMatches = PILL_OPTIONS.find((p) => p.value === pillFilter)
-      ?.matches ?? [pillFilter];
+    const pillMatches =
+      PILL_OPTIONS.find((p) => p.value === pillFilter)?.matches ?? [pillFilter];
 
     return transactions.filter((tx) => {
       if (typeFilter !== "ALL" && tx.type !== typeFilter) {
@@ -141,7 +141,10 @@ export default function HistoryPage() {
 
   const paginatedTransactions = filteredTransactions;
 
-  const totalPages = Math.max(1, Math.ceil(total / ROWS_PER_PAGE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(total / ROWS_PER_PAGE),
+  );
   useEffect(() => {
     const timer = window.setTimeout(() => void loadHistory(), 250);
     return () => window.clearTimeout(timer);
@@ -196,16 +199,16 @@ export default function HistoryPage() {
       <HeaderBar
         title={t.history.historyTitle}
         backHref="/"
-        subtitle={t.history.subtitle}
+        subtitle="Every deposit, transfer, withdrawal, goal, and envelope movement."
         trailing={
           <Button
             variant="outline"
             size="sm"
-            onClick={() => alert(t.common.export)}
+            onClick={() => alert("Export not yet implemented")}
             className="w-auto gap-1.5"
           >
             <Download className="h-3.5 w-3.5" />
-            {t.common.export}
+            Export
           </Button>
         }
       />
@@ -251,11 +254,11 @@ export default function HistoryPage() {
                 <SearchInput
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder={t.history.searchPlaceholder}
+                  placeholder="Search reason, recipient, or ID..."
                 />
               </div>
               <Select
-                label={t.admin.type}
+                label="Type"
                 value={typeFilter}
                 onChange={(val) => setTypeFilter(val)}
                 className="lg:w-56"
@@ -280,22 +283,7 @@ export default function HistoryPage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {PILL_OPTIONS.map((pill) => {
-                const label =
-                  pill.value === "ALL"
-                    ? t.history.filterAll
-                    : pill.value === "DEPOSIT"
-                      ? t.history.deposit
-                      : pill.value === "WITHDRAWAL"
-                        ? t.history.withdrawal
-                        : pill.value === "TRANSFER_OUT"
-                          ? t.history.transferSent
-                          : pill.value === "TRANSFER_IN"
-                            ? t.history.transferReceived
-                            : pill.value === "GOALS"
-                              ? t.goals.title
-                              : t.envelopes.title;
-                return (
+              {PILL_OPTIONS.map((pill) => (
                 <button
                   key={pill.value}
                   type="button"
@@ -307,10 +295,9 @@ export default function HistoryPage() {
                       : "border border-border bg-surface text-foreground hover:bg-surface-muted",
                   )}
                 >
-                  {label}
+                  {pill.label}
                 </button>
-                );
-              })}
+              ))}
             </div>
 
             {filteredTransactions.length === 0 ? (
@@ -335,14 +322,12 @@ export default function HistoryPage() {
                 <div className="hidden lg:block">
                   <Table>
                     <TableHead>
-                      <TableHeaderCell>{t.admin.type}</TableHeaderCell>
-                      <TableHeaderCell>{t.history.reasonLabel}</TableHeaderCell>
-                      <TableHeaderCell>
-                        {t.history.categoryLabel}
-                      </TableHeaderCell>
-                      <TableHeaderCell>{t.common.amount}</TableHeaderCell>
-                      <TableHeaderCell>{t.common.createdAt}</TableHeaderCell>
-                      <TableHeaderCell>{t.common.status}</TableHeaderCell>
+                      <TableHeaderCell>Type</TableHeaderCell>
+                      <TableHeaderCell>Details</TableHeaderCell>
+                      <TableHeaderCell>Category</TableHeaderCell>
+                      <TableHeaderCell>Amount</TableHeaderCell>
+                      <TableHeaderCell>Date</TableHeaderCell>
+                      <TableHeaderCell>Status</TableHeaderCell>
                     </TableHead>
                     <TableBody>
                       {paginatedTransactions.map((tx) => {
@@ -445,7 +430,10 @@ export default function HistoryPage() {
                             ) : null}
                             <div className="mt-2 flex flex-wrap items-center gap-2">
                               {row.categoryBadge}
-                              <Badge variant="success" className="text-[10px]">
+                              <Badge
+                                variant="success"
+                                className="text-[10px]"
+                              >
                                 {t.withdrawal.completed}
                               </Badge>
                             </div>
@@ -475,7 +463,8 @@ export default function HistoryPage() {
 
             <div className="flex flex-col items-center gap-3 border-t border-border pt-4">
               <span className="text-xs text-muted">
-                Showing {paginatedTransactions.length} of {total}
+                Showing {paginatedTransactions.length} of{" "}
+                {total}
               </span>
               <Pagination
                 page={page}
@@ -608,10 +597,7 @@ function buildTxRow(
   const categoryBadge = categoryLabel ? (
     <Badge
       variant="default"
-      className={cn(
-        "rounded-full text-[10px]",
-        categoryBadgeClass(tx.category),
-      )}
+      className={cn("rounded-full text-[10px]", categoryBadgeClass(tx.category))}
     >
       {categoryLabel}
     </Badge>
@@ -657,3 +643,4 @@ function categoryBadgeClass(category?: string | null): string {
       return "bg-surface-muted text-muted";
   }
 }
+

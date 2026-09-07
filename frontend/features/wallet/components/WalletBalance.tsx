@@ -136,7 +136,7 @@ export function WalletBalance({
           {displayLabel}
         </p>
       ) : null}
-      <p className={amountClass}>
+      <p className={cn(amountClass, variant === "hero" && "text-white")}>
         {variant === "hero" ? (
           <>
             {formatIrr(balance ?? 0, "").trim()}{" "}

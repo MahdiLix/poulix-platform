@@ -142,7 +142,7 @@ export function WithdrawForm() {
       return;
     }
 
-    const numericAmount = Number(amount);
+    const numericAmount = parseAmount(amount);
     setLoading(true);
 
     try {

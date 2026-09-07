@@ -326,63 +326,48 @@ export default function HomePage() {
   return (
     <AppShell variant="dashboard" rightPanel={rightPanel} showTopBar>
       <div className="flex-1 space-y-3 p-3 sm:space-y-4 sm:p-4">
-        <section className="fintech-hero relative isolate overflow-hidden rounded-[14px] px-5 py-5 text-white sm:px-7">
+        <section className="fintech-hero relative isolate grid min-h-[8.25rem] grid-cols-[minmax(0,3fr)_minmax(7rem,2fr)] items-center gap-1 overflow-hidden rounded-[14px] px-5 py-3 text-white sm:min-h-[9rem] sm:grid-cols-[minmax(0,1fr)_minmax(11rem,38%)] sm:gap-3 sm:px-7">
           <div className="fintech-grid-pattern pointer-events-none absolute inset-0 z-0 opacity-60" />
-          <div className="relative z-10 grid items-center gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(9.5rem,38%)]">
-            <div className="flex min-w-0 items-center gap-4">
-              <span className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.2)] sm:flex">
-                <WalletCards className="h-7 w-7 text-cyan-200" />
-              </span>
-              <div className="min-w-0">
-                <h1 className="text-lg font-black tracking-tight sm:text-2xl">
-                  {t.home.welcomeToPoulix}
-                </h1>
-                <p className="mt-1 text-xs text-blue-100/75 sm:text-sm">
-                  {stats.net === 0 ? (
-                    t.home.walletInsightFlat
-                  ) : (
-                    <>
-                      {
-                        (stats.net > 0
-                          ? t.home.walletInsight
-                          : t.home.walletInsightDown
-                        ).split("{percent}")[0]
-                      }
-                      <span
-                        className={cn(
-                          "font-bold",
-                          stats.net > 0 ? "text-secondary" : "text-warning",
-                        )}
-                      >
-                        {(
-                          (Math.abs(stats.net) /
-                            Math.max(stats.totalReceived, stats.totalSent, 1)) *
-                          100
-                        ).toFixed(1)}
-                        %
-                      </span>
-                      {
-                        (stats.net > 0
-                          ? t.home.walletInsight
-                          : t.home.walletInsightDown
-                        ).split("{percent}")[1]
-                      }
-                    </>
-                  )}
-                </p>
-              </div>
+          <div className="relative z-10 flex min-w-0 items-center gap-4">
+            <span className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.2)] sm:flex">
+              <WalletCards className="h-7 w-7 text-cyan-200" />
+            </span>
+            <div className="min-w-0">
+              <h1 className="text-lg font-black tracking-tight sm:text-2xl">
+                {t.home.welcomeToPoulix}
+              </h1>
+              <p className="mt-1 text-xs text-blue-100/75 sm:text-sm">
+                {stats.net > 0 ? (
+                  <>
+                    {t.home.walletInsight.split("{percent}")[0]}
+                    <span className="font-bold text-secondary">
+                      {(
+                        (stats.net / Math.max(stats.totalReceived, 1)) *
+                        100
+                      ).toFixed(1)}
+                      %
+                    </span>
+                    {t.home.walletInsight.split("{percent}")[1]}
+                  </>
+                ) : (
+                  t.home.walletInsightFlat
+                )}
+              </p>
             </div>
-            <WalletIllustration
-              priority
-              className="hero-art-fade relative h-28 w-full sm:h-32"
-            />
           </div>
+          <WalletIllustration
+            priority
+            className="relative z-[1] h-28 w-full sm:h-32"
+          />
         </section>
-
+        {/* START OF BALANCE CARD */}
         <Card className="relative overflow-hidden border-primary/35 bg-ink-hero p-5 text-primary-foreground">
-          <div className="pointer-events-none absolute inset-y-0 end-0 w-1/2 bg-[radial-gradient(circle_at_80%_50%,rgba(65,188,255,0.18),transparent_60%)]" />
+          <div
+            data-ink-hero-glow
+            className="pointer-events-none absolute inset-y-0 end-0 w-1/2 bg-[radial-gradient(circle_at_80%_50%,rgba(65,188,255,0.18),transparent_60%)]"
+          />
           <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="min-w-0 space-y-3">
+            <div className="min-w-0 sace-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <p className="text-[11px] font-semibold tracking-[0.08em] text-white/65 uppercase">
@@ -392,7 +377,7 @@ export default function HomePage() {
                     type="button"
                     onClick={() => setHideBalance((v) => !v)}
                     className="cursor-pointer rounded-lg p-1 text-white/60 transition hover:bg-white/10 hover:text-white"
-                    aria-label={t.common.toggleBalanceVisibility}
+                    aria-label="Toggle balance visibility"
                   >
                     {hideBalance ? (
                       <EyeOff className="h-4 w-4" />
@@ -401,7 +386,7 @@ export default function HomePage() {
                     )}
                   </button>
                 </div>
-                <p className="flex items-center gap-1 text-[11px] font-medium text-warning">
+                <p className="flex items-center gap-1 text-[11px] font-medium text-white/70">
                   <Clock className="h-3.5 w-3.5" />
                   {t.home.lastUpdated}
                 </p>
@@ -428,35 +413,32 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 lg:flex lg:w-auto">
+            <div className="grid grid-cols-3 gap-2">
               <Button
                 size="sm"
-                className="min-w-0 border-0 bg-gradient-to-r from-primary to-secondary px-2 text-white shadow-[0_8px_24px_rgba(18,214,161,0.18)] hover:opacity-90 sm:px-5"
+                className="border-0 bg-gradient-to-r from-primary to-secondary px-5 text-white shadow-[0_8px_24px_rgba(18,214,161,0.18)] hover:opacity-90"
                 onClick={() => openTopUp()}
               >
-                <Plus className="me-1 h-3.5 w-3.5 shrink-0 sm:me-1.5" />
-                <span className="truncate">{t.home.topUp}</span>
+                <Plus className="me-1.5 h-3.5 w-3.5" />
+                {t.home.topUp}
               </Button>
-              <Link href="/send" className="min-w-0">
+              <Link href="/send">
                 <Button
                   size="sm"
                   variant="outline"
-                  className="min-w-0 border-white/30 bg-transparent px-2 text-white hover:bg-white/10 sm:px-5"
+                  className="border-white/30 bg-transparent text-white hover:bg-white/10"
                 >
-                  <Send className="me-1 h-3.5 w-3.5 shrink-0 sm:me-1.5" />
-                  <span className="truncate">{t.home.send}</span>
+                  <Send className="me-1.5 h-3.5 w-3.5" />
+                  {t.home.send}
                 </Button>
               </Link>
-              <Link href="/transfer" className="min-w-0">
+              <Link href="/transfer">
                 <Button
                   size="sm"
                   variant="outline"
-                  className="min-w-0 border-white/30 bg-transparent px-2 text-white hover:bg-white/10 sm:px-5"
+                  className="border-white/30 bg-transparent text-white hover:bg-white/10"
                 >
-                  <span className="truncate sm:hidden">{t.home.withdraw}</span>
-                  <span className="hidden truncate sm:inline">
-                    {t.withdrawal.withdrawTitle}
-                  </span>
+                  {t.withdrawal.withdrawTitle}
                 </Button>
               </Link>
             </div>
@@ -486,7 +468,7 @@ export default function HomePage() {
                 {t.home.topUpNow}
               </Button>
             </div>
-            <WalletIllustration className="hero-art-fade relative z-[1] h-full min-h-44 w-full sm:min-h-40" />
+            <WalletIllustration className="relative z-[1] h-full min-h-44 w-full sm:min-h-40" />
           </section>
         ) : null}
 
@@ -568,8 +550,7 @@ export default function HomePage() {
               href="/history"
               className="text-[11px] font-semibold text-primary hover:underline"
             >
-              {t.home.viewAllHistory}{" "}
-              <span className="inline-block rtl:rotate-180">→</span>
+              {t.home.viewAllHistory} →
             </Link>
           </div>
           {recentActivity.length === 0 ? (

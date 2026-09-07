@@ -1,4 +1,4 @@
-import { formatIrr } from "@/features/wallet/lib/wallet";
+import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import type { TranslationDictionary } from "@/shared/i18n/translations";
 import type { Notification, NotificationType } from "./notifications";
 
@@ -7,10 +7,14 @@ function metadataAmount(
   currency = "IRR",
 ) {
   const amount = metadata?.amount;
-  if (typeof amount !== "number") {
+  if (typeof amount !== "number" && typeof amount !== "string") {
     return "";
   }
-  return formatIrr(amount, currency);
+  const parsed = parseAmount(amount);
+  if (parsed <= 0) {
+    return "";
+  }
+  return formatIrr(parsed, currency);
 }
 
 function metadataString(metadata: Record<string, unknown> | null, key: string) {
@@ -84,9 +88,13 @@ export function notificationContent(
       const saved = metadata?.savedAmount;
       const target = metadata?.targetAmount;
       const savedText =
-        typeof saved === "number" ? formatIrr(saved, currency) : "";
+        typeof saved === "number" || typeof saved === "string"
+          ? formatIrr(parseAmount(saved), currency)
+          : "";
       const targetText =
-        typeof target === "number" ? formatIrr(target, currency) : "";
+        typeof target === "number" || typeof target === "string"
+          ? formatIrr(parseAmount(target), currency)
+          : "";
       return {
         title: types.GOAL_PROGRESS.title,
         message: types.GOAL_PROGRESS.message
@@ -105,10 +113,7 @@ export function notificationContent(
             "{target}",
             metadataAmount(
               {
-                amount:
-                  typeof metadata?.targetAmount === "number"
-                    ? metadata.targetAmount
-                    : 0,
+                amount: metadata?.targetAmount,
                 currency,
               },
               currency,

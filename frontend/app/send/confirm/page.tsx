@@ -19,7 +19,7 @@ import { Card } from "@/shared/ui/Card";
 import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
-import { formatIrr } from "@/features/wallet/lib/wallet";
+import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 import { useUser } from "@/shared/user/UserProvider";
 import {
@@ -110,7 +110,7 @@ function ConfirmContent() {
     try {
       const response = await api.transferP2P({
         recipient: payload.recipient,
-        amount: payload.amount,
+        amount: parseAmount(payload.amount),
         reason: payload.reason,
         category: payload.category,
         envelopeId: payload.envelopeId,

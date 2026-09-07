@@ -1,4 +1,5 @@
 import type { TranslationDictionary } from "@/shared/i18n/translations";
+import { parseAmount } from "@/features/wallet/lib/wallet";
 
 export type GoalStatus = "ACTIVE" | "COMPLETED" | "CANCELLED";
 export type GoalContributionType = "CONTRIBUTE" | "RELEASE";
@@ -45,7 +46,7 @@ export type CreateGoalPayload = {
 type Messages = TranslationDictionary["messages"];
 
 export function parseGoalAmount(value: string | number): number {
-  return Number(value.toString());
+  return parseAmount(value);
 }
 
 export function goalProgressPercent(saved: number, target: number): number {

@@ -12,7 +12,7 @@ import { BarChart } from "@/shared/ui/BarChart";
 import { cn } from "@/shared/cn";
 import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
-import { getCalendarYearMonth, getLastMonths } from "@/shared/i18n/dates";
+import { getCalendarYearMonth, getLastMonths, formatMonthDay } from "@/shared/i18n/dates";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 import { parseGoalAmount, type Goal } from "@/features/goals/lib/goals";
@@ -179,18 +179,87 @@ export default function StatisticsPage() {
       .slice(0, 6);
   }, [rangeTransactions]);
 
-  const chartSeries = [
-    {
-      label: t.statistics.income,
-      color: "var(--chart-income)",
-      data: monthlyData.map((p) => ({ label: p.label, value: p.income })),
-    },
-    {
-      label: t.statistics.expense,
-      color: "var(--chart-expense)",
-      data: monthlyData.map((p) => ({ label: p.label, value: p.expense })),
-    },
-  ];
+  const chartSeries = useMemo(() => {
+    if (selectedDays >= 365) {
+      return [
+        {
+          label: t.statistics.income,
+          color: "var(--chart-income)",
+          data: monthlyData.map((p) => ({ label: p.label, value: p.income })),
+        },
+        {
+          label: t.statistics.expense,
+          color: "var(--chart-expense)",
+          data: monthlyData.map((p) => ({ label: p.label, value: p.expense })),
+        },
+      ];
+    }
+
+    const days = selectedDays;
+    const bucketCount = days <= 7 ? 7 : days <= 30 ? 10 : 9;
+    const bucketDays = Math.ceil(days / bucketCount);
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - days + 1);
+    const buckets = Array.from({ length: bucketCount }, (_, index) => {
+      const date = new Date(start);
+      date.setDate(date.getDate() + index * bucketDays);
+      return { date, income: 0, expense: 0 };
+    });
+
+    for (const tx of rangeTransactions) {
+      if (!tx.createdAt) continue;
+      const createdAt = new Date(tx.createdAt);
+      if (
+        Number.isNaN(createdAt.getTime()) ||
+        createdAt < start ||
+        createdAt > now
+      ) {
+        continue;
+      }
+      const elapsedDays = Math.floor(
+        (createdAt.getTime() - start.getTime()) / 86_400_000,
+      );
+      const bucket =
+        buckets[
+          Math.min(bucketCount - 1, Math.floor(elapsedDays / bucketDays))
+        ];
+      if (!bucket) continue;
+      const amount = parseAmount(tx.amount);
+      if (tx.type && INCOME_TYPES.has(tx.type)) bucket.income += amount;
+      if (tx.type && EXPENSE_TYPES.has(tx.type)) bucket.expense += amount;
+    }
+
+    const income = buckets.map((bucket) => ({
+      label: formatMonthDay(bucket.date, language),
+      value: bucket.income,
+    }));
+    const expense = buckets.map((bucket) => ({
+      label: formatMonthDay(bucket.date, language),
+      value: bucket.expense,
+    }));
+
+    return [
+      {
+        label: t.statistics.income,
+        color: "var(--chart-income)",
+        data: income,
+      },
+      {
+        label: t.statistics.expense,
+        color: "var(--chart-expense)",
+        data: expense,
+      },
+    ];
+  }, [
+    language,
+    monthlyData,
+    rangeTransactions,
+    selectedDays,
+    t.statistics.expense,
+    t.statistics.income,
+  ]);
 
   const rangeOptions = [
     { key: "7", label: t.statistics.days7 },

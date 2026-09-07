@@ -8,7 +8,7 @@ import { Badge } from "@/shared/ui/Badge";
 import { Spinner } from "@/shared/ui/Spinner";
 import { AmountField } from "@/shared/ui/AmountField";
 import { getStoredToken } from "@/shared/api";
-import { formatIrr } from "@/features/wallet/lib/wallet";
+import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
@@ -68,7 +68,7 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
       return;
     }
 
-    const numericAmount = Number(amount);
+    const numericAmount = parseAmount(amount);
     setLoading(true);
     flashToast({
       title: t.deposit.redirecting,
@@ -84,7 +84,7 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
     }
   }
 
-  const numericAmount = Number(amount) || 0;
+  const numericAmount = parseAmount(amount);
   const currentBalance = balance ?? 0;
   const bonus = activeOffer
     ? applyOfferPercent(numericAmount, activeOffer.percent)
@@ -161,7 +161,7 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
         <p className="text-xs font-semibold text-muted">Preset amounts</p>
         <div className="grid grid-cols-3 gap-2">
           {DEPOSIT_PRESETS.map((preset) => {
-            const selected = Number(amount) === preset;
+            const selected = parseAmount(amount) === preset;
             return (
               <button
                 key={preset}

@@ -2,7 +2,12 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { Monitor, ShieldAlert, ShieldCheck, Smartphone } from "lucide-react";
+import {
+  Monitor,
+  ShieldAlert,
+  ShieldCheck,
+  Smartphone,
+} from "lucide-react";
 import { AppShell } from "@/shared/layout/AppShell";
 import { HeaderBar } from "@/shared/layout/HeaderBar";
 import { Button, ButtonLink } from "@/shared/ui/Button";
@@ -14,7 +19,7 @@ import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
-import { formatIrr } from "@/features/wallet/lib/wallet";
+import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import type { SpendingLimitSummary } from "@/features/spending-limits/lib/spendingLimits";
 import type {
   SecurityEvent,
@@ -56,20 +61,13 @@ function eventIcon(type: SecurityEventType, className: string): ReactNode {
 
 function sessionIcon(label: string | null, className: string): ReactNode {
   const lower = (label || "").toLowerCase();
-  if (
-    lower.includes("mobile") ||
-    lower.includes("phone") ||
-    lower.includes("android") ||
-    lower.includes("ios")
-  ) {
+  if (lower.includes("mobile") || lower.includes("phone") || lower.includes("android") || lower.includes("ios")) {
     return <Smartphone className={className} />;
   }
   return <Monitor className={className} />;
 }
 
-function severityBadgeVariant(
-  severity: EventSeverity,
-): "warning" | "danger" | "muted" {
+function severityBadgeVariant(severity: EventSeverity): "warning" | "danger" | "muted" {
   switch (severity) {
     case "warning":
       return "warning";
@@ -162,7 +160,7 @@ export default function SecurityPage() {
   }
 
   async function saveLimit(type: SpendingLimitSummary["type"]) {
-    const parsed = Number(limitDrafts[type]);
+    const parsed = parseAmount(limitDrafts[type]);
     if (!Number.isInteger(parsed) || parsed < 1) {
       setError(t.messages.genericError);
       return;
@@ -251,7 +249,7 @@ export default function SecurityPage() {
                     <div className="flex items-end gap-2">
                       <div className="min-w-0 flex-1">
                         <TextField
-                          label={t.security.limitAmountLabel}
+                          label="Limit (IRR)"
                           type="number"
                           min="1"
                           step="1"
@@ -310,22 +308,16 @@ export default function SecurityPage() {
                               ]
                                 .filter(Boolean)
                                 .join(" · ") ||
-                                formatDisplayDateTime(
-                                  session.lastSeenAt,
-                                  language,
-                                )}
+                                formatDisplayDateTime(session.lastSeenAt, language)}
                             </p>
                             <p className="text-[11px] text-muted">
-                              {formatDisplayDateTime(
-                                session.lastSeenAt,
-                                language,
-                              )}
+                              {formatDisplayDateTime(session.lastSeenAt, language)}
                             </p>
                           </div>
                         </div>
                         {session.isCurrent ? (
                           <Badge variant="success">
-                            {t.security.thisDevice}
+                            {language === "fa" ? "این دستگاه" : "This device"}
                           </Badge>
                         ) : (
                           <button
@@ -358,15 +350,13 @@ export default function SecurityPage() {
                           className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-muted/70 p-3"
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                            <div
-                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                                severity === "failed"
-                                  ? "bg-danger-soft text-danger"
-                                  : severity === "warning"
-                                    ? "bg-warning-soft text-warning"
-                                    : "bg-primary-soft text-primary"
-                              }`}
-                            >
+                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                              severity === "failed"
+                                ? "bg-danger-soft text-danger"
+                                : severity === "warning"
+                                ? "bg-warning-soft text-warning"
+                                : "bg-primary-soft text-primary"
+                            }`}>
                               {eventIcon(event.type, "h-5 w-5")}
                             </div>
                             <div className="min-w-0">
@@ -374,10 +364,7 @@ export default function SecurityPage() {
                                 {t.security.eventTypes[event.type]}
                               </p>
                               <p className="text-[11px] text-muted">
-                                {formatDisplayDateTime(
-                                  event.createdAt,
-                                  language,
-                                )}
+                                {formatDisplayDateTime(event.createdAt, language)}
                               </p>
                             </div>
                           </div>

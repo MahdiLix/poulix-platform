@@ -113,6 +113,7 @@ function ConfirmContent() {
         amount: payload.amount,
         reason: payload.reason,
         category: payload.category,
+        envelopeId: payload.envelopeId,
       });
 
       clearSendConfirmPayload();
@@ -147,8 +148,11 @@ function ConfirmContent() {
     payload.category && isTransactionCategory(payload.category)
       ? t.history.categories[payload.category as TransactionCategory]
       : null;
+  const sourceBalance = payload.envelopeId
+    ? (payload.fundingSourceBalance ?? null)
+    : balance;
   const remainingAfter =
-    balance !== null ? Math.max(0, balance - payload.amount) : null;
+    sourceBalance !== null ? Math.max(0, sourceBalance - payload.amount) : null;
   const initial = payload.recipientUser.username.slice(0, 1).toUpperCase();
   const walletName = user?.username || user?.email?.split("@")[0] || "Poulix";
 
@@ -202,7 +206,7 @@ function ConfirmContent() {
             <ConfirmRow
               icon={Wallet}
               label={t.send.fromWallet}
-              value={walletName}
+              value={payload.fundingSourceLabel || walletName}
             />
             {remainingAfter !== null ? (
               <ConfirmRow

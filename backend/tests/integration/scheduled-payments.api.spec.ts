@@ -285,6 +285,89 @@ describe('Scheduled Payments API', () => {
     expect(updated.executions[0].failureReason).toBe('Spending limit exceeded');
   });
 
+  it('persists and uses an envelope for scheduled payment execution', async () => {
+    const envelope = await db.envelope.create({
+      data: {
+        userId: sender.userId,
+        name: 'Recurring support',
+        allocatedAmount: 700_000,
+      },
+    });
+    const payment = await createScheduledPayment({
+      frequency: 'ONCE',
+      envelopeId: envelope.id,
+    });
+
+    expect(payment.envelopeId).toBe(envelope.id);
+    await scheduler.processDuePayments();
+
+    const wallet = await db.wallet.findUniqueOrThrow({
+      where: { userId: sender.userId },
+    });
+    const updatedEnvelope = await db.envelope.findUniqueOrThrow({
+      where: { id: envelope.id },
+    });
+    const transaction = await db.transaction.findFirstOrThrow({
+      where: { walletId: wallet.id, type: 'TRANSFER_OUT' },
+    });
+
+    expect(balanceOf(wallet.balance)).toBe(5_000_000);
+    expect(balanceOf(updatedEnvelope.allocatedAmount)).toBe(200_000);
+    expect(transaction.envelopeId).toBe(envelope.id);
+  });
+
+  it('rejects a scheduled payment funded by another user envelope', async () => {
+    const foreignEnvelope = await db.envelope.create({
+      data: {
+        userId: recipient.userId,
+        name: 'Recipient budget',
+        allocatedAmount: 1_000_000,
+      },
+    });
+
+    await request(app.getHttpServer())
+      .post('/scheduled-payments')
+      .set('Authorization', `Bearer ${sender.accessToken}`)
+      .send({
+        recipient: recipient.username,
+        amount: 500_000,
+        frequency: 'ONCE',
+        startDate: new Date().toISOString(),
+        envelopeId: foreignEnvelope.id,
+      })
+      .expect(400);
+  });
+
+  it('records insufficient envelope funds without partial transfer', async () => {
+    const envelope = await db.envelope.create({
+      data: {
+        userId: sender.userId,
+        name: 'Small recurring budget',
+        allocatedAmount: 100_000,
+      },
+    });
+    const payment = await createScheduledPayment({
+      frequency: 'ONCE',
+      envelopeId: envelope.id,
+    });
+
+    await scheduler.processDuePayments();
+
+    const updated = await db.scheduledPayment.findUniqueOrThrow({
+      where: { id: payment.id },
+      include: { executions: true },
+    });
+    const recipientWallet = await db.wallet.findUniqueOrThrow({
+      where: { userId: recipient.userId },
+    });
+
+    expect(updated.status).toBe('FAILED');
+    expect(updated.executions[0].failureReason).toBe(
+      'Insufficient envelope funds',
+    );
+    expect(balanceOf(recipientWallet.balance)).toBe(0);
+  });
+
   it('retries a failed recurring payment without advancing the schedule', async () => {
     const senderWallet = await db.wallet.findUniqueOrThrow({
       where: { userId: sender.userId },

@@ -42,6 +42,7 @@ export default function EnvelopesPage() {
   const [totalAllocated, setTotalAllocated] = useState(0);
   const [pageStatus, setPageStatus] = useState<PageStatus>("loading");
   const [listError, setListError] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
     void loadEnvelopes();
@@ -70,6 +71,19 @@ export default function EnvelopesPage() {
       }
       setListError(localizeError(err, t.messages, "failedToLoadEnvelopes"));
       setPageStatus("error");
+    }
+  }
+
+  async function cancelEnvelope(id: string) {
+    setCancellingId(id);
+    setListError(null);
+    try {
+      await api.cancelEnvelope(id);
+      await loadEnvelopes();
+    } catch (err) {
+      setListError(localizeError(err, t.messages, "genericError"));
+    } finally {
+      setCancellingId(null);
     }
   }
 
@@ -108,7 +122,7 @@ export default function EnvelopesPage() {
           <Link href="/envelopes/new">
             <Button size="sm" className="gap-1">
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Create Envelope</span>
+              <span className="hidden sm:inline">{t.envelopes.createBtn}</span>
             </Button>
           </Link>
         }
@@ -209,6 +223,8 @@ export default function EnvelopesPage() {
                 key={envelope.id}
                 envelope={envelope}
                 color={ENVELOPE_COLORS[i % ENVELOPE_COLORS.length]}
+                onCancel={(id) => void cancelEnvelope(id)}
+                cancelling={cancellingId === envelope.id}
               />
             ))}
           </div>

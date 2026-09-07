@@ -4,11 +4,17 @@ import { FinancialDestinationsService } from '../financial-destinations/financia
 import { NotificationsService } from '../notifications/notifications.service';
 import { SecurityService } from '../security/security.service';
 import { SpendingLimitsService } from '../spending-limits/spending-limits.service';
-import type { Prisma, TransactionCategory } from '../generated/prisma/client';
+import type {
+  Prisma,
+  TransactionCategory,
+  TransactionType,
+} from '../generated/prisma/client';
+import type { TransactionsQueryDto } from './dto/transactions-query.dto';
 
 type WithdrawMetadata = {
   reason?: string;
   category?: TransactionCategory;
+  envelopeId?: string;
 };
 
 type TransferMetadata = WithdrawMetadata & {
@@ -53,29 +59,60 @@ export class TransactionsService {
 
         const wallet = await tx.wallet.findUnique({
           where: { userId },
-          select: { id: true },
+          select: { id: true, balance: true, currency: true },
         });
 
         if (!wallet) {
           throw new BadRequestException('Wallet not found');
         }
 
-        const [result] = await tx.wallet.updateManyAndReturn({
-          where: {
-            id: wallet.id,
-            balance: { gte: amount },
-          },
-          data: {
-            balance: { decrement: amount },
-          },
-          select: {
-            balance: true,
-            currency: true,
-          },
-        });
+        let balance = wallet.balance;
+        let envelopeBalance: Prisma.Decimal | undefined;
 
-        if (!result) {
-          throw new BadRequestException('Insufficient funds');
+        if (metadata?.envelopeId) {
+          const envelope = await tx.envelope.findUnique({
+            where: { id: metadata.envelopeId },
+            select: { userId: true, status: true },
+          });
+          if (!envelope || envelope.userId !== userId) {
+            throw new BadRequestException('Envelope not found');
+          }
+          if (envelope.status !== 'ACTIVE') {
+            throw new BadRequestException('Envelope is not active');
+          }
+
+          const [updatedEnvelope] = await tx.envelope.updateManyAndReturn({
+            where: {
+              id: metadata.envelopeId,
+              userId,
+              status: 'ACTIVE',
+              allocatedAmount: { gte: amount },
+            },
+            data: { allocatedAmount: { decrement: amount } },
+            select: { allocatedAmount: true },
+          });
+          if (!updatedEnvelope) {
+            throw new BadRequestException('Insufficient envelope funds');
+          }
+          envelopeBalance = updatedEnvelope.allocatedAmount;
+        } else {
+          const [updatedWallet] = await tx.wallet.updateManyAndReturn({
+            where: {
+              id: wallet.id,
+              balance: { gte: amount },
+            },
+            data: {
+              balance: { decrement: amount },
+            },
+            select: {
+              balance: true,
+            },
+          });
+
+          if (!updatedWallet) {
+            throw new BadRequestException('Insufficient funds');
+          }
+          balance = updatedWallet.balance;
         }
 
         await tx.transaction.create({
@@ -85,10 +122,21 @@ export class TransactionsService {
             type: 'WITHDRAWAL',
             reason,
             category,
+            envelopeId: metadata?.envelopeId,
           },
         });
 
-        return result;
+        return {
+          balance,
+          currency: wallet.currency,
+          ...(metadata?.envelopeId
+            ? {
+                fundingSource: 'ENVELOPE' as const,
+                envelopeId: metadata.envelopeId,
+                envelopeBalance,
+              }
+            : { fundingSource: 'WALLET' as const }),
+        };
       });
 
       await this.notificationsService.createWithdrawalSuccess(userId, {
@@ -141,7 +189,7 @@ export class TransactionsService {
     });
   }
 
-  async getWalletTransactions(userId: string) {
+  async getWalletTransactions(userId: string, query: TransactionsQueryDto) {
     const wallet = await this.db.wallet.findUnique({
       where: { userId },
     });
@@ -150,18 +198,78 @@ export class TransactionsService {
       throw new BadRequestException('Wallet not found');
     }
 
-    return this.db.transaction.findMany({
-      where: { walletId: wallet.id },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        counterpartyUser: {
-          select: {
-            username: true,
-            email: true,
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 20;
+    const q = query.q?.trim();
+    const typeFilter =
+      query.type === 'GOALS'
+        ? {
+            type: {
+              in: ['GOAL_CONTRIBUTE', 'GOAL_RELEASE'] as TransactionType[],
+            },
+          }
+        : query.type === 'ENVELOPES'
+          ? {
+              type: {
+                in: [
+                  'ENVELOPE_ALLOCATE',
+                  'ENVELOPE_RELEASE',
+                ] as TransactionType[],
+              },
+            }
+          : query.type
+            ? { type: query.type }
+            : {};
+    const where: Prisma.TransactionWhereInput = {
+      walletId: wallet.id,
+      ...typeFilter,
+      ...(query.category ? { category: query.category } : {}),
+      ...(query.from || query.to
+        ? {
+            createdAt: {
+              ...(query.from ? { gte: new Date(query.from) } : {}),
+              ...(query.to ? { lte: new Date(query.to) } : {}),
+            },
+          }
+        : {}),
+      ...(q
+        ? {
+            OR: [
+              { reason: { contains: q, mode: 'insensitive' } },
+              {
+                counterpartyUser: {
+                  is: {
+                    OR: [
+                      { username: { contains: q, mode: 'insensitive' } },
+                      { email: { contains: q, mode: 'insensitive' } },
+                    ],
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const [items, total] = await this.db.$transaction([
+      this.db.transaction.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          counterpartyUser: {
+            select: {
+              username: true,
+              email: true,
+            },
           },
         },
-      },
-    });
+      }),
+      this.db.transaction.count({ where }),
+    ]);
+
+    return { items, page, pageSize, total };
   }
 
   async transferToUser(
@@ -222,6 +330,7 @@ export class TransactionsService {
             reason,
             category,
             scheduledPaymentExecutionId: metadata?.scheduledPaymentExecutionId,
+            envelopeId: metadata?.envelopeId,
           },
         );
 
@@ -294,6 +403,7 @@ export class TransactionsService {
     const reason = metadata?.reason?.trim() || undefined;
     const category = metadata?.category;
     const scheduledPaymentExecutionId = metadata?.scheduledPaymentExecutionId;
+    const envelopeId = metadata?.envelopeId;
 
     const senderWallet = await tx.wallet.findUnique({
       where: { userId: senderUserId },
@@ -309,19 +419,43 @@ export class TransactionsService {
       return { success: false, reason: 'Wallet not found' };
     }
 
-    const [updatedSenderWallet] = await tx.wallet.updateManyAndReturn({
-      where: {
-        id: senderWallet.id,
-        balance: { gte: amount },
-      },
-      data: {
-        balance: { decrement: amount },
-      },
-      select: { id: true },
-    });
+    if (envelopeId) {
+      const envelope = await tx.envelope.findUnique({
+        where: { id: envelopeId },
+        select: { userId: true, status: true },
+      });
+      if (!envelope || envelope.userId !== senderUserId) {
+        return { success: false, reason: 'Envelope not found' };
+      }
+      if (envelope.status !== 'ACTIVE') {
+        return { success: false, reason: 'Envelope is not active' };
+      }
+      const funded = await tx.envelope.updateMany({
+        where: {
+          id: envelopeId,
+          userId: senderUserId,
+          status: 'ACTIVE',
+          allocatedAmount: { gte: amount },
+        },
+        data: { allocatedAmount: { decrement: amount } },
+      });
+      if (funded.count !== 1) {
+        return { success: false, reason: 'Insufficient envelope funds' };
+      }
+    } else {
+      const updatedSenderWallet = await tx.wallet.updateMany({
+        where: {
+          id: senderWallet.id,
+          balance: { gte: amount },
+        },
+        data: {
+          balance: { decrement: amount },
+        },
+      });
 
-    if (!updatedSenderWallet) {
-      return { success: false, reason: 'Insufficient funds' };
+      if (updatedSenderWallet.count !== 1) {
+        return { success: false, reason: 'Insufficient funds' };
+      }
     }
 
     await tx.wallet.update({
@@ -340,6 +474,7 @@ export class TransactionsService {
         category,
         counterpartyUserId: recipientUserId,
         scheduledPaymentExecutionId,
+        envelopeId,
       },
     });
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Clock, CreditCard, XCircle } from "lucide-react";
 import { AdminShell } from "@/features/admin/components/AdminShell";
-import { Button, ButtonLink } from "@/shared/ui/Button";
+import { ButtonLink } from "@/shared/ui/Button";
 import { PageSpinner } from "@/shared/ui/Spinner";
 import { Badge } from "@/shared/ui/Badge";
 import { StatCard } from "@/shared/ui/StatCard";
@@ -22,9 +22,12 @@ import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatIrr } from "@/features/wallet/lib/wallet";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
+import { Pagination } from "@/shared/ui/Pagination";
 import type { AdminPayment } from "@/features/admin/lib/admin";
 
-function statusBadgeVariant(status: string): "success" | "warning" | "danger" | "muted" {
+function statusBadgeVariant(
+  status: string,
+): "success" | "warning" | "danger" | "muted" {
   if (status === "PAID") return "success";
   if (status === "PENDING") return "warning";
   if (status === "FAILED") return "danger";
@@ -78,7 +81,11 @@ export default function AdminPaymentsPage() {
   return (
     <AdminShell title={t.admin.paymentsTitle} subtitle={t.admin.subtitle}>
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Total Payments" value={String(total)} icon={CreditCard} />
+        <StatCard
+          label="Total Payments"
+          value={String(total)}
+          icon={CreditCard}
+        />
         <StatCard
           label="Successful"
           value={String(paid)}
@@ -139,13 +146,13 @@ export default function AdminPaymentsPage() {
       ) : (
         <Table>
           <TableHead>
-            <TableHeaderCell>ID</TableHeaderCell>
-            <TableHeaderCell>User</TableHeaderCell>
-            <TableHeaderCell>Amount</TableHeaderCell>
-            <TableHeaderCell>Gateway</TableHeaderCell>
+            <TableHeaderCell>{t.common.id}</TableHeaderCell>
+            <TableHeaderCell>{t.common.user}</TableHeaderCell>
+            <TableHeaderCell>{t.common.amount}</TableHeaderCell>
+            <TableHeaderCell>{t.common.gateway}</TableHeaderCell>
             <TableHeaderCell>{t.admin.status}</TableHeaderCell>
-            <TableHeaderCell>Created At</TableHeaderCell>
-            <TableHeaderCell>Actions</TableHeaderCell>
+            <TableHeaderCell>{t.common.createdAt}</TableHeaderCell>
+            <TableHeaderCell>{t.common.actions}</TableHeaderCell>
           </TableHead>
           <TableBody>
             {items.map((item) => (
@@ -177,7 +184,7 @@ export default function AdminPaymentsPage() {
                     variant="outline"
                     className="w-auto"
                   >
-                    View
+                    {t.common.view}
                   </ButtonLink>
                 </TableCell>
               </TableRow>
@@ -186,28 +193,14 @@ export default function AdminPaymentsPage() {
         </Table>
       )}
 
-      {total > 20 ? (
-        <div className="mt-4 flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-auto"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            {t.admin.prev}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-auto"
-            disabled={page * 20 >= total}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            {t.admin.next}
-          </Button>
-        </div>
-      ) : null}
+      <Pagination
+        className="mt-4"
+        page={page}
+        totalPages={Math.ceil(total / 20)}
+        onPageChange={setPage}
+        previousLabel={t.admin.prev}
+        nextLabel={t.admin.next}
+      />
     </AdminShell>
   );
 }

@@ -242,6 +242,7 @@ model ScheduledPayment {
 
   userId          String
   recipientUserId String
+  envelopeId      String?
 
   amount   Decimal              @db.Decimal(20, 0)
   reason   String?              @db.VarChar(200)
@@ -259,9 +260,11 @@ model ScheduledPayment {
 
   user          User                        @relation("ScheduledPaymentOwner", fields: [userId], references: [id])
   recipientUser User                        @relation("ScheduledPaymentRecipient", fields: [recipientUserId], references: [id])
+  envelope      Envelope?                   @relation(fields: [envelopeId], references: [id], onDelete: SetNull)
   executions    ScheduledPaymentExecution[]
 
   @@index([userId, createdAt])
+  @@index([envelopeId])
   @@index([status, nextExecutionAt])
 }
 
@@ -338,6 +341,7 @@ model Envelope {
   user         User               @relation(fields: [userId], references: [id])
   movements    EnvelopeMovement[]
   transactions Transaction[]
+  scheduledPayments ScheduledPayment[]
 
   @@index([userId, createdAt])
 }
@@ -436,7 +440,7 @@ model UserSession {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, deviceKey])
+  @@index([userId, deviceKey])
   @@index([userId, lastSeenAt])
 }
 

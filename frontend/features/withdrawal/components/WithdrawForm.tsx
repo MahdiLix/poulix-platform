@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/shared/ui/Button";
 import { TextField } from "@/shared/ui/TextField";
+import { AmountField } from "@/shared/ui/AmountField";
 import { Select } from "@/shared/ui/Select";
 import { api, getStoredToken } from "@/shared/api";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
@@ -24,6 +25,7 @@ import {
   validateWithdrawAmount,
   listRecentAccountNumbers,
   listRecentShabaNumbers,
+  collectWithdrawDestinationValues,
   type WithdrawDestination,
 } from "@/features/withdrawal/lib/withdraw";
 import {
@@ -33,12 +35,15 @@ import {
 import { ProgressBar } from "@/shared/ui/ProgressBar";
 import { RecentValueList } from "@/shared/ui/RecentValueList";
 import { Spinner } from "@/shared/ui/Spinner";
-import { localizeDigits } from "@/shared/ui/latinDigits";
 import type { SpendingLimitSummary } from "@/features/spending-limits/lib/spendingLimits";
+import {
+  FundingSourceSelect,
+  type FundingSource,
+} from "@/features/envelopes/components/FundingSourceSelect";
 
 export function WithdrawForm() {
   const router = useRouter();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const {
     status,
     balance,
@@ -63,6 +68,10 @@ export function WithdrawForm() {
   const [shabaFocused, setShabaFocused] = useState(false);
   const [recentAccounts, setRecentAccounts] = useState<string[]>([]);
   const [recentShabas, setRecentShabas] = useState<string[]>([]);
+  const [fundingSource, setFundingSource] = useState<FundingSource>({
+    label: "",
+    balance: null,
+  });
 
   useEffect(() => {
     setAccountNumber(getSavedAccountNumber());
@@ -86,18 +95,8 @@ export function WithdrawForm() {
             api.getDestinationValue(item.id).catch(() => null),
           ),
         );
-        const accounts = revealed
-          .filter(
-            (item): item is { type: "BANK_ACCOUNT"; accountNumber: string } =>
-              item?.type === "BANK_ACCOUNT",
-          )
-          .map((item) => item.accountNumber);
-        const shabas = revealed
-          .filter(
-            (item): item is { type: "SHABA"; shabaNumber: string } =>
-              item?.type === "SHABA",
-          )
-          .map((item) => item.shabaNumber);
+        const { accounts, shabas } =
+          collectWithdrawDestinationValues(revealed);
         setRecentAccounts((current) =>
           [...new Set([...current, ...accounts])],
         );
@@ -130,10 +129,13 @@ export function WithdrawForm() {
       return;
     }
 
+    const sourceBalance = fundingSource.envelopeId
+      ? fundingSource.balance
+      : balance;
     const amountError = validateWithdrawAmount(
       amount,
       t.messages,
-      status === "ready" ? balance : undefined,
+      sourceBalance ?? undefined,
     );
     if (amountError) {
       setError(amountError);
@@ -158,11 +160,13 @@ export function WithdrawForm() {
           ? {
               amount: numericAmount,
               accountNumber: normalizeAccountNumber(accountNumber),
+              envelopeId: fundingSource.envelopeId,
               ...meta,
             }
           : {
               amount: numericAmount,
               shabaNumber: normalizeShabaNumber(shabaNumber),
+              envelopeId: fundingSource.envelopeId,
               ...meta,
             };
 
@@ -310,34 +314,45 @@ export function WithdrawForm() {
         </div>
       )}
 
-      <TextField
-        label={t.withdrawal.amountIrr}
-        type="number"
-        min="1"
-        step="1"
-        inputMode="numeric"
-        placeholder={localizeDigits("10000", language)}
-        value={amount}
-        onChange={(e) => {
-          setAmount(e.target.value);
-          setError("");
-        }}
-        rightIcon={
-          <span className="flex items-center gap-2">
-            <span className="text-[11px] font-semibold text-muted">IRR</span>
-            {status === "ready" && balance !== null ? (
-              <button
-                type="button"
-                onClick={() => setAmount(String(Math.trunc(balance)))}
-                className="text-xs font-bold text-primary hover:underline"
-              >
-                {t.withdrawal.maxWithdraw}
-              </button>
-            ) : null}
-          </span>
-        }
-        className="pe-20 ltr:text-start"
+      <FundingSourceSelect
+        value={fundingSource.envelopeId ?? ""}
+        onChange={setFundingSource}
+        walletBalance={balance}
+        currency={currency}
       />
+
+      <div className="space-y-1">
+        <AmountField
+          label={t.withdrawal.amountIrr}
+          placeholder="10,000"
+          value={amount}
+          onChange={(e) => {
+            setAmount(e.target.value);
+            setError("");
+          }}
+        />
+        {(fundingSource.envelopeId
+          ? fundingSource.balance !== null
+          : status === "ready" && balance !== null) ? (
+          <button
+            type="button"
+            onClick={() =>
+              setAmount(
+                String(
+                  Math.trunc(
+                    fundingSource.envelopeId
+                      ? (fundingSource.balance ?? 0)
+                      : (balance ?? 0),
+                  ),
+                ),
+              )
+            }
+            className="text-xs font-bold text-primary hover:underline"
+          >
+            {t.withdrawal.maxWithdraw}
+          </button>
+        ) : null}
+      </div>
 
       <Select
         label={t.withdrawal.paymentCategoryOptional}

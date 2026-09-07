@@ -12,6 +12,7 @@ import { api } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatIrr } from "@/features/wallet/lib/wallet";
+import { transactionTypeLabel } from "@/features/wallet/lib/transactionDisplay";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import type { AdminPaymentDetail } from "@/features/admin/lib/admin";
 
@@ -87,17 +88,23 @@ export default function AdminPaymentDetailPage() {
 
           <div className="grid gap-4 lg:grid-cols-3">
             <Card className="p-4">
-              <p className="text-[11px] font-semibold text-muted">Gateway</p>
+              <p className="text-[11px] font-semibold text-muted">
+                {t.common.gateway}
+              </p>
               <p className="mt-1 text-sm font-bold">ZarinPal</p>
             </Card>
             <Card className="p-4">
-              <p className="text-[11px] font-semibold text-muted">Reference</p>
+              <p className="text-[11px] font-semibold text-muted">
+                {t.common.reference}
+              </p>
               <p className="mt-1 break-all font-mono text-xs font-bold">
                 {item.refId ?? "—"}
               </p>
             </Card>
             <Card className="p-4">
-              <p className="text-[11px] font-semibold text-muted">Wallet ID</p>
+              <p className="text-[11px] font-semibold text-muted">
+                {t.admin.walletId}
+              </p>
               <p className="mt-1 break-all font-mono text-xs font-bold">
                 {item.walletId}
               </p>
@@ -105,25 +112,25 @@ export default function AdminPaymentDetailPage() {
           </div>
 
           <Card className="grid gap-4 p-5 sm:grid-cols-2">
-            <DetailRow label="Payment ID" value={item.id} mono />
+            <DetailRow label={t.admin.paymentId} value={item.id} mono />
             <DetailRow
-              label="Created"
+              label={t.common.createdAt}
               value={formatDisplayDateTime(item.createdAt, language)}
             />
             <DetailRow
-              label="Updated"
+              label={t.common.updatedAt}
               value={formatDisplayDateTime(item.updatedAt, language)}
             />
             <DetailRow label={t.admin.status} value={item.status} />
             <DetailRow
-              label="User"
+              label={t.common.user}
               value={`${item.user.username} (${item.user.email})`}
             />
-            <DetailRow label="Amount" value={formatIrr(item.amount)} />
+            <DetailRow label={t.common.amount} value={formatIrr(item.amount)} />
           </Card>
 
           <Card className="space-y-3 p-5">
-            <h2 className="text-sm font-bold">Related transaction</h2>
+            <h2 className="text-sm font-bold">{t.admin.relatedTransaction}</h2>
             {item.relatedTransaction ? (
               <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-muted/50 px-3 py-3">
                 <div className="flex items-center gap-3">
@@ -132,7 +139,7 @@ export default function AdminPaymentDetailPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold">
-                      {item.relatedTransaction.type}
+                      {transactionTypeLabel(item.relatedTransaction.type, t)}
                     </p>
                     <p className="text-[11px] text-muted">
                       {formatIrr(item.relatedTransaction.amount)} ·{" "}
@@ -149,7 +156,7 @@ export default function AdminPaymentDetailPage() {
                   variant="outline"
                   className="w-auto"
                 >
-                  View
+                  {t.common.view}
                 </ButtonLink>
               </div>
             ) : (

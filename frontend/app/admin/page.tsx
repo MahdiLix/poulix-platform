@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowUpRight,
+  Activity,
   CreditCard,
+  Landmark,
   ShieldAlert,
   TrendingUp,
   Users,
@@ -15,9 +17,9 @@ import { OfferEditor } from "@/features/admin/components/OfferEditor";
 import { UserStatusActions } from "@/features/admin/components/UserStatusActions";
 import { Card } from "@/shared/ui/Card";
 import { Badge } from "@/shared/ui/Badge";
-import { StatCard } from "@/shared/ui/StatCard";
+import { DashboardMetricCard } from "@/shared/ui/DashboardMetricCard";
+import { GroupedBarChart } from "@/shared/ui/GroupedBarChart";
 import { AreaChart } from "@/shared/ui/AreaChart";
-import { BarChart } from "@/shared/ui/BarChart";
 import { DonutChart } from "@/shared/ui/DonutChart";
 import { PageSpinner } from "@/shared/ui/Spinner";
 import { ButtonLink } from "@/shared/ui/Button";
@@ -25,6 +27,12 @@ import { api } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatIrr } from "@/features/wallet/lib/wallet";
+import { formatDisplayDateTime, formatMonthDay } from "@/shared/i18n/dates";
+import { WalletIllustration } from "@/shared/ui/WalletIllustration";
+import {
+  transactionReasonLabel,
+  transactionTypeLabel,
+} from "@/features/wallet/lib/transactionDisplay";
 import type {
   AdminDashboard,
   AdminUserSummary,
@@ -61,104 +69,264 @@ export default function AdminDashboardPage() {
       data.operations.failedPayments
     : 0;
 
+  const activityChart = useMemo(() => {
+    const now = new Date();
+    const rows = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(now);
+      date.setHours(0, 0, 0, 0);
+      date.setDate(date.getDate() - (6 - index));
+      return {
+        key: date.toISOString().slice(0, 10),
+        label: formatMonthDay(date, language),
+        deposits: 0,
+        withdrawals: 0,
+        transfers: 0,
+      };
+    });
+    const rowByDay = new Map(rows.map((row) => [row.key, row]));
+    for (const transaction of data?.recentActivity ?? []) {
+      const row = rowByDay.get(transaction.createdAt.slice(0, 10));
+      if (!row) continue;
+      if (transaction.type === "DEPOSIT") row.deposits += 1;
+      else if (transaction.type === "WITHDRAWAL") row.withdrawals += 1;
+      else if (
+        transaction.type === "TRANSFER_IN" ||
+        transaction.type === "TRANSFER_OUT"
+      ) {
+        row.transfers += 1;
+      }
+    }
+    return rows;
+  }, [data?.recentActivity, language]);
+
   return (
-    <AdminShell title={t.admin.dashboardTitle} subtitle={t.admin.subtitle}>
+    <AdminShell
+      title={t.admin.dashboardTitle}
+      subtitle={t.admin.subtitle}
+      showHeading={false}
+    >
       {error ? (
         <Card className="p-6 text-sm text-danger">{error}</Card>
       ) : !data ? (
         <PageSpinner label={t.common.loading} />
       ) : (
-        <div className="space-y-6 lg:space-y-8">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5">
-            <StatCard
+        <div className="space-y-4 lg:space-y-5">
+          {/* Hero section */}
+          <section className="fintech-hero relative isolate overflow-hidden rounded-[14px] p-5 text-white lg:p-6">
+            <div className="fintech-grid-pattern pointer-events-none absolute inset-0 z-0 opacity-60" />
+            <div className="relative z-10 sm:pe-44">
+              <div className="grid items-center gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(10rem,34%)]">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-cyan-200">
+                      <Users className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <h1 className="text-lg font-black tracking-tight sm:text-2xl">
+                        {t.admin.dashboardTitle}
+                      </h1>
+                      <p className="mt-0.5 text-xs text-blue-100/70">
+                        {t.admin.subtitle}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {[
+                      {
+                        icon: Users,
+                        value: data.users.total,
+                        label: t.admin.totalUsers,
+                      },
+                      {
+                        icon: Activity,
+                        value: transactionCount,
+                        label: t.admin.nav.transactions,
+                      },
+                      {
+                        icon: CreditCard,
+                        value: paymentCount,
+                        label: t.admin.nav.payments,
+                      },
+                      {
+                        icon: Landmark,
+                        value: data.wallets.total,
+                        label: t.admin.totalWallets,
+                      },
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <div
+                          key={item.label}
+                          className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.06] px-2.5 py-2 backdrop-blur-sm"
+                        >
+                          <Icon className="h-3.5 w-3.5 shrink-0 text-secondary" />
+                          <div className="min-w-0">
+                            <p className="amount text-xs font-bold">
+                              {item.value}
+                            </p>
+                            <p className="truncate text-[9px] text-blue-100/65">
+                              {item.label}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <WalletIllustration
+                  priority
+                  className="hero-art-fade relative h-32 w-full sm:h-36"
+                />
+              </div>
+              <div className="mt-3 flex items-center justify-between rounded-xl border border-white/10 bg-[#03142f]/60 px-4 py-3 backdrop-blur-sm sm:absolute sm:end-5 sm:top-5 sm:mt-0 sm:block sm:w-40">
+                <p className="text-xs font-bold">{t.admin.status}</p>
+                <p className="flex items-center gap-2 text-[10px] text-blue-100/75 sm:mt-2">
+                  <span className="h-2 w-2 rounded-full bg-secondary shadow-[0_0_12px_var(--secondary)]" />
+                  {t.admin.statuses.ACTIVE}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <DashboardMetricCard
               label={t.admin.totalUsers}
               value={String(data.users.total)}
               icon={Users}
-              iconClassName="bg-primary-soft text-primary"
+              tone="blue"
+              caption={t.admin.activeUsers}
             />
-            <StatCard
+            <DashboardMetricCard
               label={t.admin.nav.transactions}
               value={String(transactionCount)}
               icon={TrendingUp}
-              iconClassName="bg-secondary-soft text-secondary"
+              tone="emerald"
+              caption={t.admin.recentActivity}
+              spark={activityChart.map(
+                (row) => row.deposits + row.withdrawals + row.transfers,
+              )}
             />
-            <StatCard
+            <DashboardMetricCard
               label={t.admin.nav.payments}
               value={String(paymentCount)}
               icon={CreditCard}
-              iconClassName="bg-accent-amber-soft text-accent-amber"
+              tone="violet"
+              caption={t.admin.pendingPayments}
             />
-            <StatCard
+            <DashboardMetricCard
               label={t.admin.totalWithdrawals}
-              value={formatIrr(data.transactions.withdrawalAmount, "IRR", language)}
+              value={formatIrr(
+                data.transactions.withdrawalAmount,
+                "IRR",
+                language,
+              )}
               icon={Wallet}
-              iconClassName="bg-accent-teal-soft text-accent-teal"
+              tone="amber"
+              caption={t.admin.nav.withdrawals}
+              spark={activityChart.map((row) => row.withdrawals)}
             />
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-12 lg:gap-6">
-            <Card className="space-y-4 p-5 lg:col-span-7 lg:p-6">
+          <div className="grid gap-4 lg:grid-cols-12">
+            <Card className="space-y-4 p-4 lg:col-span-8 lg:p-5">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-bold text-foreground">
-                  {t.admin.nav.transactions}
-                </h2>
-                <span className="rounded-full bg-surface-muted px-2.5 py-1 text-[10px] font-semibold text-muted">
-                  {t.admin.type}
+                <div>
+                  <h2 className="text-sm font-bold text-foreground">
+                    {t.admin.recentActivity}
+                  </h2>
+                  <p className="mt-0.5 text-[10px] text-muted">
+                    {t.admin.nav.transactions}
+                  </p>
+                </div>
+                <span className="rounded-lg bg-primary px-3 py-1 text-[10px] font-bold text-white shadow-md shadow-primary/20">
+                  {t.statistics.days7}
                 </span>
               </div>
-              <BarChart
-                data={[
+              <GroupedBarChart
+                data={activityChart}
+                series={[
                   {
+                    key: "deposits",
                     label: t.admin.totalDeposits,
-                    value: data.transactions.depositAmount,
-                    color: "var(--chart-income)",
+                    color: "var(--primary)",
                   },
                   {
+                    key: "withdrawals",
                     label: t.admin.totalWithdrawals,
-                    value: data.transactions.withdrawalAmount,
-                    color: "var(--warning)",
-                  },
-                  {
-                    label: t.admin.totalTransfers,
-                    value: data.transactions.transferAmount,
-                    color: "var(--chart-secondary, var(--secondary))",
-                  },
-                  {
-                    label: t.admin.nav.payments,
-                    value: data.operations.paidPayments,
-                    color: "var(--accent-teal)",
-                  },
-                ]}
-                height={260}
-                formatValue={(value) => formatIrr(value, "", language).trim()}
-              />
-            </Card>
-
-            <Card className="space-y-4 p-5 lg:col-span-5 lg:p-6">
-              <h2 className="text-sm font-bold text-foreground">
-                {t.admin.status}
-              </h2>
-              <DonutChart
-                segments={[
-                  {
-                    label: t.admin.statuses.ACTIVE,
-                    value: data.users.active,
                     color: "var(--secondary)",
                   },
                   {
-                    label: t.admin.statuses.DISABLED,
-                    value: data.users.disabled,
-                    color: "var(--warning)",
-                  },
-                  {
-                    label: t.admin.statuses.LOCKED,
-                    value: data.users.locked,
-                    color: "var(--danger)",
+                    key: "transfers",
+                    label: t.admin.totalTransfers,
+                    color: "var(--accent-purple)",
                   },
                 ]}
-                centerValue={String(data.users.total)}
-                centerLabel={t.admin.totalUsers}
+                height={250}
               />
+            </Card>
+
+            <Card className="space-y-4 p-4 lg:col-span-4 lg:p-5">
+              <h2 className="text-sm font-bold text-foreground">
+                {t.admin.status}
+              </h2>
+              <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:flex-col xl:flex-row">
+                <DonutChart
+                  size={150}
+                  segments={[
+                    {
+                      label: t.admin.statuses.ACTIVE,
+                      value: data.users.active,
+                      color: "var(--secondary)",
+                    },
+                    {
+                      label: t.admin.statuses.DISABLED,
+                      value: data.users.disabled,
+                      color: "var(--warning)",
+                    },
+                    {
+                      label: t.admin.statuses.LOCKED,
+                      value: data.users.locked,
+                      color: "var(--danger)",
+                    },
+                  ]}
+                  centerValue={String(data.users.total)}
+                  centerLabel={t.admin.totalUsers}
+                />
+                <div className="w-full space-y-3 text-[10px]">
+                  {[
+                    {
+                      label: t.admin.statuses.ACTIVE,
+                      value: data.users.active,
+                      color: "bg-secondary",
+                    },
+                    {
+                      label: t.admin.statuses.DISABLED,
+                      value: data.users.disabled,
+                      color: "bg-warning",
+                    },
+                    {
+                      label: t.admin.statuses.LOCKED,
+                      value: data.users.locked,
+                      color: "bg-danger",
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.label}
+                      className="flex items-center justify-between gap-3"
+                    >
+                      <span className="flex min-w-0 items-center gap-2 text-muted">
+                        <span
+                          className={`h-2 w-2 shrink-0 rounded-full ${item.color}`}
+                        />
+                        <span className="truncate">{item.label}</span>
+                      </span>
+                      <span className="font-bold text-foreground">
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </Card>
           </div>
 
@@ -232,7 +400,10 @@ export default function AdminDashboardPage() {
               </h2>
               <AreaChart
                 data={[
-                  { label: t.admin.totalDeposits, value: data.transactions.deposits },
+                  {
+                    label: t.admin.totalDeposits,
+                    value: data.transactions.deposits,
+                  },
                   {
                     label: t.admin.totalWithdrawals,
                     value: data.transactions.withdrawals,
@@ -251,7 +422,12 @@ export default function AdminDashboardPage() {
             <Card className="space-y-4 p-5 lg:p-6">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-sm font-bold">{t.admin.usersOnPlatform}</h2>
-                <ButtonLink href="/admin/users" size="sm" variant="secondary" className="w-auto">
+                <ButtonLink
+                  href="/admin/users"
+                  size="sm"
+                  variant="secondary"
+                  className="w-auto"
+                >
                   {t.admin.nav.users}
                 </ButtonLink>
               </div>
@@ -272,7 +448,15 @@ export default function AdminDashboardPage() {
                           <bdi>{item.email}</bdi>
                         </p>
                         <div className="mt-2 flex flex-wrap gap-2">
-                          <Badge variant={item.status === "ACTIVE" ? "success" : item.status === "LOCKED" ? "danger" : "warning"}>
+                          <Badge
+                            variant={
+                              item.status === "ACTIVE"
+                                ? "success"
+                                : item.status === "LOCKED"
+                                  ? "danger"
+                                  : "warning"
+                            }
+                          >
                             {t.admin.statuses[item.status]}
                           </Badge>
                           {item.wallet ? (
@@ -289,7 +473,7 @@ export default function AdminDashboardPage() {
                           variant="secondary"
                           className="w-auto"
                         >
-                          View
+                          {t.common.view}
                         </ButtonLink>
                         <UserStatusActions
                           userId={item.id}
@@ -335,10 +519,17 @@ export default function AdminDashboardPage() {
                             <ArrowUpRight className="h-4 w-4" />
                           </div>
                           <div>
-                            <p className="text-xs font-semibold">{item.type}</p>
+                            <p className="text-xs font-semibold">
+                              {transactionTypeLabel(item.type, t)}
+                            </p>
                             <p className="text-[10px] text-muted">
                               <bdi>{item.user.username}</bdi>
-                              {item.reason ? ` · ${item.reason}` : ""}
+                              {item.reason
+                                ? ` · ${transactionReasonLabel(item.reason, t)}`
+                                : ""}
+                            </p>
+                            <p className="mt-0.5 text-[9px] text-muted/80">
+                              {formatDisplayDateTime(item.createdAt, language)}
                             </p>
                           </div>
                         </div>

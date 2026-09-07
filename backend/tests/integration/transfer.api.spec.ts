@@ -107,6 +107,30 @@ describe('P2P Transfer API', () => {
     expect(inTx.category).toBe('FAMILY_SUPPORT');
   });
 
+  it('paginates and filters the authenticated user transaction history', async () => {
+    await request(app.getHttpServer())
+      .post('/wallets/transfer')
+      .set('Authorization', `Bearer ${sender.accessToken}`)
+      .send({
+        recipient: recipient.username,
+        amount: 100_000,
+        reason: 'Filtered support',
+        category: 'FAMILY_SUPPORT',
+      })
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .get(
+        '/transactions?page=1&pageSize=1&type=TRANSFER_OUT&category=FAMILY_SUPPORT&q=Filtered',
+      )
+      .set('Authorization', `Bearer ${sender.accessToken}`)
+      .expect(200);
+
+    expect(response.body).toMatchObject({ page: 1, pageSize: 1, total: 1 });
+    expect(response.body.items).toHaveLength(1);
+    expect(response.body.items[0].type).toBe('TRANSFER_OUT');
+  });
+
   it('rejects a transfer that exceeds the available balance', async () => {
     await request(app.getHttpServer())
       .post('/wallets/transfer')
@@ -233,5 +257,73 @@ describe('P2P Transfer API', () => {
       where: { walletId: senderWallet.id, type: 'TRANSFER_OUT' },
     });
     expect(outTransfers).toHaveLength(1);
+  });
+
+  it('funds a transfer from an owned envelope without debiting the wallet', async () => {
+    const envelope = await db.envelope.create({
+      data: {
+        userId: sender.userId,
+        name: 'Support',
+        allocatedAmount: 600_000,
+      },
+    });
+
+    await request(app.getHttpServer())
+      .post('/wallets/transfer')
+      .set('Authorization', `Bearer ${sender.accessToken}`)
+      .send({
+        recipient: recipient.username,
+        amount: 500_000,
+        envelopeId: envelope.id,
+      })
+      .expect(201);
+
+    const senderWallet = await db.wallet.findUniqueOrThrow({
+      where: { userId: sender.userId },
+    });
+    const updatedEnvelope = await db.envelope.findUniqueOrThrow({
+      where: { id: envelope.id },
+    });
+    const outTransaction = await db.transaction.findFirstOrThrow({
+      where: { walletId: senderWallet.id, type: 'TRANSFER_OUT' },
+    });
+
+    expect(balanceOf(senderWallet.balance)).toBe(1_000_000);
+    expect(balanceOf(updatedEnvelope.allocatedAmount)).toBe(100_000);
+    expect(outTransaction.envelopeId).toBe(envelope.id);
+  });
+
+  it('rejects a foreign funding envelope and rolls back the transfer', async () => {
+    const foreignEnvelope = await db.envelope.create({
+      data: {
+        userId: recipient.userId,
+        name: 'Private',
+        allocatedAmount: 900_000,
+      },
+    });
+
+    await request(app.getHttpServer())
+      .post('/wallets/transfer')
+      .set('Authorization', `Bearer ${sender.accessToken}`)
+      .send({
+        recipient: recipient.username,
+        amount: 200_000,
+        envelopeId: foreignEnvelope.id,
+      })
+      .expect(400);
+
+    const senderWallet = await db.wallet.findUniqueOrThrow({
+      where: { userId: sender.userId },
+    });
+    const recipientWallet = await db.wallet.findUniqueOrThrow({
+      where: { userId: recipient.userId },
+    });
+    expect(balanceOf(senderWallet.balance)).toBe(1_000_000);
+    expect(balanceOf(recipientWallet.balance)).toBe(0);
+    expect(
+      await db.transaction.count({
+        where: { walletId: senderWallet.id, type: 'TRANSFER_OUT' },
+      }),
+    ).toBe(0);
   });
 });

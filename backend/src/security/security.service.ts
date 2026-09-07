@@ -3,9 +3,11 @@ import type { SecurityEventType, Prisma } from '../generated/prisma/client';
 import { DatabaseService } from '../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
+  deviceEnvironmentFromUserAgent,
   deviceKeyFromUserAgent,
   deviceLabelFromUserAgent,
 } from '../common/financial-crypto';
+import type { SecurityEventsQueryDto } from './dto/security-events-query.dto';
 
 const FAILED_OPERATION_WINDOW_MS = 60 * 60 * 1000;
 const MAX_FAILED_OPERATIONS_PER_HOUR = 15;
@@ -25,13 +27,9 @@ export class SecurityService {
   ) {
     const ua = userAgent?.trim() || 'unknown';
     const deviceKey = deviceKeyFromUserAgent(ua);
-    const existing = await this.db.userSession.findUnique({
-      where: {
-        userId_deviceKey: {
-          userId,
-          deviceKey,
-        },
-      },
+    const existing = await this.db.userSession.findFirst({
+      where: { userId, deviceKey },
+      select: { id: true },
     });
 
     const emitNewDeviceEvent = options?.emitNewDeviceEvent !== false;
@@ -54,26 +52,12 @@ export class SecurityService {
           deviceLabel: deviceLabelFromUserAgent(ua),
         },
       });
-    } else if (existing?.revokedAt) {
-      await this.db.userSession.delete({ where: { id: existing.id } });
     }
 
-    const session = await this.db.userSession.upsert({
-      where: {
-        userId_deviceKey: {
-          userId,
-          deviceKey,
-        },
-      },
-      create: {
+    const session = await this.db.userSession.create({
+      data: {
         userId,
         deviceKey,
-        deviceLabel: deviceLabelFromUserAgent(ua),
-        userAgent: ua.slice(0, 500),
-        ipAddress: ipAddress?.slice(0, 45),
-      },
-      update: {
-        lastSeenAt: new Date(),
         deviceLabel: deviceLabelFromUserAgent(ua),
         userAgent: ua.slice(0, 500),
         ipAddress: ipAddress?.slice(0, 45),
@@ -125,36 +109,82 @@ export class SecurityService {
     await this.recordEvent(userId, 'LIMIT_EXCEEDED', metadata);
   }
 
-  async listSessions(userId: string) {
+  async listSessions(userId: string, currentSessionId?: string) {
     const sessions = await this.db.userSession.findMany({
       where: { userId, revokedAt: null },
       orderBy: { lastSeenAt: 'desc' },
     });
 
-    return sessions.map((session) => ({
-      id: session.id,
-      deviceLabel: session.deviceLabel,
-      ipAddress: session.ipAddress,
-      lastSeenAt: session.lastSeenAt,
-      createdAt: session.createdAt,
-      isCurrent: false,
-    }));
+    const groups = new Map<string, typeof sessions>();
+    for (const session of sessions) {
+      const grouped = groups.get(session.deviceKey) ?? [];
+      grouped.push(session);
+      groups.set(session.deviceKey, grouped);
+    }
+
+    return [...groups.values()].map((grouped) => {
+      const current = grouped.find(
+        (session) => session.id === currentSessionId,
+      );
+      const representative = current ?? grouped[0];
+      const environment = deviceEnvironmentFromUserAgent(
+        representative.userAgent ?? '',
+      );
+
+      return {
+        id: representative.id,
+        sessionIds: grouped.map((session) => session.id),
+        sessionCount: grouped.length,
+        deviceKey: representative.deviceKey,
+        deviceLabel: representative.deviceLabel,
+        environment,
+        ipAddress: representative.ipAddress,
+        lastSeenAt: grouped[0].lastSeenAt,
+        createdAt: grouped[grouped.length - 1].createdAt,
+        isCurrent: current !== undefined,
+      };
+    });
   }
 
-  async listEvents(userId: string, limit = 30) {
-    const events = await this.db.securityEvent.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
+  async listEvents(userId: string, query: SecurityEventsQueryDto) {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 30;
+    const where = { userId, ...(query.type ? { type: query.type } : {}) };
+    const [events, total] = await this.db.$transaction([
+      this.db.securityEvent.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.db.securityEvent.count({ where }),
+    ]);
+
+    return {
+      items: events.map((event) => ({
+        id: event.id,
+        type: event.type,
+        metadata: event.metadata,
+        ipAddress: event.ipAddress,
+        createdAt: event.createdAt,
+      })),
+      page,
+      pageSize,
+      total,
+    };
+  }
+
+  async touchSession(userId: string, sessionId?: string) {
+    if (!sessionId) {
+      return { success: false };
+    }
+
+    const result = await this.db.userSession.updateMany({
+      where: { id: sessionId, userId, revokedAt: null },
+      data: { lastSeenAt: new Date() },
     });
 
-    return events.map((event) => ({
-      id: event.id,
-      type: event.type,
-      metadata: event.metadata,
-      ipAddress: event.ipAddress,
-      createdAt: event.createdAt,
-    }));
+    return { success: result.count === 1 };
   }
 
   async revokeSession(userId: string, sessionId: string) {
@@ -173,6 +203,32 @@ export class SecurityService {
 
     await this.recordEvent(userId, 'SESSION_REVOKED', {
       sessionId,
+    });
+
+    return { success: true };
+  }
+
+  async revokeSessionEnvironment(userId: string, sessionId: string) {
+    const session = await this.db.userSession.findFirst({
+      where: { id: sessionId, userId, revokedAt: null },
+    });
+
+    if (!session) {
+      return { success: false };
+    }
+
+    await this.db.userSession.updateMany({
+      where: {
+        userId,
+        deviceKey: session.deviceKey,
+        revokedAt: null,
+      },
+      data: { revokedAt: new Date() },
+    });
+
+    await this.recordEvent(userId, 'SESSION_REVOKED', {
+      sessionId,
+      deviceKey: session.deviceKey,
     });
 
     return { success: true };

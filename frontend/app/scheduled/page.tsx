@@ -48,7 +48,10 @@ export default function ScheduledPaymentsPage() {
     }
   }
 
-  async function handleStatusChange(id: string, action: "pause" | "resume") {
+  async function handleStatusChange(
+    id: string,
+    action: "pause" | "resume" | "cancel",
+  ) {
     try {
       await api.updateScheduledPaymentStatus(id, action);
       await loadPayments();
@@ -67,7 +70,7 @@ export default function ScheduledPaymentsPage() {
           <Link href="/scheduled/new">
             <Button size="sm" className="gap-1">
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Schedule Payment</span>
+              <span className="hidden sm:inline">{t.scheduled.createBtn}</span>
             </Button>
           </Link>
         }

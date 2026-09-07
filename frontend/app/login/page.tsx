@@ -62,10 +62,7 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await loginAndStoreSession(
-        { identifier, password },
-        t.messages,
-      );
+      await loginAndStoreSession({ identifier, password }, t.messages);
       flashToast({
         title: t.messages.success.loginSuccess,
         description: t.common.welcomeToPoulix,
@@ -83,8 +80,12 @@ export default function LoginPage() {
         <div className="flex items-center gap-3">
           <BrandLogo size={40} priority />
           <div>
-            <p className="text-base font-bold tracking-tight">{t.common.appName}</p>
-            <p className="text-[11px] text-sidebar-muted">{t.home.financialWallet}</p>
+            <p className="text-base font-bold tracking-tight">
+              {t.common.appName}
+            </p>
+            <p className="text-[11px] text-sidebar-muted">
+              {t.home.financialWallet}
+            </p>
           </div>
         </div>
         <div className="space-y-4">
@@ -111,7 +112,7 @@ export default function LoginPage() {
           </ul>
         </div>
         <p className="text-[11px] text-sidebar-muted">
-          English and Persian · Light and dark supported
+          {t.common.bilingualHint}
         </p>
       </div>
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Clock, Info } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { TextField } from "@/shared/ui/TextField";
+import { AmountField } from "@/shared/ui/AmountField";
 import { DatePicker } from "@/shared/ui/DatePicker";
 import { Card } from "@/shared/ui/Card";
 import { Badge } from "@/shared/ui/Badge";
@@ -21,7 +22,6 @@ import {
   validateGoalTargetAmount,
   validateGoalTitle,
 } from "@/features/goals/lib/goals";
-import { localizeDigits } from "@/shared/ui/latinDigits";
 
 export function CreateGoalForm() {
   const router = useRouter();
@@ -99,17 +99,12 @@ export function CreateGoalForm() {
             }}
           />
 
-          <TextField
+          <AmountField
             label={t.goals.targetAmount}
-            type="number"
             min="1"
             step="1"
-            inputMode="numeric"
-            placeholder={localizeDigits("1000000", language)}
+            placeholder="1000000"
             value={targetAmount}
-            rightIcon={
-              <span className="text-[11px] font-semibold text-muted">IRR</span>
-            }
             onChange={(e) => {
               setTargetAmount(e.target.value);
               setError("");

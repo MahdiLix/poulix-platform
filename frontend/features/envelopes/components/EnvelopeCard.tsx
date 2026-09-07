@@ -13,11 +13,11 @@ import {
   ShoppingCart,
   Utensils,
   Wallet,
+  XCircle,
 } from "lucide-react";
 import { Card } from "@/shared/ui/Card";
 import { Button } from "@/shared/ui/Button";
 import { Badge } from "@/shared/ui/Badge";
-import { ProgressBar } from "@/shared/ui/ProgressBar";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { formatIrr } from "@/features/wallet/lib/wallet";
 import {
@@ -29,6 +29,8 @@ import {
 type EnvelopeCardProps = {
   envelope: Envelope;
   color?: string;
+  onCancel?: (id: string) => void;
+  cancelling?: boolean;
 };
 
 const ENVELOPE_COLORS = [
@@ -53,22 +55,16 @@ function envelopeIcon(name: string, className: string): ReactNode {
   return <Wallet className={className} />;
 }
 
-function monthlyPlan(name: string): number {
-  const lower = name.toLowerCase();
-  if (lower.includes("rent") || lower.includes("home")) return 5_000_000;
-  if (lower.includes("grocery") || lower.includes("food")) return 3_000_000;
-  if (lower.includes("transport") || lower.includes("car")) return 2_000_000;
-  if (lower.includes("entertain") || lower.includes("fun")) return 1_000_000;
-  return 5_000_000;
-}
-
-export function EnvelopeCard({ envelope, color }: EnvelopeCardProps) {
+export function EnvelopeCard({
+  envelope,
+  color,
+  onCancel,
+  cancelling = false,
+}: EnvelopeCardProps) {
   const { t } = useLanguage();
   const allocated = parseEnvelopeAmount(envelope.allocatedAmount);
   const tone = statusTone(envelope.status);
   const accentColor = color || ENVELOPE_COLORS[0];
-  const plan = monthlyPlan(envelope.name);
-  const planProgress = Math.min(100, plan > 0 ? Math.round((allocated / plan) * 100) : 0);
 
   return (
     <Card className="flex flex-col gap-4 p-4 transition hover:border-primary/25">
@@ -101,26 +97,33 @@ export function EnvelopeCard({ envelope, color }: EnvelopeCardProps) {
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-[11px] font-medium text-muted">
-          <span>{planProgress}% of typical monthly plan</span>
-          <span>{formatIrr(plan)}</span>
-        </div>
-        <ProgressBar value={planProgress} barClassName="bg-primary" />
-      </div>
-
       <div className="mt-auto flex items-center gap-2">
+        {envelope.status === "ACTIVE" ? (
         <Link href={`/envelopes/${envelope.id}`} className="flex-1">
           <Button size="sm" variant="outline" className="w-full gap-1 text-success hover:text-success">
             <Plus className="h-3.5 w-3.5" />
             {t.envelopes.allocateBtn}
           </Button>
         </Link>
+        ) : null}
+        {envelope.status === "ACTIVE" ? (
         <Link href={`/envelopes/${envelope.id}`} className="flex-1">
           <Button size="sm" variant="outline" className="w-full text-danger hover:text-danger">
             {t.envelopes.releaseBtn}
           </Button>
         </Link>
+        ) : null}
+        {envelope.status === "ACTIVE" && onCancel ? (
+          <button
+            type="button"
+            disabled={cancelling}
+            onClick={() => onCancel(envelope.id)}
+            aria-label={t.envelopes.cancelEnvelopeBtn}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-danger transition hover:bg-danger-soft disabled:opacity-50"
+          >
+            <XCircle className="h-4 w-4" />
+          </button>
+        ) : null}
         <Link href={`/envelopes/${envelope.id}`}>
           <Button size="sm" variant="ghost" className="px-2 text-success hover:text-success">
             <Eye className="h-4 w-4" />

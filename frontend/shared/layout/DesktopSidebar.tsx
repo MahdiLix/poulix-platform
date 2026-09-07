@@ -67,7 +67,7 @@ export function DesktopSidebar() {
   ];
 
   return (
-    <aside className="hidden h-full shrink-0 flex-col overflow-y-auto bg-sidebar text-sidebar-foreground lg:flex lg:w-[72px] xl:w-64">
+    <aside className="fintech-sidebar hidden h-full shrink-0 flex-col overflow-y-auto border-e border-white/5 text-sidebar-foreground lg:flex lg:w-[72px] xl:w-60">
       <div className="flex min-h-0 flex-1 flex-col justify-between overflow-y-auto p-3 xl:p-5">
         <div className="space-y-6">
           <Link
@@ -104,9 +104,9 @@ export function DesktopSidebar() {
                       href={item.href}
                       title={item.label}
                       className={cn(
-                        "flex cursor-pointer items-center gap-3 rounded-[10px] px-2.5 py-2.5 text-[13px] font-medium transition hover:shadow-sm active:scale-[0.98] lg:justify-center xl:justify-start xl:px-3",
+                        "flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 text-[12px] font-medium transition active:scale-[0.98] lg:justify-center xl:justify-start xl:px-3",
                         isActive
-                          ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                          ? "bg-gradient-to-r from-primary to-[#4d8cff] text-primary-foreground shadow-[0_8px_24px_rgba(43,107,235,0.32)]"
                           : "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground",
                       )}
                     >

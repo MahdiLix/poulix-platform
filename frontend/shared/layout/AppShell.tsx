@@ -41,7 +41,7 @@ export function AppShell({
           <div className="flex min-h-0 flex-1 overflow-hidden">
             <main
               className={cn(
-                "relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-background",
+                "dashboard-canvas relative flex min-h-0 flex-1 flex-col overflow-y-auto",
                 className,
               )}
             >

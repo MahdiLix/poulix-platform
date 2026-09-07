@@ -18,6 +18,7 @@ import { Card } from "@/shared/ui/Card";
 import { PageSpinner } from "@/shared/ui/Spinner";
 import { SearchInput } from "@/shared/ui/SearchInput";
 import { Select } from "@/shared/ui/Select";
+import { Pagination } from "@/shared/ui/Pagination";
 import {
   Table,
   TableBody,
@@ -31,6 +32,10 @@ import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { formatDisplayDate, formatDisplayDateTime } from "@/shared/i18n/dates";
 import { localizeError, formatMessage } from "@/shared/i18n/localizeError";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
+import {
+  transactionReasonLabel,
+  transactionTypeLabel,
+} from "@/features/wallet/lib/transactionDisplay";
 import type {
   TranslationDictionary,
   Language,
@@ -99,6 +104,7 @@ export default function HistoryPage() {
   const [pillFilter, setPillFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     setPage(1);
@@ -106,8 +112,8 @@ export default function HistoryPage() {
 
   const filteredTransactions = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const pillMatches =
-      PILL_OPTIONS.find((p) => p.value === pillFilter)?.matches ?? [pillFilter];
+    const pillMatches = PILL_OPTIONS.find((p) => p.value === pillFilter)
+      ?.matches ?? [pillFilter];
 
     return transactions.filter((tx) => {
       if (typeFilter !== "ALL" && tx.type !== typeFilter) {
@@ -133,23 +139,15 @@ export default function HistoryPage() {
     });
   }, [transactions, typeFilter, pillFilter, search]);
 
-  const paginatedTransactions = useMemo(() => {
-    const start = (page - 1) * ROWS_PER_PAGE;
-    return filteredTransactions.slice(start, start + ROWS_PER_PAGE);
-  }, [filteredTransactions, page]);
+  const paginatedTransactions = filteredTransactions;
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredTransactions.length / ROWS_PER_PAGE),
-  );
-  const pageNumbers = useMemo(
-    () => getPageNumbers(page, totalPages, 5),
-    [page, totalPages],
-  );
-
+  const totalPages = Math.max(1, Math.ceil(total / ROWS_PER_PAGE));
   useEffect(() => {
-    void loadHistory();
-  }, []);
+    const timer = window.setTimeout(() => void loadHistory(), 250);
+    return () => window.clearTimeout(timer);
+    // loadHistory intentionally reads the current filter state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, typeFilter, pillFilter, search]);
 
   async function loadHistory() {
     const token = getStoredToken();
@@ -164,11 +162,20 @@ export default function HistoryPage() {
     setError(null);
 
     try {
-      const data = await api.getTransactions();
-      if (!Array.isArray(data)) {
-        throw new Error(t.messages.historyResponseInvalid);
-      }
-      setTransactions(data);
+      const serverType =
+        typeFilter !== "ALL"
+          ? typeFilter
+          : pillFilter !== "ALL"
+            ? pillFilter
+            : undefined;
+      const data = await api.getTransactionsPage<Transaction>({
+        page,
+        pageSize: ROWS_PER_PAGE,
+        type: serverType,
+        q: search.trim() || undefined,
+      });
+      setTransactions(data.items);
+      setTotal(data.total);
       setStatus("ready");
     } catch (err) {
       if (!getStoredToken()) {
@@ -189,16 +196,16 @@ export default function HistoryPage() {
       <HeaderBar
         title={t.history.historyTitle}
         backHref="/"
-        subtitle="Every deposit, transfer, withdrawal, goal, and envelope movement."
+        subtitle={t.history.subtitle}
         trailing={
           <Button
             variant="outline"
             size="sm"
-            onClick={() => alert("Export not yet implemented")}
+            onClick={() => alert(t.common.export)}
             className="w-auto gap-1.5"
           >
             <Download className="h-3.5 w-3.5" />
-            Export
+            {t.common.export}
           </Button>
         }
       />
@@ -244,11 +251,11 @@ export default function HistoryPage() {
                 <SearchInput
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search reason, recipient, or ID..."
+                  placeholder={t.history.searchPlaceholder}
                 />
               </div>
               <Select
-                label="Type"
+                label={t.admin.type}
                 value={typeFilter}
                 onChange={(val) => setTypeFilter(val)}
                 className="lg:w-56"
@@ -273,7 +280,22 @@ export default function HistoryPage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {PILL_OPTIONS.map((pill) => (
+              {PILL_OPTIONS.map((pill) => {
+                const label =
+                  pill.value === "ALL"
+                    ? t.history.filterAll
+                    : pill.value === "DEPOSIT"
+                      ? t.history.deposit
+                      : pill.value === "WITHDRAWAL"
+                        ? t.history.withdrawal
+                        : pill.value === "TRANSFER_OUT"
+                          ? t.history.transferSent
+                          : pill.value === "TRANSFER_IN"
+                            ? t.history.transferReceived
+                            : pill.value === "GOALS"
+                              ? t.goals.title
+                              : t.envelopes.title;
+                return (
                 <button
                   key={pill.value}
                   type="button"
@@ -285,9 +307,10 @@ export default function HistoryPage() {
                       : "border border-border bg-surface text-foreground hover:bg-surface-muted",
                   )}
                 >
-                  {pill.label}
+                  {label}
                 </button>
-              ))}
+                );
+              })}
             </div>
 
             {filteredTransactions.length === 0 ? (
@@ -312,12 +335,14 @@ export default function HistoryPage() {
                 <div className="hidden lg:block">
                   <Table>
                     <TableHead>
-                      <TableHeaderCell>Type</TableHeaderCell>
-                      <TableHeaderCell>Details</TableHeaderCell>
-                      <TableHeaderCell>Category</TableHeaderCell>
-                      <TableHeaderCell>Amount</TableHeaderCell>
-                      <TableHeaderCell>Date</TableHeaderCell>
-                      <TableHeaderCell>Status</TableHeaderCell>
+                      <TableHeaderCell>{t.admin.type}</TableHeaderCell>
+                      <TableHeaderCell>{t.history.reasonLabel}</TableHeaderCell>
+                      <TableHeaderCell>
+                        {t.history.categoryLabel}
+                      </TableHeaderCell>
+                      <TableHeaderCell>{t.common.amount}</TableHeaderCell>
+                      <TableHeaderCell>{t.common.createdAt}</TableHeaderCell>
+                      <TableHeaderCell>{t.common.status}</TableHeaderCell>
                     </TableHead>
                     <TableBody>
                       {paginatedTransactions.map((tx) => {
@@ -420,10 +445,7 @@ export default function HistoryPage() {
                             ) : null}
                             <div className="mt-2 flex flex-wrap items-center gap-2">
                               {row.categoryBadge}
-                              <Badge
-                                variant="success"
-                                className="text-[10px]"
-                              >
+                              <Badge variant="success" className="text-[10px]">
                                 {t.withdrawal.completed}
                               </Badge>
                             </div>
@@ -451,42 +473,15 @@ export default function HistoryPage() {
               </>
             )}
 
-            <div className="flex flex-col items-center justify-between gap-3 border-t border-border pt-4 sm:flex-row">
+            <div className="flex flex-col items-center gap-3 border-t border-border pt-4">
               <span className="text-xs text-muted">
-                Showing {paginatedTransactions.length} of{" "}
-                {filteredTransactions.length}
+                Showing {paginatedTransactions.length} of {total}
               </span>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-auto"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  Previous
-                </Button>
-                {pageNumbers.map((num) => (
-                  <Button
-                    key={num}
-                    variant={page === num ? "primary" : "outline"}
-                    size="sm"
-                    className="h-9 w-9 px-0"
-                    onClick={() => setPage(num)}
-                  >
-                    {num}
-                  </Button>
-                ))}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-auto"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                >
-                  Next
-                </Button>
-              </div>
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
             </div>
           </Card>
         )}
@@ -599,8 +594,8 @@ function buildTxRow(
       amountPrefix = "+";
       break;
     default:
-      title = tx.type.replace(/_/g, " ");
-      typeLabel = tx.type.replace(/_/g, " ");
+      title = transactionTypeLabel(tx.type, t);
+      typeLabel = transactionTypeLabel(tx.type, t);
       Icon = amount >= 0 ? ArrowDownLeft : ArrowUpRight;
       iconBg = amount >= 0 ? "bg-success-soft" : "bg-danger-soft";
       iconColor = amount >= 0 ? "text-success" : "text-danger";
@@ -608,12 +603,15 @@ function buildTxRow(
       amountPrefix = amount >= 0 ? "+" : "-";
   }
 
-  const details = tx.reason ? tx.reason : null;
+  const details = tx.reason ? transactionReasonLabel(tx.reason, t) : null;
 
   const categoryBadge = categoryLabel ? (
     <Badge
       variant="default"
-      className={cn("rounded-full text-[10px]", categoryBadgeClass(tx.category))}
+      className={cn(
+        "rounded-full text-[10px]",
+        categoryBadgeClass(tx.category),
+      )}
     >
       {categoryLabel}
     </Badge>
@@ -658,15 +656,4 @@ function categoryBadgeClass(category?: string | null): string {
     default:
       return "bg-surface-muted text-muted";
   }
-}
-
-function getPageNumbers(page: number, total: number, max = 5): number[] {
-  if (total <= 0) return [];
-  if (total <= max) return Array.from({ length: total }, (_, i) => i + 1);
-  let start = Math.max(1, page - Math.floor(max / 2));
-  const end = Math.min(total, start + max - 1);
-  if (end - start + 1 < max) {
-    start = Math.max(1, end - max + 1);
-  }
-  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
 }

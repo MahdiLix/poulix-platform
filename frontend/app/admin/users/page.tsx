@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShieldAlert, UserPlus, UserCheck, Users } from "lucide-react";
+import { ShieldAlert, UserCheck, Users } from "lucide-react";
 import { AdminShell } from "@/features/admin/components/AdminShell";
 import { UserStatusActions } from "@/features/admin/components/UserStatusActions";
 import { Badge } from "@/shared/ui/Badge";
 import { PageSpinner } from "@/shared/ui/Spinner";
-import { Button, ButtonLink } from "@/shared/ui/Button";
+import { ButtonLink } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { TextField } from "@/shared/ui/TextField";
 import { Select } from "@/shared/ui/Select";
@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/shared/ui/Table";
 import { StatCard } from "@/shared/ui/StatCard";
+import { Pagination } from "@/shared/ui/Pagination";
 import { api } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
@@ -66,7 +67,7 @@ export default function AdminUsersPage() {
 
   return (
     <AdminShell title={t.admin.usersTitle}>
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-3">
         <StatCard
           label={t.admin.totalUsers}
           value={String(total)}
@@ -82,11 +83,6 @@ export default function AdminUsersPage() {
           value={String(blockedCount)}
           icon={ShieldAlert}
           iconClassName="bg-danger-soft text-danger"
-        />
-        <StatCard
-          label="New this month"
-          value={String(items.length)}
-          icon={UserPlus}
         />
       </div>
 
@@ -121,9 +117,7 @@ export default function AdminUsersPage() {
             {error}
           </div>
         ) : null}
-        {loading ? (
-          <PageSpinner label={t.common.loading} />
-        ) : null}
+        {loading ? <PageSpinner label={t.common.loading} /> : null}
 
         {!loading && items.length === 0 ? (
           <div className="rounded-2xl border border-border p-8 text-center text-sm text-muted">
@@ -132,13 +126,13 @@ export default function AdminUsersPage() {
         ) : !loading ? (
           <Table className="border-0">
             <TableHead>
-              <TableHeaderCell>ID</TableHeaderCell>
-              <TableHeaderCell>Name</TableHeaderCell>
-              <TableHeaderCell>Email</TableHeaderCell>
-              <TableHeaderCell>Role</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell>Balance</TableHeaderCell>
-              <TableHeaderCell>Actions</TableHeaderCell>
+              <TableHeaderCell>{t.common.id}</TableHeaderCell>
+              <TableHeaderCell>{t.common.name}</TableHeaderCell>
+              <TableHeaderCell>{t.common.email}</TableHeaderCell>
+              <TableHeaderCell>{t.admin.role}</TableHeaderCell>
+              <TableHeaderCell>{t.admin.status}</TableHeaderCell>
+              <TableHeaderCell>{t.common.amount}</TableHeaderCell>
+              <TableHeaderCell>{t.common.actions}</TableHeaderCell>
             </TableHead>
             <TableBody>
               {items.map((user) => (
@@ -146,7 +140,9 @@ export default function AdminUsersPage() {
                   <TableCell className="font-mono text-xs text-muted">
                     #{user.id.slice(0, 6)}
                   </TableCell>
-                  <TableCell className="font-semibold">{user.username}</TableCell>
+                  <TableCell className="font-semibold">
+                    {user.username}
+                  </TableCell>
                   <TableCell className="text-muted">{user.email}</TableCell>
                   <TableCell>
                     {user.role === "ADMIN" ? (
@@ -181,7 +177,7 @@ export default function AdminUsersPage() {
                         variant="secondary"
                         className="w-auto"
                       >
-                        View
+                        {t.common.view}
                       </ButtonLink>
                       <UserStatusActions
                         userId={user.id}
@@ -197,28 +193,13 @@ export default function AdminUsersPage() {
           </Table>
         ) : null}
 
-        {total > 20 ? (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-auto"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              {t.admin.prev}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-auto"
-              disabled={page * 20 >= total}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              {t.admin.next}
-            </Button>
-          </div>
-        ) : null}
+        <Pagination
+          page={page}
+          totalPages={Math.ceil(total / 20)}
+          onPageChange={setPage}
+          previousLabel={t.admin.prev}
+          nextLabel={t.admin.next}
+        />
       </Card>
     </AdminShell>
   );

@@ -2,17 +2,13 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import {
-  Monitor,
-  ShieldAlert,
-  ShieldCheck,
-  Smartphone,
-} from "lucide-react";
+import { Monitor, ShieldAlert, ShieldCheck, Smartphone } from "lucide-react";
 import { AppShell } from "@/shared/layout/AppShell";
 import { HeaderBar } from "@/shared/layout/HeaderBar";
 import { Button, ButtonLink } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { Badge } from "@/shared/ui/Badge";
+import { Pagination } from "@/shared/ui/Pagination";
 import { TextField } from "@/shared/ui/TextField";
 import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
@@ -29,6 +25,7 @@ import type {
 type PageStatus = "loading" | "ready" | "unauthenticated" | "error";
 
 type EventSeverity = "warning" | "failed" | "info";
+const EVENTS_PAGE_SIZE = 6;
 
 function eventSeverity(type: SecurityEventType): EventSeverity {
   switch (type) {
@@ -59,13 +56,20 @@ function eventIcon(type: SecurityEventType, className: string): ReactNode {
 
 function sessionIcon(label: string | null, className: string): ReactNode {
   const lower = (label || "").toLowerCase();
-  if (lower.includes("mobile") || lower.includes("phone") || lower.includes("android") || lower.includes("ios")) {
+  if (
+    lower.includes("mobile") ||
+    lower.includes("phone") ||
+    lower.includes("android") ||
+    lower.includes("ios")
+  ) {
     return <Smartphone className={className} />;
   }
   return <Monitor className={className} />;
 }
 
-function severityBadgeVariant(severity: EventSeverity): "warning" | "danger" | "muted" {
+function severityBadgeVariant(
+  severity: EventSeverity,
+): "warning" | "danger" | "muted" {
   switch (severity) {
     case "warning":
       return "warning";
@@ -77,7 +81,12 @@ function severityBadgeVariant(severity: EventSeverity): "warning" | "danger" | "
   }
 }
 
-function severityLabel(severity: EventSeverity): string {
+function severityLabel(severity: EventSeverity, language: "en" | "fa"): string {
+  if (language === "fa") {
+    if (severity === "warning") return "هشدار";
+    if (severity === "failed") return "ناموفق";
+    return "اطلاعات";
+  }
   switch (severity) {
     case "warning":
       return "Warning";
@@ -98,10 +107,13 @@ export default function SecurityPage() {
   const [events, setEvents] = useState<SecurityEvent[]>([]);
   const [pageStatus, setPageStatus] = useState<PageStatus>("loading");
   const [error, setError] = useState<string | null>(null);
+  const [eventsPage, setEventsPage] = useState(1);
+  const [eventsTotal, setEventsTotal] = useState(0);
 
   useEffect(() => {
     void loadData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventsPage]);
 
   async function loadData() {
     if (!getStoredToken()) {
@@ -118,7 +130,10 @@ export default function SecurityPage() {
       const [limitsData, sessionsData, eventsData] = await Promise.all([
         api.getSpendingLimits(),
         api.getSecuritySessions(),
-        api.getSecurityEvents(),
+        api.getSecurityEventsPage({
+          page: eventsPage,
+          pageSize: EVENTS_PAGE_SIZE,
+        }),
       ]);
       setLimits(limitsData);
       setLimitDrafts(
@@ -127,7 +142,8 @@ export default function SecurityPage() {
         ),
       );
       setSessions(sessionsData);
-      setEvents(eventsData);
+      setEvents(eventsData.items);
+      setEventsTotal(eventsData.total);
       setPageStatus("ready");
       void api.touchSecuritySession().catch(() => {});
     } catch (err) {
@@ -169,18 +185,7 @@ export default function SecurityPage() {
   }
 
   function limitShortLabel(type: SpendingLimitSummary["type"]): string {
-    switch (type) {
-      case "DAILY_TRANSFER":
-        return "Daily Transfer";
-      case "DAILY_WITHDRAWAL":
-        return "Daily Withdrawal";
-      case "MONTHLY_TRANSFER":
-        return "Monthly Transfer";
-      case "MONTHLY_WITHDRAWAL":
-        return "Monthly Withdrawal";
-      default:
-        return limitLabel(type);
-    }
+    return limitLabel(type);
   }
 
   function usagePercent(limit: SpendingLimitSummary) {
@@ -246,7 +251,7 @@ export default function SecurityPage() {
                     <div className="flex items-end gap-2">
                       <div className="min-w-0 flex-1">
                         <TextField
-                          label="Limit (IRR)"
+                          label={t.security.limitAmountLabel}
                           type="number"
                           min="1"
                           step="1"
@@ -298,12 +303,30 @@ export default function SecurityPage() {
                               {session.deviceLabel ?? t.security.unknownDevice}
                             </p>
                             <p className="text-[11px] text-muted">
-                              {formatDisplayDateTime(session.lastSeenAt, language)}
+                              {[
+                                session.environment?.browser,
+                                session.environment?.os,
+                                session.environment?.device,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ") ||
+                                formatDisplayDateTime(
+                                  session.lastSeenAt,
+                                  language,
+                                )}
+                            </p>
+                            <p className="text-[11px] text-muted">
+                              {formatDisplayDateTime(
+                                session.lastSeenAt,
+                                language,
+                              )}
                             </p>
                           </div>
                         </div>
                         {session.isCurrent ? (
-                          <Badge variant="success">This device</Badge>
+                          <Badge variant="success">
+                            {t.security.thisDevice}
+                          </Badge>
                         ) : (
                           <button
                             type="button"
@@ -335,13 +358,15 @@ export default function SecurityPage() {
                           className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-muted/70 p-3"
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                              severity === "failed"
-                                ? "bg-danger-soft text-danger"
-                                : severity === "warning"
-                                ? "bg-warning-soft text-warning"
-                                : "bg-primary-soft text-primary"
-                            }`}>
+                            <div
+                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                                severity === "failed"
+                                  ? "bg-danger-soft text-danger"
+                                  : severity === "warning"
+                                    ? "bg-warning-soft text-warning"
+                                    : "bg-primary-soft text-primary"
+                              }`}
+                            >
                               {eventIcon(event.type, "h-5 w-5")}
                             </div>
                             <div className="min-w-0">
@@ -349,18 +374,29 @@ export default function SecurityPage() {
                                 {t.security.eventTypes[event.type]}
                               </p>
                               <p className="text-[11px] text-muted">
-                                {formatDisplayDateTime(event.createdAt, language)}
+                                {formatDisplayDateTime(
+                                  event.createdAt,
+                                  language,
+                                )}
                               </p>
                             </div>
                           </div>
                           <Badge variant={severityBadgeVariant(severity)}>
-                            {severityLabel(severity)}
+                            {severityLabel(severity, language)}
                           </Badge>
                         </li>
                       );
                     })}
                   </ul>
                 )}
+                <Pagination
+                  page={eventsPage}
+                  totalPages={Math.max(
+                    1,
+                    Math.ceil(eventsTotal / EVENTS_PAGE_SIZE),
+                  )}
+                  onPageChange={setEventsPage}
+                />
               </Card>
             </div>
           </>

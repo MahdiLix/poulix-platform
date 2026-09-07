@@ -6,18 +6,13 @@ import { ArrowRight, Lock } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { Badge } from "@/shared/ui/Badge";
 import { Spinner } from "@/shared/ui/Spinner";
-import { NumericKeypad } from "@/shared/ui/NumericKeypad";
+import { AmountField } from "@/shared/ui/AmountField";
 import { getStoredToken } from "@/shared/api";
 import { formatIrr } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { flashToast } from "@/shared/ui/Toast";
-import { localizeDigits, toLatinDigits } from "@/shared/ui/latinDigits";
-import {
-  isMobileViewport,
-  isVirtualKeyboardEnabled,
-} from "@/shared/preferences/virtualKeyboard";
 import {
   DEPOSIT_PRESETS,
   startZarinpalDeposit,
@@ -34,14 +29,14 @@ type DepositFormProps = {
   initialAmount?: string;
 };
 
-function formatPreset(amount: number, language: "en" | "fa"): string {
+function formatPreset(amount: number): string {
   if (amount >= 1_000_000) {
-    return `${localizeDigits(String(amount / 1_000_000), language)}M`;
+    return `${amount / 1_000_000}M`;
   }
   if (amount >= 1_000) {
-    return `${localizeDigits(String(amount / 1_000), language)}k`;
+    return `${amount / 1_000}k`;
   }
-  return localizeDigits(String(amount), language);
+  return String(amount);
 }
 
 export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
@@ -52,27 +47,10 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeOffer, setActiveOffer] = useState<ActiveOffer | null>(null);
-  const [focused, setFocused] = useState(false);
-  const [keypadEnabled, setKeypadEnabled] = useState(false);
-  const [showKeypad, setShowKeypad] = useState(false);
 
   useEffect(() => {
     setActiveOffer(getActiveOffer());
   }, []);
-
-  useEffect(() => {
-    function syncPreference() {
-      setKeypadEnabled(isVirtualKeyboardEnabled());
-    }
-    syncPreference();
-    window.addEventListener("poulix:virtual-keyboard", syncPreference);
-    return () =>
-      window.removeEventListener("poulix:virtual-keyboard", syncPreference);
-  }, []);
-
-  useEffect(() => {
-    setShowKeypad(Boolean(focused && keypadEnabled && isMobileViewport()));
-  }, [focused, keypadEnabled]);
 
   async function handleDeposit(e: FormEvent) {
     e.preventDefault();
@@ -165,49 +143,19 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
         </Badge>
       </div>
 
-      <div>
-        <label className="mb-2 block text-sm font-semibold text-foreground">
-          {t.deposit.topUpAmount}
-        </label>
-        <div className="relative">
-          <input
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            lang="en"
-            dir="ltr"
-            autoComplete="off"
-            autoFocus
-            enterKeyHint="done"
-            required
-            readOnly={showKeypad}
-            placeholder={localizeDigits("100000", language)}
-            value={amount}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            onChange={(e) => {
-              if (showKeypad) return;
-              setAmount(toLatinDigits(e.target.value).replace(/[^\d]/g, ""));
-              setError("");
-            }}
-            className="w-full rounded-2xl border border-border bg-surface px-4 py-5 pe-16 text-2xl font-extrabold tabular-nums text-foreground transition placeholder:text-muted/60 placeholder:font-semibold hover:border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
-          />
-          <span className="pointer-events-none absolute inset-y-0 end-4 flex items-center text-sm font-semibold text-muted">
-            IRR
-          </span>
-        </div>
-        {showKeypad ? (
-          <NumericKeypad
-            className="mt-3 lg:hidden"
-            onDigit={(digit) => {
-              setAmount((prev) => `${prev}${digit}`);
-              setError("");
-            }}
-            onBackspace={() => setAmount((prev) => prev.slice(0, -1))}
-            onDone={() => setShowKeypad(false)}
-          />
-        ) : null}
-      </div>
+      <AmountField
+        label={t.deposit.topUpAmount}
+        autoFocus
+        enterKeyHint="done"
+        required
+        placeholder="100000"
+        value={amount}
+        className="h-16 rounded-2xl pe-16 text-2xl font-extrabold"
+        onChange={(event) => {
+          setAmount(event.target.value);
+          setError("");
+        }}
+      />
 
       <div className="space-y-2">
         <p className="text-xs font-semibold text-muted">Preset amounts</p>
@@ -229,7 +177,7 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
                 }`}
               >
                 <span className="text-xs font-bold">
-                  {formatPreset(preset, language)}
+                  {formatPreset(preset)}
                 </span>
                 <span className="text-[10px] opacity-70">IRR</span>
               </button>

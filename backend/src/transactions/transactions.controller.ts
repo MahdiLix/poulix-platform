@@ -1,5 +1,6 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { CurrentUser, JwtAuthGuard, type AuthenticatedUser } from '../common';
+import { TransactionsQueryDto } from './dto/transactions-query.dto';
 import { TransactionsService } from './transactions.service';
 
 @Controller('transactions')
@@ -8,7 +9,10 @@ export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
 
   @Get()
-  findAll(@CurrentUser() user: AuthenticatedUser) {
-    return this.transactionsService.getWalletTransactions(user.id);
+  findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: TransactionsQueryDto,
+  ) {
+    return this.transactionsService.getWalletTransactions(user.id, query);
   }
 }

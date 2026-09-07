@@ -52,6 +52,7 @@ import {
   DEFAULT_TOKEN_MAX_AGE_SECONDS,
   getTokenMaxAgeSeconds,
   isPublicAuthPath,
+  isTokenExpired,
   notifySessionExpired,
 } from "@/shared/user/session";
 
@@ -66,6 +67,26 @@ export type AuthUser = {
 export type AuthResponse = {
   user: AuthUser;
   accessToken: string;
+};
+
+export type PaginatedResponse<T> = {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+};
+
+export type UserTransaction = {
+  id: string;
+  type: string;
+  amount: string | number;
+  createdAt: string;
+  reason?: string | null;
+  category?: string | null;
+  counterpartyUser?: {
+    username: string;
+    email: string;
+  } | null;
 };
 
 export type RegisterPayload = {
@@ -117,6 +138,29 @@ function formatEndpoint(endpoint: string): string {
   return `${API_BASE_URL}/api${clean}`;
 }
 
+function withQuery(
+  path: string,
+  params: Record<string, string | number | undefined>,
+) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") query.set(key, String(value));
+  });
+  const suffix = query.toString();
+  return suffix ? `${path}?${suffix}` : path;
+}
+
+function normalizePage<T>(
+  data: T[] | PaginatedResponse<T>,
+  page = 1,
+  pageSize = 20,
+): PaginatedResponse<T> {
+  if (Array.isArray(data)) {
+    return { items: data, page, pageSize, total: data.length };
+  }
+  return data;
+}
+
 function isBrowser() {
   return typeof window !== "undefined" && typeof document !== "undefined";
 }
@@ -151,6 +195,11 @@ export function getStoredToken(): string | null {
   if (!match) return null;
 
   const value = decodeURIComponent(match.slice(prefix.length));
+  if (value && isTokenExpired(value)) {
+    removeStoredToken();
+    notifySessionExpired();
+    return null;
+  }
   return value || null;
 }
 
@@ -234,6 +283,11 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  logout: (): Promise<{ success: boolean }> =>
+    fetchWithAuth("/auth/logout", {
+      method: "POST",
+    }),
+
   getMe: () => fetchWithAuth("/users/me"),
 
   getWallet: () => fetchWithAuth("/wallets/me"),
@@ -259,6 +313,7 @@ export const api = {
     shabaNumber?: string;
     reason?: string;
     category?: string;
+    envelopeId?: string;
   }): Promise<WithdrawResponse> =>
     fetchWithAuth("/wallets/withdraw", {
       method: "POST",
@@ -275,6 +330,7 @@ export const api = {
     amount: number;
     reason?: string;
     category?: string;
+    envelopeId?: string;
   }): Promise<TransferResponse> =>
     fetchWithAuth("/wallets/transfer", {
       method: "POST",
@@ -365,8 +421,25 @@ export const api = {
       method: "POST",
     }),
 
-  getNotifications: (): Promise<Notification[]> =>
-    fetchWithAuth("/notifications"),
+  getNotifications: async (): Promise<Notification[]> => {
+    const data = (await fetchWithAuth(
+      "/notifications?page=1&pageSize=20",
+    )) as Notification[] | PaginatedResponse<Notification>;
+    return normalizePage(data, 1, 20).items;
+  },
+
+  getNotificationsPage: async (params: {
+    page?: number;
+    pageSize?: number;
+    category?: string;
+  }): Promise<PaginatedResponse<Notification>> => {
+    const page = params.page ?? 1;
+    const pageSize = params.pageSize ?? 10;
+    const data = (await fetchWithAuth(
+      withQuery("/notifications", { ...params, page, pageSize }),
+    )) as Notification[] | PaginatedResponse<Notification>;
+    return normalizePage(data, page, pageSize);
+  },
 
   getUnreadNotificationCount: (): Promise<UnreadCountResponse> =>
     fetchWithAuth("/notifications/unread-count"),
@@ -426,8 +499,24 @@ export const api = {
   getSecuritySessions: (): Promise<UserSession[]> =>
     fetchWithAuth("/security/sessions"),
 
-  getSecurityEvents: (): Promise<SecurityEvent[]> =>
-    fetchWithAuth("/security/events"),
+  getSecurityEvents: async (): Promise<SecurityEvent[]> => {
+    const data = (await fetchWithAuth(
+      "/security/events?page=1&pageSize=20",
+    )) as SecurityEvent[] | PaginatedResponse<SecurityEvent>;
+    return normalizePage(data, 1, 20).items;
+  },
+
+  getSecurityEventsPage: async (params: {
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedResponse<SecurityEvent>> => {
+    const page = params.page ?? 1;
+    const pageSize = params.pageSize ?? 10;
+    const data = (await fetchWithAuth(
+      withQuery("/security/events", { page, pageSize }),
+    )) as SecurityEvent[] | PaginatedResponse<SecurityEvent>;
+    return normalizePage(data, page, pageSize);
+  },
 
   revokeSecuritySession: (id: string): Promise<{ success: boolean }> =>
     fetchWithAuth(`/security/sessions/${id}/revoke`, {
@@ -437,7 +526,26 @@ export const api = {
   touchSecuritySession: (): Promise<void> =>
     fetchWithAuth("/security/touch", { method: "POST" }),
 
-  getTransactions: () => fetchWithAuth("/transactions"),
+  getTransactions: async (): Promise<UserTransaction[]> => {
+    const data = (await fetchWithAuth(
+      "/transactions?page=1&pageSize=100",
+    )) as UserTransaction[] | PaginatedResponse<UserTransaction>;
+    return normalizePage(data, 1, 100).items;
+  },
+
+  getTransactionsPage: async <T extends UserTransaction = UserTransaction>(params: {
+    page?: number;
+    pageSize?: number;
+    type?: string;
+    q?: string;
+  }): Promise<PaginatedResponse<T>> => {
+    const page = params.page ?? 1;
+    const pageSize = params.pageSize ?? 10;
+    const data = (await fetchWithAuth(
+      withQuery("/transactions", { ...params, page, pageSize }),
+    )) as T[] | PaginatedResponse<T>;
+    return normalizePage(data, page, pageSize);
+  },
 
   getAdminDashboard: (): Promise<AdminDashboard> =>
     fetchWithAuth("/admin/dashboard"),

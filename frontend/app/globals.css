@@ -5,17 +5,17 @@
 :root {
   color-scheme: light;
 
-  --canvas: #f3f6fb;
-  --background: #f6f8fc;
+  --canvas: #edf3fb;
+  --background: #f4f7fc;
   --foreground: #12202e;
   --surface: #ffffff;
   --surface-muted: #eef2f8;
   --surface-elevated: #ffffff;
-  --border: #dce3ee;
+  --border: #d5e0ef;
   --border-subtle: rgba(18, 32, 46, 0.08);
   --muted: #7b8798;
 
-  --sidebar: #0f1b2d;
+  --sidebar: #071426;
   --sidebar-foreground: #f8fafc;
   --sidebar-muted: #93a4b8;
   --sidebar-hover: rgba(255, 255, 255, 0.06);
@@ -64,7 +64,8 @@
 
   --glass-bg: rgba(255, 255, 255, 0.82);
   --glass-border: rgba(220, 227, 238, 0.95);
-  --shadow-card: 0 1px 2px rgba(18, 32, 46, 0.04);
+  --shadow-card:
+    0 10px 30px rgba(34, 76, 130, 0.06), 0 1px 2px rgba(18, 32, 46, 0.05);
   --shadow-glow: 0 0 40px rgba(43, 107, 235, 0.14);
 
   --radius-card: 0.875rem;
@@ -76,23 +77,23 @@
 .dark {
   color-scheme: dark;
 
-  --canvas: #0a101a;
-  --background: #0e1520;
+  --canvas: #020a16;
+  --background: #061225;
   --foreground: #f4f7fb;
-  --surface: #172033;
-  --surface-muted: #223049;
-  --surface-elevated: #1e2a40;
-  --border: rgba(168, 180, 196, 0.28);
-  --border-subtle: rgba(168, 180, 196, 0.16);
-  --muted: #a8b4c4;
+  --surface: #091a32;
+  --surface-muted: #102541;
+  --surface-elevated: #0d213c;
+  --border: rgba(67, 111, 176, 0.3);
+  --border-subtle: rgba(74, 113, 169, 0.18);
+  --muted: #8fa4c4;
 
-  --sidebar: #080e18;
+  --sidebar: #030d1d;
   --sidebar-foreground: #f8fafc;
   --sidebar-muted: #8b9aab;
   --sidebar-hover: rgba(255, 255, 255, 0.06);
 
-  --primary: #5b8fff;
-  --primary-hover: #7aa3ff;
+  --primary: #3f7cff;
+  --primary-hover: #6597ff;
   --primary-active: #2b6beb;
   --primary-foreground: #ffffff;
   --primary-soft: rgba(43, 107, 235, 0.2);
@@ -101,7 +102,7 @@
   --primary-strong-via: #2b6beb;
   --primary-strong-to: #071833;
 
-  --secondary: #34c48a;
+  --secondary: #12d6a1;
   --secondary-hover: #1a9b6e;
   --secondary-soft: rgba(26, 155, 110, 0.16);
 
@@ -116,25 +117,26 @@
   --accent-teal: #6aa8bc;
   --accent-teal-soft: rgba(74, 142, 168, 0.14);
 
-  --success: #34c48a;
+  --success: #12d6a1;
   --success-soft: rgba(26, 155, 110, 0.16);
   --warning: #d4b56e;
   --warning-soft: rgba(196, 160, 90, 0.14);
   --danger: #d47a6c;
   --danger-soft: rgba(196, 92, 74, 0.14);
 
-  --chart-income: #5b8fff;
-  --chart-expense: #d47a6c;
+  --chart-income: #12d6a1;
+  --chart-expense: #7657ff;
   --chart-expense-from: #5b8fff;
   --chart-expense-via: #2b6beb;
   --chart-expense-to: #1f5ad6;
-  --chart-grid: rgba(168, 180, 196, 0.22);
-  --chart-secondary: #34c48a;
+  --chart-grid: rgba(115, 151, 205, 0.15);
+  --chart-secondary: #3f7cff;
 
   --glass-bg: rgba(21, 27, 40, 0.78);
   --glass-border: rgba(148, 163, 184, 0.1);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(168, 180, 196, 0.08);
-  --shadow-glow: 0 0 48px rgba(91, 143, 255, 0.22);
+  --shadow-card:
+    0 18px 45px rgba(0, 5, 15, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  --shadow-glow: 0 0 54px rgba(63, 124, 255, 0.24);
 }
 
 @theme inline {
@@ -224,13 +226,109 @@ body {
 
 .bg-ink-hero {
   background-image: linear-gradient(
-    105deg,
-    #0f1b2d 0%,
-    #163a6b 55%,
-    #2b6beb 130%
+    110deg,
+    #071a36 0%,
+    #0c3a7c 58%,
+    #1468e8 135%
   );
   background-repeat: no-repeat;
   background-size: 100% 100%;
+}
+
+.dashboard-canvas {
+  background:
+    radial-gradient(
+      circle at 20% -10%,
+      rgba(43, 107, 235, 0.09),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 90% 0%,
+      rgba(18, 214, 161, 0.055),
+      transparent 26%
+    ),
+    var(--background);
+}
+
+.fintech-sidebar {
+  background:
+    radial-gradient(
+      circle at 20% 94%,
+      rgba(46, 83, 255, 0.24),
+      transparent 24%
+    ),
+    radial-gradient(
+      circle at 82% 100%,
+      rgba(30, 88, 204, 0.18),
+      transparent 28%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--sidebar) 94%, #0c2f69 6%),
+      var(--sidebar)
+    );
+}
+
+.fintech-card {
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--surface) 93%, var(--primary) 7%),
+    var(--surface) 58%
+  );
+  box-shadow: var(--shadow-card);
+}
+
+.fintech-card:hover {
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+}
+
+.fintech-hero {
+  border: 1px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  background:
+    radial-gradient(
+      circle at 78% 22%,
+      rgba(39, 218, 255, 0.2),
+      transparent 24%
+    ),
+    radial-gradient(
+      circle at 56% 120%,
+      rgba(35, 93, 255, 0.38),
+      transparent 45%
+    ),
+    linear-gradient(118deg, #09255a 0%, #0b47ad 52%, #071b42 100%);
+  box-shadow:
+    0 18px 48px rgba(0, 35, 105, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.fintech-grid-pattern {
+  background-image:
+    linear-gradient(rgba(118, 166, 232, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(118, 166, 232, 0.06) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(to left, black, transparent 85%);
+}
+
+[dir="rtl"] .fintech-grid-pattern {
+  mask-image: linear-gradient(to right, black, transparent 85%);
+}
+
+.hero-art-fade {
+  mask-image: linear-gradient(to right, transparent, black 22%);
+}
+
+[dir="rtl"] .hero-art-fade {
+  mask-image: linear-gradient(to left, transparent, black 22%);
+}
+
+.dark .fintech-card {
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--surface) 92%, #154584 8%),
+    color-mix(in srgb, var(--surface) 97%, black 3%) 62%
+  );
 }
 
 .bg-chart-expense-gradient {

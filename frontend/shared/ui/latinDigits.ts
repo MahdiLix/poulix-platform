@@ -7,15 +7,12 @@ export function toLatinDigits(value: string): string {
     .replace(/[٠-٩]/g, (digit) => String(ARABIC_DIGITS.indexOf(digit)));
 }
 
-export function toPersianDigits(value: string | number): string {
-  return String(value).replace(/[0-9]/g, (digit) => PERSIAN_DIGITS[Number(digit)]!);
-}
-
 export function localizeDigits(
   value: string | number,
-  language: "en" | "fa",
+  language: "en" | "fa" = "en",
 ): string {
-  return language === "fa" ? toPersianDigits(value) : String(value);
+  void language;
+  return toLatinDigits(String(value));
 }
 
 export function isNumericInput(

@@ -82,20 +82,37 @@ export class ScheduledPaymentsService {
 
     const reason = dto.reason?.trim() || undefined;
 
-    return this.db.scheduledPayment.create({
-      data: {
-        userId,
-        recipientUserId: recipient.id,
-        amount: dto.amount,
-        reason,
-        category: dto.category,
-        frequency: dto.frequency,
-        startDate,
-        nextExecutionAt: startDate,
-        endDate,
-        status: 'ACTIVE',
-      },
-      include: this.defaultInclude(),
+    return this.db.$transaction(async (tx) => {
+      if (dto.envelopeId) {
+        const envelope = await tx.envelope.findFirst({
+          where: {
+            id: dto.envelopeId,
+            userId,
+            status: 'ACTIVE',
+          },
+          select: { id: true },
+        });
+        if (!envelope) {
+          throw new BadRequestException('Active envelope not found');
+        }
+      }
+
+      return tx.scheduledPayment.create({
+        data: {
+          userId,
+          recipientUserId: recipient.id,
+          envelopeId: dto.envelopeId,
+          amount: dto.amount,
+          reason,
+          category: dto.category,
+          frequency: dto.frequency,
+          startDate,
+          nextExecutionAt: startDate,
+          endDate,
+          status: 'ACTIVE',
+        },
+        include: this.defaultInclude(),
+      });
     });
   }
 
@@ -188,6 +205,8 @@ export class ScheduledPaymentsService {
       amount: number;
       currency: string;
       recipientUsername: string;
+      recipientUserId: string;
+      senderUsername: string;
     };
     type FailedNotification = {
       kind: 'failed';
@@ -211,7 +230,7 @@ export class ScheduledPaymentsService {
               select: { username: true },
             },
             user: {
-              select: { status: true },
+              select: { status: true, username: true },
             },
           },
         });
@@ -318,6 +337,7 @@ export class ScheduledPaymentsService {
               reason: payment.reason ?? undefined,
               category: payment.category ?? undefined,
               scheduledPaymentExecutionId: executionId,
+              envelopeId: payment.envelopeId ?? undefined,
             },
           );
 
@@ -333,6 +353,8 @@ export class ScheduledPaymentsService {
               amount,
               currency,
               recipientUsername,
+              recipientUserId: payment.recipientUserId,
+              senderUsername: payment.user.username,
             };
             return;
           }
@@ -369,6 +391,14 @@ export class ScheduledPaymentsService {
             amount: notification.amount,
             currency: notification.currency,
             recipientUsername: notification.recipientUsername,
+          },
+        );
+        void this.notificationsService.createTransferReceived(
+          notification.recipientUserId,
+          {
+            amount: notification.amount,
+            currency: notification.currency,
+            senderUsername: notification.senderUsername,
           },
         );
       } else if (notification?.kind === 'failed') {
@@ -470,6 +500,14 @@ export class ScheduledPaymentsService {
           id: true,
           username: true,
           email: true,
+        },
+      },
+      envelope: {
+        select: {
+          id: true,
+          name: true,
+          allocatedAmount: true,
+          status: true,
         },
       },
     };

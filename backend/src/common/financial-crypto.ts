@@ -72,25 +72,53 @@ export function normalizeCardNumber(value: string): string {
 }
 
 export function deviceKeyFromUserAgent(userAgent: string): string {
-  return hashIdentifier(userAgent.trim() || 'unknown');
+  const environment = deviceEnvironmentFromUserAgent(userAgent);
+  return hashIdentifier(
+    `${environment.browser}|${environment.os}|${environment.device}`,
+  );
 }
 
 export function deviceLabelFromUserAgent(userAgent: string): string {
-  const ua = userAgent.trim();
-  if (!ua) {
+  const environment = deviceEnvironmentFromUserAgent(userAgent);
+  if (
+    environment.browser === 'Unknown browser' &&
+    environment.os === 'Unknown OS'
+  ) {
     return 'Unknown device';
   }
-  if (/Mobile|Android|iPhone/i.test(ua)) {
-    return 'Mobile device';
-  }
-  if (/Windows/i.test(ua)) {
-    return 'Windows device';
-  }
-  if (/Macintosh|Mac OS/i.test(ua)) {
-    return 'Mac device';
-  }
-  if (/Linux/i.test(ua)) {
-    return 'Linux device';
-  }
-  return 'Web browser';
+
+  return `${environment.browser} on ${environment.os} (${environment.device})`;
+}
+
+export function deviceEnvironmentFromUserAgent(userAgent: string) {
+  const ua = userAgent.trim();
+  const browser = /Edg\//i.test(ua)
+    ? 'Edge'
+    : /OPR\/|Opera/i.test(ua)
+      ? 'Opera'
+      : /Firefox\//i.test(ua)
+        ? 'Firefox'
+        : /Chrome\/|CriOS\//i.test(ua)
+          ? 'Chrome'
+          : /Safari\//i.test(ua)
+            ? 'Safari'
+            : 'Unknown browser';
+  const os = /Android/i.test(ua)
+    ? 'Android'
+    : /iPhone|iPad|iPod/i.test(ua)
+      ? 'iOS'
+      : /Windows/i.test(ua)
+        ? 'Windows'
+        : /Macintosh|Mac OS/i.test(ua)
+          ? 'macOS'
+          : /Linux/i.test(ua)
+            ? 'Linux'
+            : 'Unknown OS';
+  const device = /iPad|Tablet/i.test(ua)
+    ? 'tablet'
+    : /Mobile|Android|iPhone|iPod/i.test(ua)
+      ? 'mobile'
+      : 'desktop';
+
+  return { browser, os, device };
 }

@@ -30,13 +30,7 @@ import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import type { AdminSecurityEvent } from "@/features/admin/lib/admin";
 import type { SecurityEventType } from "@/features/security/lib/security";
 
-const TABS = [
-  "Security Insights",
-  "Login Activity",
-  "Blocked Users",
-  "API Access",
-  "Two-Factor Auth",
-];
+const TABS = ["insights", "activity"] as const;
 
 function eventBadgeVariant(
   type: string,
@@ -47,13 +41,16 @@ function eventBadgeVariant(
   return "success";
 }
 
-function countBy(items: AdminSecurityEvent[], matcher: (type: string) => boolean) {
+function countBy(
+  items: AdminSecurityEvent[],
+  matcher: (type: string) => boolean,
+) {
   return items.filter((item) => matcher(item.type)).length;
 }
 
 export default function AdminSecurityPage() {
   const { t, language } = useLanguage();
-  const [activeTab, setActiveTab] = useState(TABS[0]);
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>(TABS[0]);
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<AdminSecurityEvent[]>([]);
   const [insightItems, setInsightItems] = useState<AdminSecurityEvent[]>([]);
@@ -99,10 +96,18 @@ export default function AdminSecurityPage() {
   }, []);
 
   const insightSource = insightItems.length > 0 ? insightItems : items;
-  const failedLogins = countBy(insightSource, (type) => type.includes("FAILED_LOGIN"));
-  const limitExceeded = countBy(insightSource, (type) => type.includes("LIMIT_EXCEEDED"));
-  const newDevice = countBy(insightSource, (type) => type.includes("NEW_DEVICE"));
-  const suspicious = countBy(insightSource, (type) => type.includes("SUSPICIOUS"));
+  const failedLogins = countBy(insightSource, (type) =>
+    type.includes("FAILED_LOGIN"),
+  );
+  const limitExceeded = countBy(insightSource, (type) =>
+    type.includes("LIMIT_EXCEEDED"),
+  );
+  const newDevice = countBy(insightSource, (type) =>
+    type.includes("NEW_DEVICE"),
+  );
+  const suspicious = countBy(insightSource, (type) =>
+    type.includes("SUSPICIOUS"),
+  );
 
   const eventTypeCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -140,13 +145,19 @@ export default function AdminSecurityPage() {
                 : "border border-border bg-surface text-muted hover:text-foreground"
             }`}
           >
-            {tab}
+            {tab === "insights"
+              ? t.admin.securityInsights
+              : t.admin.loginActivity}
           </button>
         ))}
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Events" value={String(total)} icon={LogIn} />
+        <StatCard
+          label={t.admin.totalEvents}
+          value={String(total)}
+          icon={LogIn}
+        />
         <StatCard
           label={t.security.eventTypes.FAILED_LOGIN}
           value={String(failedLogins)}
@@ -166,165 +177,182 @@ export default function AdminSecurityPage() {
         />
       </div>
 
-      <div className="mb-6 space-y-4">
-        <h2 className="text-sm font-bold text-foreground">Security Insights</h2>
-        <div className="grid gap-4 lg:grid-cols-12">
-          <Card className="space-y-4 p-5 lg:col-span-4">
-            <p className="text-xs font-semibold text-muted">Event mix</p>
-            <DonutChart
-              segments={
-                eventTypeCounts.length > 0
-                  ? eventTypeCounts.map(([type, value], index) => ({
-                      label: eventLabel(type),
-                      value,
-                      color: colors[index % colors.length],
-                    }))
-                  : [{ label: t.admin.empty, value: 1, color: "var(--border)" }]
-              }
-              centerValue={String(insightSource.length)}
-              centerLabel="Sample"
-            />
-          </Card>
+      {activeTab === "insights" ? (
+        <div className="mb-6 space-y-4">
+          <h2 className="text-sm font-bold text-foreground">
+            {t.admin.securityInsights}
+          </h2>
+          <div className="grid gap-4 lg:grid-cols-12">
+            <Card className="space-y-4 p-5 lg:col-span-4">
+              <p className="text-xs font-semibold text-muted">
+                {t.admin.eventMix}
+              </p>
+              <DonutChart
+                segments={
+                  eventTypeCounts.length > 0
+                    ? eventTypeCounts.map(([type, value], index) => ({
+                        label: eventLabel(type),
+                        value,
+                        color: colors[index % colors.length],
+                      }))
+                    : [
+                        {
+                          label: t.admin.empty,
+                          value: 1,
+                          color: "var(--border)",
+                        },
+                      ]
+                }
+                centerValue={String(insightSource.length)}
+                centerLabel={t.admin.sample}
+              />
+            </Card>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:col-span-8">
-            <InsightCard
-              label={t.security.eventTypes.FAILED_LOGIN}
-              value={failedLogins}
-              tone="danger"
-            />
-            <InsightCard
-              label={t.security.eventTypes.LIMIT_EXCEEDED}
-              value={limitExceeded}
-              tone="warning"
-            />
-            <InsightCard
-              label={t.security.eventTypes.NEW_DEVICE_LOGIN}
-              value={newDevice}
-              tone="info"
-            />
-            <InsightCard
-              label={t.security.eventTypes.SUSPICIOUS_ACTIVITY}
-              value={suspicious}
-              tone="danger"
-            />
+            <div className="grid gap-3 sm:grid-cols-2 lg:col-span-8">
+              <InsightCard
+                label={t.security.eventTypes.FAILED_LOGIN}
+                value={failedLogins}
+                tone="danger"
+              />
+              <InsightCard
+                label={t.security.eventTypes.LIMIT_EXCEEDED}
+                value={limitExceeded}
+                tone="warning"
+              />
+              <InsightCard
+                label={t.security.eventTypes.NEW_DEVICE_LOGIN}
+                value={newDevice}
+                tone="info"
+              />
+              <InsightCard
+                label={t.security.eventTypes.SUSPICIOUS_ACTIVITY}
+                value={suspicious}
+                tone="danger"
+              />
+            </div>
           </div>
-        </div>
 
-        <Card className="space-y-3 p-5">
-          <h3 className="text-sm font-bold text-foreground">Event timeline</h3>
-          {insightSource.length === 0 ? (
-            <p className="text-xs text-muted">{t.admin.empty}</p>
-          ) : (
-            <ol className="space-y-2">
-              {insightSource.slice(0, 8).map((item) => (
-                <li
-                  key={item.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-muted/50 px-3 py-2.5"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-semibold text-foreground">
-                      {item.user.username}
-                    </p>
-                    <p className="text-[11px] text-muted">
-                      {formatDisplayDateTime(item.createdAt, language)}
-                    </p>
-                  </div>
-                  <Badge variant={eventBadgeVariant(item.type)}>
-                    {eventLabel(item.type)}
-                  </Badge>
-                </li>
-              ))}
-            </ol>
-          )}
-        </Card>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-8">
-          <h2 className="mb-3 text-sm font-bold text-foreground">
-            Recent Login Activity
-          </h2>
-          {error ? (
-            <div className="rounded-xl bg-danger-soft p-4 text-sm text-danger">
-              {error}
-            </div>
-          ) : loading ? (
-            <PageSpinner label={t.common.loading} />
-          ) : items.length === 0 ? (
-            <div className="rounded-2xl border border-border p-8 text-center text-sm text-muted">
-              {t.admin.empty}
-            </div>
-          ) : (
-            <Table>
-              <TableHead>
-                <TableHeaderCell>User</TableHeaderCell>
-                <TableHeaderCell>Event</TableHeaderCell>
-                <TableHeaderCell>Time</TableHeaderCell>
-              </TableHead>
-              <TableBody>
-                {items.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-semibold">
-                      {item.user.username}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={eventBadgeVariant(item.type)}>
-                        {eventLabel(item.type)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted">
-                      {formatDisplayDateTime(item.createdAt, language)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-
-          {total > 20 ? (
-            <div className="mt-4 flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-auto"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                {t.admin.prev}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-auto"
-                disabled={page * 20 >= total}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                {t.admin.next}
-              </Button>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="lg:col-span-4">
-          <h2 className="mb-3 text-sm font-bold text-foreground">
-            Event types
-          </h2>
           <Card className="space-y-3 p-5">
-            {eventTypeCounts.length === 0 ? (
+            <h3 className="text-sm font-bold text-foreground">
+              {t.admin.eventTimeline}
+            </h3>
+            {insightSource.length === 0 ? (
               <p className="text-xs text-muted">{t.admin.empty}</p>
             ) : (
-              eventTypeCounts.map(([type, value]) => (
-                <div key={type} className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-semibold text-foreground">
-                    {eventLabel(type)}
-                  </span>
-                  <Badge variant={eventBadgeVariant(type)}>{value}</Badge>
-                </div>
-              ))
+              <ol className="space-y-2">
+                {insightSource.slice(0, 8).map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-muted/50 px-3 py-2.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-semibold text-foreground">
+                        {item.user.username}
+                      </p>
+                      <p className="text-[11px] text-muted">
+                        {formatDisplayDateTime(item.createdAt, language)}
+                      </p>
+                    </div>
+                    <Badge variant={eventBadgeVariant(item.type)}>
+                      {eventLabel(item.type)}
+                    </Badge>
+                  </li>
+                ))}
+              </ol>
             )}
           </Card>
         </div>
-      </div>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-12">
+          <div className="lg:col-span-8">
+            <h2 className="mb-3 text-sm font-bold text-foreground">
+              {t.admin.loginActivity}
+            </h2>
+            {error ? (
+              <div className="rounded-xl bg-danger-soft p-4 text-sm text-danger">
+                {error}
+              </div>
+            ) : loading ? (
+              <PageSpinner label={t.common.loading} />
+            ) : items.length === 0 ? (
+              <div className="rounded-2xl border border-border p-8 text-center text-sm text-muted">
+                {t.admin.empty}
+              </div>
+            ) : (
+              <Table>
+                <TableHead>
+                  <TableHeaderCell>{t.common.user}</TableHeaderCell>
+                  <TableHeaderCell>{t.common.event}</TableHeaderCell>
+                  <TableHeaderCell>{t.common.time}</TableHeaderCell>
+                </TableHead>
+                <TableBody>
+                  {items.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-semibold">
+                        {item.user.username}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={eventBadgeVariant(item.type)}>
+                          {eventLabel(item.type)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted">
+                        {formatDisplayDateTime(item.createdAt, language)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+
+            {total > 20 ? (
+              <div className="mt-4 flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-auto"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  {t.admin.prev}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-auto"
+                  disabled={page * 20 >= total}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  {t.admin.next}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="lg:col-span-4">
+            <h2 className="mb-3 text-sm font-bold text-foreground">
+              {t.admin.eventTypesTitle}
+            </h2>
+            <Card className="space-y-3 p-5">
+              {eventTypeCounts.length === 0 ? (
+                <p className="text-xs text-muted">{t.admin.empty}</p>
+              ) : (
+                eventTypeCounts.map(([type, value]) => (
+                  <div
+                    key={type}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <span className="text-xs font-semibold text-foreground">
+                      {eventLabel(type)}
+                    </span>
+                    <Badge variant={eventBadgeVariant(type)}>{value}</Badge>
+                  </div>
+                ))
+              )}
+            </Card>
+          </div>
+        </div>
+      )}
     </AdminShell>
   );
 }

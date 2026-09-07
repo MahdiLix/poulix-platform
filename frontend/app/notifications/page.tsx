@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   ArrowDownLeft,
@@ -17,6 +17,7 @@ import { AppShell } from "@/shared/layout/AppShell";
 import { HeaderBar } from "@/shared/layout/HeaderBar";
 import { Button, ButtonLink } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
+import { Pagination } from "@/shared/ui/Pagination";
 import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
@@ -36,6 +37,7 @@ type PageStatus = "loading" | "ready" | "unauthenticated" | "error";
 type Filter = "ALL" | NotificationCategory;
 
 const FILTERS: Filter[] = ["ALL", "SUCCESS", "WARNING", "ERROR", "INFO"];
+const PAGE_SIZE = 10;
 
 function notificationIcon(type: NotificationType) {
   switch (type) {
@@ -99,10 +101,15 @@ export default function NotificationsPage() {
   const [listError, setListError] = useState<string | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
   const [filter, setFilter] = useState<Filter>("ALL");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     void loadNotifications();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, page]);
+
+  useEffect(() => setPage(1), [filter]);
 
   async function loadNotifications() {
     if (!getStoredToken()) {
@@ -114,8 +121,13 @@ export default function NotificationsPage() {
     setListError(null);
 
     try {
-      const data = await api.getNotifications();
-      setNotifications(data);
+      const data = await api.getNotificationsPage({
+        page,
+        pageSize: PAGE_SIZE,
+        category: filter === "ALL" ? undefined : filter,
+      });
+      setNotifications(data.items);
+      setTotal(data.total);
       setPageStatus("ready");
     } catch (err) {
       if (!getStoredToken()) {
@@ -163,13 +175,7 @@ export default function NotificationsPage() {
   }
 
   const hasUnread = notifications.some((n) => !n.isRead);
-  const filtered = useMemo(
-    () =>
-      filter === "ALL"
-        ? notifications
-        : notifications.filter((item) => item.category === filter),
-    [filter, notifications],
-  );
+  const filtered = notifications;
 
   return (
     <AppShell showBottomNav={false}>
@@ -220,6 +226,7 @@ export default function NotificationsPage() {
         ) : null}
 
         {pageStatus === "ready" ? (
+          <>
           <Card className="overflow-hidden p-0">
             <div className="flex flex-wrap gap-2 border-b border-border px-4 py-3">
               {FILTERS.map((item) => {
@@ -316,6 +323,12 @@ export default function NotificationsPage() {
               </div>
             )}
           </Card>
+          <Pagination
+            page={page}
+            totalPages={Math.max(1, Math.ceil(total / PAGE_SIZE))}
+            onPageChange={setPage}
+          />
+          </>
         ) : null}
       </div>
     </AppShell>

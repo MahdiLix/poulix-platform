@@ -1,4 +1,5 @@
 import type { TranslationDictionary } from "@/shared/i18n/translations";
+import type { DestinationValueResponse } from "@/features/financial-destinations/lib/destinations";
 
 type Messages = TranslationDictionary["messages"];
 
@@ -8,6 +9,21 @@ export type WithdrawResponse = {
   balance: string | number;
   currency?: string;
 };
+
+export function collectWithdrawDestinationValues(
+  values: Array<DestinationValueResponse | null>,
+): { accounts: string[]; shabas: string[] } {
+  const accounts: string[] = [];
+  const shabas: string[] = [];
+  for (const value of values) {
+    if (value?.type === "BANK_ACCOUNT") accounts.push(value.accountNumber);
+    if (value?.type === "SHABA") shabas.push(value.shabaNumber);
+  }
+  return {
+    accounts: [...new Set(accounts)],
+    shabas: [...new Set(shabas)],
+  };
+}
 
 export function validateWithdrawAmount(
   raw: string,

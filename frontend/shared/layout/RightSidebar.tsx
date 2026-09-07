@@ -12,7 +12,7 @@ export function RightSidebar({ children, className }: RightSidebarProps) {
   return (
     <aside
       className={cn(
-        "hidden w-[300px] shrink-0 flex-col gap-6 overflow-y-auto bg-background p-5 xl:flex",
+        "dashboard-canvas hidden w-[300px] shrink-0 flex-col gap-4 overflow-y-auto border-s border-border-subtle p-4 xl:flex 2xl:w-[330px]",
         className,
       )}
     >

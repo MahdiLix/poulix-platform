@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Download, ListChecks, XCircle } from "lucide-react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Download,
+  ListChecks,
+  XCircle,
+} from "lucide-react";
 import { AdminShell } from "@/features/admin/components/AdminShell";
 import { Button, ButtonLink } from "@/shared/ui/Button";
 import { PageSpinner } from "@/shared/ui/Spinner";
@@ -22,10 +28,17 @@ import { api } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatIrr } from "@/features/wallet/lib/wallet";
+import { transactionTypeLabel } from "@/features/wallet/lib/transactionDisplay";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
+import { Pagination } from "@/shared/ui/Pagination";
 import type { AdminTransaction } from "@/features/admin/lib/admin";
 
-const INCOME_TYPES = new Set(["DEPOSIT", "TRANSFER_IN", "GOAL_RELEASE", "ENVELOPE_RELEASE"]);
+const INCOME_TYPES = new Set([
+  "DEPOSIT",
+  "TRANSFER_IN",
+  "GOAL_RELEASE",
+  "ENVELOPE_RELEASE",
+]);
 
 export default function AdminTransactionsPage() {
   const { t, language } = useLanguage();
@@ -122,14 +135,35 @@ export default function AdminTransactionsPage() {
             }}
             options={[
               { value: "", label: t.admin.allTypes },
-              { value: "DEPOSIT", label: "DEPOSIT" },
-              { value: "WITHDRAWAL", label: "WITHDRAWAL" },
-              { value: "TRANSFER_OUT", label: "TRANSFER_OUT" },
-              { value: "TRANSFER_IN", label: "TRANSFER_IN" },
-              { value: "GOAL_CONTRIBUTE", label: "GOAL_CONTRIBUTE" },
-              { value: "GOAL_RELEASE", label: "GOAL_RELEASE" },
-              { value: "ENVELOPE_ALLOCATE", label: "ENVELOPE_ALLOCATE" },
-              { value: "ENVELOPE_RELEASE", label: "ENVELOPE_RELEASE" },
+              { value: "DEPOSIT", label: transactionTypeLabel("DEPOSIT", t) },
+              {
+                value: "WITHDRAWAL",
+                label: transactionTypeLabel("WITHDRAWAL", t),
+              },
+              {
+                value: "TRANSFER_OUT",
+                label: transactionTypeLabel("TRANSFER_OUT", t),
+              },
+              {
+                value: "TRANSFER_IN",
+                label: transactionTypeLabel("TRANSFER_IN", t),
+              },
+              {
+                value: "GOAL_CONTRIBUTE",
+                label: transactionTypeLabel("GOAL_CONTRIBUTE", t),
+              },
+              {
+                value: "GOAL_RELEASE",
+                label: transactionTypeLabel("GOAL_RELEASE", t),
+              },
+              {
+                value: "ENVELOPE_ALLOCATE",
+                label: transactionTypeLabel("ENVELOPE_ALLOCATE", t),
+              },
+              {
+                value: "ENVELOPE_RELEASE",
+                label: transactionTypeLabel("ENVELOPE_RELEASE", t),
+              },
             ]}
           />
           <DatePicker
@@ -151,7 +185,7 @@ export default function AdminTransactionsPage() {
         </div>
         <Button variant="outline" size="sm" className="w-auto shrink-0">
           <Download className="me-1.5 h-3.5 w-3.5" />
-          Export
+          {t.common.export}
         </Button>
       </div>
 
@@ -169,12 +203,12 @@ export default function AdminTransactionsPage() {
       ) : (
         <Table>
           <TableHead>
-            <TableHeaderCell>ID</TableHeaderCell>
+            <TableHeaderCell>{t.common.id}</TableHeaderCell>
             <TableHeaderCell>{t.admin.type}</TableHeaderCell>
-            <TableHeaderCell>User</TableHeaderCell>
-            <TableHeaderCell>Amount</TableHeaderCell>
-            <TableHeaderCell>Created At</TableHeaderCell>
-            <TableHeaderCell>Actions</TableHeaderCell>
+            <TableHeaderCell>{t.common.user}</TableHeaderCell>
+            <TableHeaderCell>{t.common.amount}</TableHeaderCell>
+            <TableHeaderCell>{t.common.createdAt}</TableHeaderCell>
+            <TableHeaderCell>{t.common.actions}</TableHeaderCell>
           </TableHead>
           <TableBody>
             {items.map((item) => {
@@ -186,7 +220,7 @@ export default function AdminTransactionsPage() {
                   </TableCell>
                   <TableCell>
                     <Badge variant={isIncome ? "success" : "info"}>
-                      {item.type}
+                      {transactionTypeLabel(item.type, t)}
                     </Badge>
                   </TableCell>
                   <TableCell className="font-semibold">
@@ -212,7 +246,7 @@ export default function AdminTransactionsPage() {
                       variant="outline"
                       className="w-auto"
                     >
-                      View
+                      {t.common.view}
                     </ButtonLink>
                   </TableCell>
                 </TableRow>
@@ -222,28 +256,14 @@ export default function AdminTransactionsPage() {
         </Table>
       )}
 
-      {total > 20 ? (
-        <div className="mt-4 flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-auto"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            {t.admin.prev}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-auto"
-            disabled={page * 20 >= total}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            {t.admin.next}
-          </Button>
-        </div>
-      ) : null}
+      <Pagination
+        className="mt-4"
+        page={page}
+        totalPages={Math.ceil(total / 20)}
+        onPageChange={setPage}
+        previousLabel={t.admin.prev}
+        nextLabel={t.admin.next}
+      />
     </AdminShell>
   );
 }

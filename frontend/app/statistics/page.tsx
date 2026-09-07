@@ -20,6 +20,11 @@ import {
   parseEnvelopeAmount,
   type Envelope,
 } from "@/features/envelopes/lib/envelopes";
+import {
+  filterByDayRange,
+  percentChange,
+  previousDayRange,
+} from "@/features/statistics/lib/range";
 
 type Transaction = {
   amount?: string | number;
@@ -85,13 +90,26 @@ export default function StatisticsPage() {
     void loadTransactions();
   }, []);
 
+  const selectedDays = Number(chartRange);
+  const rangeTransactions = useMemo(
+    () => filterByDayRange(transactions ?? [], selectedDays),
+    [selectedDays, transactions],
+  );
+  const previousTransactions = useMemo(
+    () => previousDayRange(transactions ?? [], selectedDays),
+    [selectedDays, transactions],
+  );
+
   const monthlyData: MonthlyPoint[] = useMemo(() => {
-    const months = getLastMonths(6, language);
+    const months = getLastMonths(
+      Math.min(12, Math.max(1, Math.ceil(selectedDays / 30))),
+      language,
+    );
     const buckets = new Map(
       months.map((month) => [month.key, { income: 0, expense: 0 }]),
     );
 
-    (transactions ?? []).forEach((tx) => {
+    rangeTransactions.forEach((tx) => {
       if (!tx.createdAt) return;
       const date = new Date(tx.createdAt);
       if (Number.isNaN(date.getTime())) return;
@@ -115,10 +133,10 @@ export default function StatisticsPage() {
       income: buckets.get(month.key)?.income ?? 0,
       expense: buckets.get(month.key)?.expense ?? 0,
     }));
-  }, [language, transactions]);
+  }, [language, rangeTransactions, selectedDays]);
 
   const { incomeTotal, expenseTotal } = useMemo(() => {
-    return (transactions ?? []).reduce(
+    return rangeTransactions.reduce(
       (totals, tx) => {
         const amount = parseAmount(tx.amount);
         if (tx.type && INCOME_TYPES.has(tx.type)) {
@@ -130,12 +148,26 @@ export default function StatisticsPage() {
       },
       { incomeTotal: 0, expenseTotal: 0 },
     );
-  }, [transactions]);
+  }, [rangeTransactions]);
+
+  const previousTotals = useMemo(
+    () =>
+      previousTransactions.reduce(
+        (totals, tx) => {
+          const amount = parseAmount(tx.amount);
+          if (tx.type && INCOME_TYPES.has(tx.type)) totals.income += amount;
+          if (tx.type && EXPENSE_TYPES.has(tx.type)) totals.expense += amount;
+          return totals;
+        },
+        { income: 0, expense: 0 },
+      ),
+    [previousTransactions],
+  );
 
   const categorySpend = useMemo(() => {
-    if (!transactions) return [];
+    if (!rangeTransactions.length) return [];
     const totals = new Map<string, number>();
-    for (const tx of transactions) {
+    for (const tx of rangeTransactions) {
       if (!tx.type || !EXPENSE_TYPES.has(tx.type) || !tx.category) continue;
       totals.set(
         tx.category,
@@ -145,7 +177,7 @@ export default function StatisticsPage() {
     return Array.from(totals.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6);
-  }, [transactions]);
+  }, [rangeTransactions]);
 
   const chartSeries = [
     {
@@ -199,14 +231,14 @@ export default function StatisticsPage() {
           <StatCard
             label={t.statistics.totalIncome}
             value={formatIrr(incomeTotal, currency)}
-            trend={12}
+            trend={percentChange(incomeTotal, previousTotals.income)}
             icon={ArrowDown}
             iconClassName="bg-success-soft text-success"
           />
           <StatCard
             label={t.statistics.totalExpenses}
             value={formatIrr(expenseTotal, currency)}
-            trend={-5}
+            trend={percentChange(expenseTotal, previousTotals.expense)}
             icon={ArrowUp}
             iconClassName="bg-danger-soft text-danger"
           />
@@ -218,7 +250,7 @@ export default function StatisticsPage() {
           />
           <StatCard
             label={t.statistics.totalTransactions}
-            value={String(transactions?.length ?? 0)}
+            value={String(rangeTransactions.length)}
             icon={ArrowUp}
             iconClassName="bg-accent-amber-soft text-accent-amber"
           />
@@ -269,7 +301,6 @@ export default function StatisticsPage() {
               <p className="text-xl font-bold text-success">
                 {formatIrr(incomeTotal, currency)}
               </p>
-              <p className="text-[11px] font-semibold text-success">+12% vs last 30 days</p>
             </Card>
             <Card className="space-y-2 p-5">
               <span className="h-2 w-2 rounded-full bg-danger" />
@@ -279,7 +310,6 @@ export default function StatisticsPage() {
               <p className="text-xl font-bold text-danger">
                 {formatIrr(expenseTotal, currency)}
               </p>
-              <p className="text-[11px] font-semibold text-danger">-5% vs last 30 days</p>
             </Card>
             <Card className="space-y-2 p-5">
               <span className="h-2 w-2 rounded-full bg-success" />
@@ -289,7 +319,6 @@ export default function StatisticsPage() {
               <p className="text-xl font-bold text-success">
                 {formatIrr(incomeTotal - expenseTotal, currency)}
               </p>
-              <p className="text-[11px] font-semibold text-success">+28% vs last 30 days</p>
             </Card>
           </div>
         </div>

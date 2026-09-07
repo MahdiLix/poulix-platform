@@ -27,6 +27,7 @@ export type ScheduledPayment = {
   status: ScheduledPaymentStatus;
   createdAt: string;
   recipientUser: TransferRecipient;
+  envelopeId?: string | null;
   executions?: ScheduledPaymentExecution[];
 };
 
@@ -38,6 +39,7 @@ export type CreateScheduledPaymentPayload = {
   endDate?: string;
   reason?: string;
   category?: string;
+  envelopeId?: string;
 };
 
 type Messages = TranslationDictionary["messages"];

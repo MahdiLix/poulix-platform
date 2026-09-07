@@ -1,35 +1,5 @@
 import type { Language } from "./translations";
 
-const GREGORIAN_MONTHS_EN = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-] as const;
-
-const SOLAR_HIJRI_MONTHS_FA = [
-  "فروردین",
-  "اردیبهشت",
-  "خرداد",
-  "تیر",
-  "مرداد",
-  "شهریور",
-  "مهر",
-  "آبان",
-  "آذر",
-  "دی",
-  "بهمن",
-  "اسفند",
-] as const;
-
 export type CalendarMonth = {
   year: number;
   month: number;
@@ -47,11 +17,13 @@ export function calendarFor(language: Language): "persian" | "gregory" {
 }
 
 export function localeFor(language: Language): string {
-  return language === "fa" ? "fa-IR" : "en-GB";
+  return language === "fa"
+    ? "fa-IR-u-ca-persian-nu-latn"
+    : "en-US-u-ca-gregory-nu-latn";
 }
 
 function numericCalendarParts(date: Date, language: Language) {
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("en-US-u-nu-latn", {
     calendar: calendarFor(language),
     numberingSystem: "latn",
     year: "numeric",
@@ -80,10 +52,26 @@ export function getCalendarYearMonth(
 }
 
 export function monthLabel(month: number, language: Language): string {
-  const index = Math.min(12, Math.max(1, month)) - 1;
-  return language === "fa"
-    ? SOLAR_HIJRI_MONTHS_FA[index]
-    : GREGORIAN_MONTHS_EN[index];
+  const safeMonth = Math.min(12, Math.max(1, month));
+  if (language === "en") {
+    return new Intl.DateTimeFormat(localeFor(language), {
+      month: "short",
+      timeZone: "UTC",
+    }).format(new Date(Date.UTC(2024, safeMonth - 1, 1)));
+  }
+
+  const formatter = new Intl.DateTimeFormat(localeFor(language), {
+    month: "long",
+    timeZone: "UTC",
+  });
+  const start = Date.UTC(2024, 2, 1);
+  for (let offset = 0; offset < 400; offset += 1) {
+    const date = new Date(start + offset * 86_400_000);
+    if (getCalendarYearMonth(date, language).month === safeMonth) {
+      return formatter.format(date);
+    }
+  }
+  return String(safeMonth);
 }
 
 export function monthKey(year: number, month: number): string {
@@ -130,6 +118,20 @@ export function formatDisplayDate(
     day: "numeric",
     month: "short",
     year: "numeric",
+  }).format(date);
+}
+
+export function formatMonthDay(
+  value: Date | string | number,
+  language: Language,
+): string {
+  const date = toDate(value);
+  if (!date) return "";
+  return new Intl.DateTimeFormat(localeFor(language), {
+    calendar: calendarFor(language),
+    numberingSystem: "latn",
+    day: "numeric",
+    month: "short",
   }).format(date);
 }
 

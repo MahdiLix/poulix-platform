@@ -8,10 +8,10 @@ import { HeaderBar } from "@/shared/layout/HeaderBar";
 import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { PageSpinner } from "@/shared/ui/Spinner";
-import { TextField } from "@/shared/ui/TextField";
+import { AmountField } from "@/shared/ui/AmountField";
 import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
-import { formatDisplayDate, formatDisplayDateTime } from "@/shared/i18n/dates";
+import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
@@ -244,12 +244,8 @@ export default function GoalDetailPage() {
                     {formatIrr(balance ?? 0, currency)}
                   </span>
                 </p>
-                <TextField
+                <AmountField
                   label={t.goals.amountIrr}
-                  type="number"
-                  min="1"
-                  step="1"
-                  inputMode="numeric"
                   value={amount}
                   onChange={(e) => {
                     setAmount(e.target.value);
@@ -271,12 +267,8 @@ export default function GoalDetailPage() {
             {canRelease ? (
               <Card className="space-y-3 p-5">
                 <h3 className="text-sm font-bold">{t.goals.releaseBtn}</h3>
-                <TextField
+                <AmountField
                   label={t.goals.amountIrr}
-                  type="number"
-                  min="1"
-                  step="1"
-                  inputMode="numeric"
                   value={releaseAmount}
                   onChange={(e) => {
                     setReleaseAmount(e.target.value);

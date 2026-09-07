@@ -5,6 +5,7 @@ import type {
   Prisma,
 } from '../generated/prisma/client';
 import { DatabaseService } from '../database/database.service';
+import type { NotificationsQueryDto } from './dto/notifications-query.dto';
 
 export type NotificationMetadata = Record<string, unknown>;
 
@@ -163,14 +164,35 @@ export class NotificationsService {
     });
   }
 
-  async listForUser(userId: string, limit = 50) {
-    const notifications = await this.db.notification.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-    });
+  async listForUser(userId: string, query: NotificationsQueryDto) {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 50;
+    const where: Prisma.NotificationWhereInput = {
+      userId,
+      ...(query.type ? { type: query.type } : {}),
+      ...(query.category ? { category: query.category } : {}),
+      ...(query.isRead === true
+        ? { readAt: { not: null } }
+        : query.isRead === false
+          ? { readAt: null }
+          : {}),
+    };
+    const [notifications, total] = await this.db.$transaction([
+      this.db.notification.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.db.notification.count({ where }),
+    ]);
 
-    return notifications.map((n) => this.serialize(n));
+    return {
+      items: notifications.map((n) => this.serialize(n)),
+      page,
+      pageSize,
+      total,
+    };
   }
 
   async getUnreadCount(userId: string) {

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CalendarClock, Info, ShieldCheck } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { TextField } from "@/shared/ui/TextField";
+import { AmountField } from "@/shared/ui/AmountField";
 import { Select } from "@/shared/ui/Select";
 import { DatePicker } from "@/shared/ui/DatePicker";
 import { api, getStoredToken } from "@/shared/api";
@@ -27,13 +28,19 @@ import {
 import { parseAmount, formatIrr } from "@/features/wallet/lib/wallet";
 import { Card } from "@/shared/ui/Card";
 import { cn } from "@/shared/cn";
-import { localizeDigits } from "@/shared/ui/latinDigits";
 import { RecentDestinationChips } from "@/features/financial-destinations/components/RecentDestinationChips";
 import type { FinancialDestination } from "@/features/financial-destinations/lib/destinations";
+import {
+  FundingSourceSelect,
+  type FundingSource,
+} from "@/features/envelopes/components/FundingSourceSelect";
+import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
+import { formatDisplayDate } from "@/shared/i18n/dates";
 
 export function ScheduledPaymentForm() {
   const router = useRouter();
   const { t, language } = useLanguage();
+  const { balance, currency } = useWalletBalance();
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
   const [frequency, setFrequency] =
@@ -48,6 +55,10 @@ export function ScheduledPaymentForm() {
   const [recentRecipients, setRecentRecipients] = useState<
     FinancialDestination[]
   >([]);
+  const [fundingSource, setFundingSource] = useState<FundingSource>({
+    label: "",
+    balance: null,
+  });
 
   const nextRuns = useMemo(() => {
     if (!startDate) return [];
@@ -127,6 +138,7 @@ export function ScheduledPaymentForm() {
           frequency !== "ONCE" && endDate ? startOfDayIso(endDate) : undefined,
         reason: reason.trim() || undefined,
         category: category ? category : undefined,
+        envelopeId: fundingSource.envelopeId,
       });
 
       flashToast({
@@ -168,17 +180,17 @@ export function ScheduledPaymentForm() {
         }}
       />
 
-      <TextField
+      <FundingSourceSelect
+        value={fundingSource.envelopeId ?? ""}
+        onChange={setFundingSource}
+        walletBalance={balance}
+        currency={currency}
+      />
+
+      <AmountField
         label={t.send.amountIrr}
-        type="number"
-        min="1"
-        step="1"
-        inputMode="numeric"
-        placeholder={localizeDigits("500000", language)}
+        placeholder="500,000"
         value={amount}
-        rightIcon={
-          <span className="text-[11px] font-semibold text-muted">IRR</span>
-        }
         onChange={(e) => {
           setAmount(e.target.value);
           setError("");
@@ -280,11 +292,7 @@ export function ScheduledPaymentForm() {
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-soft text-[10px] font-bold text-primary">
                       {index + 1}
                     </span>
-                    {date.toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
+                    {formatDisplayDate(date, language)}
                   </span>
                   <span className="font-semibold">
                     {parseAmount(amount) > 0

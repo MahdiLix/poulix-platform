@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   Max,
   MaxLength,
@@ -47,4 +48,8 @@ export class WithdrawDto {
   @IsOptional()
   @IsEnum(TransactionCategoryDto)
   category?: TransactionCategoryDto;
+
+  @IsOptional()
+  @IsUUID()
+  envelopeId?: string;
 }

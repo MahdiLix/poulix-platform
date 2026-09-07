@@ -7,9 +7,18 @@ export type SecurityEventType =
   | "SUSPICIOUS_ACTIVITY"
   | "SESSION_REVOKED";
 
+export type SessionEnvironment = {
+  browser?: string | null;
+  os?: string | null;
+  device?: string | null;
+};
+
 export type UserSession = {
   id: string;
+  sessionIds?: string[];
+  sessionCount?: number;
   deviceLabel: string | null;
+  environment?: SessionEnvironment;
   ipAddress: string | null;
   lastSeenAt: string;
   createdAt: string;

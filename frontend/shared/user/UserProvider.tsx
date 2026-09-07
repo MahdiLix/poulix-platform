@@ -18,8 +18,11 @@ import type { AuthUser } from "@/shared/api";
 import { getUserInitials } from "@/shared/user/displayName";
 import {
   SESSION_EXPIRED_EVENT,
+  SESSION_SYNC_STORAGE_KEY,
+  broadcastSessionLogout,
   getTokenExpiryMs,
   isPublicAuthPath,
+  isTokenExpired,
 } from "@/shared/user/session";
 
 type UserStatus = "loading" | "ready" | "unauthenticated" | "error";
@@ -43,6 +46,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<UserStatus>("loading");
   const expiryTimer = useRef<number | null>(null);
+  const signingOut = useRef(false);
+  const redirected = useRef(false);
 
   const clearExpiryTimer = useCallback(() => {
     if (expiryTimer.current != null) {
@@ -53,11 +58,24 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(
     (redirect = true) => {
+      if (signingOut.current) return;
+      signingOut.current = true;
+
+      if (getStoredToken()) {
+        // fetchWithAuth reads the cookie before its first await, so revocation is
+        // already in flight when the local cookie is cleared below.
+        void api.logout().catch(() => {});
+      }
       clearExpiryTimer();
       removeStoredToken();
+      broadcastSessionLogout();
       setUser(null);
       setStatus("unauthenticated");
-      if (redirect) redirectToLogin();
+      signingOut.current = false;
+      if (redirect && !redirected.current) {
+        redirected.current = true;
+        redirectToLogin();
+      }
     },
     [clearExpiryTimer],
   );
@@ -114,12 +132,32 @@ export function UserProvider({ children }: { children: ReactNode }) {
     function onExpired() {
       signOut();
     }
+    function onStorage(event: StorageEvent) {
+      if (event.key === SESSION_SYNC_STORAGE_KEY) signOut();
+    }
+    function recheckExpiry() {
+      const token = getStoredToken();
+      if (!token || isTokenExpired(token)) {
+        signOut();
+        return;
+      }
+      scheduleExpiry(token);
+    }
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") recheckExpiry();
+    }
     window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", recheckExpiry);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", recheckExpiry);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       clearExpiryTimer();
     };
-  }, [clearExpiryTimer, signOut]);
+  }, [clearExpiryTimer, scheduleExpiry, signOut]);
 
   return (
     <UserContext.Provider value={{ user, status, refresh, signOut }}>

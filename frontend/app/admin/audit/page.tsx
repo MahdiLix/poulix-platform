@@ -20,6 +20,7 @@ import { api } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
+import { Pagination } from "@/shared/ui/Pagination";
 import type { AdminAuditLog } from "@/features/admin/lib/admin";
 
 export default function AdminAuditPage() {
@@ -52,30 +53,72 @@ export default function AdminAuditPage() {
     };
   }, [page, t.messages]);
 
+  function exportCurrentPage() {
+    if (items.length === 0) return;
+    const csv = [
+      [
+        t.common.id,
+        t.common.user,
+        t.common.actions,
+        t.common.resource,
+        t.common.status,
+        t.common.createdAt,
+      ],
+      ...items.map((item) => [
+        item.id,
+        item.adminUser.username,
+        item.action,
+        item.targetType,
+        item.success ? t.common.success : t.common.failed,
+        item.createdAt,
+      ]),
+    ]
+      .map((row) =>
+        row
+          .map((cell) => `"${String(cell).replaceAll('"', '""')}"`)
+          .join(","),
+      )
+      .join("\n");
+    const url = URL.createObjectURL(
+      new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }),
+    );
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `poulix-audit-page-${page}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <AdminShell title={t.admin.auditTitle} subtitle={t.admin.subtitle}>
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Total Events" value={String(total)} icon={ScrollText} />
+        <StatCard label={t.admin.totalEvents} value={String(total)} icon={ScrollText} />
         <StatCard
-          label="Successful"
+          label={t.common.successful}
           value={String(items.filter((i) => i.success).length)}
           iconClassName="bg-success-soft text-success"
         />
         <StatCard
-          label="Failed"
+          label={t.common.failed}
           value={String(items.filter((i) => !i.success).length)}
           iconClassName="bg-danger-soft text-danger"
         />
-        <StatCard label="Page" value={String(page)} />
+        <StatCard label={t.common.page} value={String(page)} />
       </div>
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex-1">
           <SearchInput placeholder={t.admin.search} readOnly className="cursor-default" />
         </div>
-        <Button variant="outline" size="sm" className="w-auto">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-auto"
+          onClick={exportCurrentPage}
+          disabled={items.length === 0}
+        >
           <Download className="me-1.5 h-3.5 w-3.5" />
-          Export
+          {t.common.export}
         </Button>
       </div>
 
@@ -93,12 +136,12 @@ export default function AdminAuditPage() {
       ) : (
         <Table>
           <TableHead>
-            <TableHeaderCell>ID</TableHeaderCell>
-            <TableHeaderCell>User</TableHeaderCell>
-            <TableHeaderCell>Action</TableHeaderCell>
-            <TableHeaderCell>Resource</TableHeaderCell>
-            <TableHeaderCell>Status</TableHeaderCell>
-            <TableHeaderCell>Created At</TableHeaderCell>
+            <TableHeaderCell>{t.common.id}</TableHeaderCell>
+            <TableHeaderCell>{t.common.user}</TableHeaderCell>
+            <TableHeaderCell>{t.common.actions}</TableHeaderCell>
+            <TableHeaderCell>{t.common.resource}</TableHeaderCell>
+            <TableHeaderCell>{t.common.status}</TableHeaderCell>
+            <TableHeaderCell>{t.common.createdAt}</TableHeaderCell>
           </TableHead>
           <TableBody>
             {items.map((item) => (
@@ -118,7 +161,7 @@ export default function AdminAuditPage() {
                 </TableCell>
                 <TableCell>
                   <Badge variant={item.success ? "success" : "danger"}>
-                    {item.success ? "Success" : "Failed"}
+                    {item.success ? t.common.success : t.common.failed}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-xs text-muted">
@@ -130,28 +173,14 @@ export default function AdminAuditPage() {
         </Table>
       )}
 
-      {total > 20 ? (
-        <div className="mt-4 flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-auto"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            {t.admin.prev}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-auto"
-            disabled={page * 20 >= total}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            {t.admin.next}
-          </Button>
-        </div>
-      ) : null}
+      <Pagination
+        className="mt-4"
+        page={page}
+        totalPages={Math.ceil(total / 20)}
+        onPageChange={setPage}
+        previousLabel={t.admin.prev}
+        nextLabel={t.admin.next}
+      />
     </AdminShell>
   );
 }

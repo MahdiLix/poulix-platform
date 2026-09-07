@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Send, Eye, EyeOff, Check, User } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { TextField } from "@/shared/ui/TextField";
+import { AmountField } from "@/shared/ui/AmountField";
 import { Select } from "@/shared/ui/Select";
 import { Badge } from "@/shared/ui/Badge";
 import { api, getStoredToken } from "@/shared/api";
@@ -22,11 +23,16 @@ import {
   writeSendConfirmPayload,
 } from "@/features/p2p-transfer/lib/transfer";
 import type { TransferRecipient } from "@/features/p2p-transfer/lib/transfer";
-import { localizeDigits } from "@/shared/ui/latinDigits";
+import {
+  FundingSourceSelect,
+  type FundingSource,
+} from "@/features/envelopes/components/FundingSourceSelect";
+import { RecentDestinationChips } from "@/features/financial-destinations/components/RecentDestinationChips";
+import type { FinancialDestination } from "@/features/financial-destinations/lib/destinations";
 
 export function SendForm() {
   const router = useRouter();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const {
     status,
     balance,
@@ -46,6 +52,25 @@ export function SendForm() {
     null,
   );
   const [recipientLoading, setRecipientLoading] = useState(false);
+  const [fundingSource, setFundingSource] = useState<FundingSource>({
+    label: "",
+    balance: null,
+  });
+  const [destinations, setDestinations] = useState<FinancialDestination[]>([]);
+
+  useEffect(() => {
+    if (!getStoredToken()) return;
+    void Promise.all([
+      api.getSavedDestinations().catch(() => []),
+      api.getRecentDestinations().catch(() => []),
+    ]).then(([saved, recent]) => {
+      const unique = new Map<string, FinancialDestination>();
+      [...saved, ...recent]
+        .filter((item) => item.type === "P2P_USER" && item.recipientUsername)
+        .forEach((item) => unique.set(item.recipientUsername!, item));
+      setDestinations([...unique.values()].slice(0, 8));
+    });
+  }, []);
 
   useEffect(() => {
     const trimmed = recipient.trim();
@@ -90,9 +115,12 @@ export function SendForm() {
     }
 
     const parsedAmount = parseAmount(amount);
+    const sourceBalance = fundingSource.envelopeId
+      ? fundingSource.balance
+      : balance;
     const amountError = validateTransferAmount(
       parsedAmount,
-      balance,
+      sourceBalance,
       t.messages,
     );
     if (amountError) {
@@ -118,6 +146,9 @@ export function SendForm() {
         recipient: recipient.trim(),
         recipientUser: lookup.user,
         amount: parsedAmount,
+        envelopeId: fundingSource.envelopeId,
+        fundingSourceLabel: fundingSource.label || undefined,
+        fundingSourceBalance: sourceBalance ?? undefined,
         reason: reason.trim() || undefined,
         category: category ? (category as TransactionCategory) : undefined,
       });
@@ -131,7 +162,9 @@ export function SendForm() {
   }
 
   const balanceDisplay =
-    status === "ready" && balance !== null ? formatIrr(balance, currency) : null;
+    status === "ready" && balance !== null
+      ? formatIrr(balance, currency)
+      : null;
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
@@ -156,7 +189,7 @@ export function SendForm() {
             type="button"
             onClick={() => setBalanceVisible((v) => !v)}
             className="cursor-pointer rounded-lg p-1 text-muted transition hover:bg-surface-muted hover:text-foreground"
-            aria-label="Toggle balance visibility"
+            aria-label={t.common.toggleBalanceVisibility}
           >
             {balanceVisible ? (
               <Eye className="h-3.5 w-3.5" />
@@ -200,6 +233,13 @@ export function SendForm() {
       </div>
 
       <div className="space-y-3">
+        <RecentDestinationChips
+          destinations={destinations}
+          onSelect={(destination) => {
+            setRecipient(destination.recipientUsername ?? "");
+            setFieldError(null);
+          }}
+        />
         <TextField
           label={t.send.recipient}
           autoComplete="off"
@@ -244,18 +284,21 @@ export function SendForm() {
         ) : null}
       </div>
 
-      <TextField
+      <FundingSourceSelect
+        value={fundingSource.envelopeId ?? ""}
+        onChange={setFundingSource}
+        walletBalance={balance}
+        currency={currency}
+      />
+
+      <AmountField
         label={t.send.amountIrr}
-        type="number"
-        min="1"
-        step="1"
-        inputMode="numeric"
-        placeholder={localizeDigits("10000", language)}
+        placeholder="10,000"
         value={amount}
         hint={
           balance !== null && balance > 0
-            ? `Min ${localizeDigits("10,000", language)} · Max ${formatIrr(balance, currency, language)}`
-            : `Min ${localizeDigits("10,000", language)}`
+            ? `Min 10,000 · Max ${formatIrr(balance, currency)}`
+            : "Min 10,000"
         }
         onChange={(e) => {
           setAmount(e.target.value);
@@ -300,7 +343,11 @@ export function SendForm() {
         </div>
       ) : null}
 
-      <Button type="submit" className="h-12 w-full text-base" disabled={loading}>
+      <Button
+        type="submit"
+        className="h-12 w-full text-base"
+        disabled={loading}
+      >
         {loading ? t.send.lookingUpRecipient : t.send.continueBtn}
       </Button>
     </form>

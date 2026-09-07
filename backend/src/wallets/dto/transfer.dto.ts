@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   MaxLength,
   Min,
@@ -31,4 +32,8 @@ export class TransferDto {
   @IsOptional()
   @IsEnum(TransactionCategoryDto)
   category?: TransactionCategoryDto;
+
+  @IsOptional()
+  @IsUUID()
+  envelopeId?: string;
 }

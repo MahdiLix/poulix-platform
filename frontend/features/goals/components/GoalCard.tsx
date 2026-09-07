@@ -16,6 +16,7 @@ import {
   Shield,
   Target,
   Wallet,
+  XCircle,
 } from "lucide-react";
 import { Card } from "@/shared/ui/Card";
 import { Button } from "@/shared/ui/Button";
@@ -35,6 +36,8 @@ import {
 type GoalCardProps = {
   goal: Goal;
   color?: string;
+  onCancel?: (id: string) => void;
+  cancelling?: boolean;
 };
 
 const GOAL_COLORS = [
@@ -65,7 +68,12 @@ function latestContributionDate(goal: Goal): string | null {
   return latest.createdAt;
 }
 
-export function GoalCard({ goal, color }: GoalCardProps) {
+export function GoalCard({
+  goal,
+  color,
+  onCancel,
+  cancelling = false,
+}: GoalCardProps) {
   const { t, language } = useLanguage();
 
   const saved = parseGoalAmount(goal.savedAmount);
@@ -104,7 +112,7 @@ export function GoalCard({ goal, color }: GoalCardProps) {
 
       <div className="space-y-1.5">
         <p className="text-xs font-semibold" style={{ color: accentColor }}>
-          Saved {formatIrr(saved)} / {formatIrr(target)}
+          {t.goals.savedInGoals} {formatIrr(saved)} / {formatIrr(target)}
         </p>
         <ProgressBar
           value={progress}
@@ -142,17 +150,32 @@ export function GoalCard({ goal, color }: GoalCardProps) {
       </div>
 
       <div className="mt-auto flex items-center gap-2">
+        {goal.status === "ACTIVE" ? (
         <Link href={`/goals/${goal.id}`} className="flex-1">
           <Button size="sm" variant="outline" className="w-full gap-1">
             <Plus className="h-3.5 w-3.5" />
             {t.goals.contributeBtn}
           </Button>
         </Link>
+        ) : null}
+        {goal.status === "ACTIVE" ? (
         <Link href={`/goals/${goal.id}`} className="flex-1">
           <Button size="sm" variant="outline" className="w-full text-danger hover:text-danger">
             {t.goals.releaseBtn}
           </Button>
         </Link>
+        ) : null}
+        {goal.status === "ACTIVE" && onCancel ? (
+          <button
+            type="button"
+            disabled={cancelling}
+            onClick={() => onCancel(goal.id)}
+            aria-label={t.goals.cancelGoalBtn}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-danger transition hover:bg-danger-soft disabled:opacity-50"
+          >
+            <XCircle className="h-4 w-4" />
+          </button>
+        ) : null}
         <Link href={`/goals/${goal.id}`}>
           <Button size="sm" variant="ghost" className="px-2">
             <Eye className="h-4 w-4" />

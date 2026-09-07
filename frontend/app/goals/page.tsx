@@ -36,6 +36,7 @@ export default function GoalsPage() {
   const [totalSaved, setTotalSaved] = useState(0);
   const [pageStatus, setPageStatus] = useState<PageStatus>("loading");
   const [listError, setListError] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
     void loadGoals();
@@ -65,6 +66,19 @@ export default function GoalsPage() {
     }
   }
 
+  async function cancelGoal(id: string) {
+    setCancellingId(id);
+    setListError(null);
+    try {
+      await api.cancelGoal(id);
+      await loadGoals();
+    } catch (err) {
+      setListError(localizeError(err, t.messages, "genericError"));
+    } finally {
+      setCancellingId(null);
+    }
+  }
+
   const availableBalance = balance ?? 0;
   const totalWealth = availableBalance + totalSaved;
 
@@ -78,7 +92,7 @@ export default function GoalsPage() {
           <Link href="/goals/new">
             <Button size="sm" className="gap-1">
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Create Goal</span>
+              <span className="hidden sm:inline">{t.goals.createBtn}</span>
             </Button>
           </Link>
         }
@@ -182,6 +196,8 @@ export default function GoalsPage() {
                 key={goal.id}
                 goal={goal}
                 color={DONUT_COLORS[i % DONUT_COLORS.length]}
+                onCancel={(id) => void cancelGoal(id)}
+                cancelling={cancellingId === goal.id}
               />
             ))}
           </div>

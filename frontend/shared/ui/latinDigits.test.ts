@@ -16,9 +16,9 @@ describe("toLatinDigits", () => {
 });
 
 describe("localizeDigits", () => {
-  it("renders Persian digits for fa", async () => {
+  it("keeps output digits Latin for fa", async () => {
     const { localizeDigits } = await import("@/shared/ui/latinDigits");
-    expect(localizeDigits("10000", "fa")).toBe("۱۰۰۰۰");
+    expect(localizeDigits("10000", "fa")).toBe("10000");
   });
 });
 

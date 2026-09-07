@@ -26,15 +26,35 @@ const PUBLIC_PREFIXES = [
   "/favicon.ico",
 ];
 
+function isExpiredJwt(token?: string): boolean {
+  if (!token) return false;
+  try {
+    const payloadPart = token.split(".")[1];
+    if (!payloadPart) return false;
+    const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const payload = JSON.parse(atob(padded)) as { exp?: unknown };
+    return typeof payload.exp === "number" && payload.exp * 1000 <= Date.now();
+  } catch {
+    return false;
+  }
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const token = request.cookies.get("poulix_access_token")?.value;
+  const tokenExpired = isExpiredJwt(token);
 
   const isPublic = PUBLIC_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 
   if (isPublic) {
-    const token = request.cookies.get("poulix_access_token")?.value;
+    if (tokenExpired) {
+      const response = NextResponse.next();
+      response.cookies.delete("poulix_access_token");
+      return response;
+    }
     if (
       token &&
       (pathname === "/login" ||
@@ -47,17 +67,17 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get("poulix_access_token")?.value;
-
   const isProtected =
     pathname === "/" ||
     PROTECTED_PREFIXES.some(
       (prefix) => prefix !== "/" && pathname.startsWith(prefix),
     );
 
-  if (isProtected && !token) {
+  if (isProtected && (!token || tokenExpired)) {
     const loginUrl = new URL("/login", request.url);
-    return NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(loginUrl);
+    if (tokenExpired) response.cookies.delete("poulix_access_token");
+    return response;
   }
 
   return NextResponse.next();

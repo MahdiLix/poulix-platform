@@ -12,6 +12,7 @@ import {
   Monitor,
   Pause,
   Play,
+  XCircle,
   User,
 } from "lucide-react";
 import { Badge } from "@/shared/ui/Badge";
@@ -34,7 +35,10 @@ import {
 
 type ScheduledPaymentListProps = {
   payments: ScheduledPayment[];
-  onStatusChange?: (id: string, action: "pause" | "resume") => Promise<void>;
+  onStatusChange?: (
+    id: string,
+    action: "pause" | "resume" | "cancel",
+  ) => Promise<void>;
 };
 
 function badgeVariant(
@@ -46,7 +50,9 @@ function badgeVariant(
   return "muted";
 }
 
-function frequencyTone(frequency: ScheduledPaymentFrequency): "success" | "muted" {
+function frequencyTone(
+  frequency: ScheduledPaymentFrequency,
+): "success" | "muted" {
   return frequency === "ONCE" ? "muted" : "success";
 }
 
@@ -60,17 +66,34 @@ function paymentIcon(payment: ScheduledPayment, className: string): ReactNode {
   const reason = (payment.reason || "").toLowerCase();
   const category = (payment.category || "").toLowerCase();
   const lower = `${reason} ${category}`;
-  if (lower.includes("rent") || lower.includes("home") || lower.includes("house")) return <Home className={className} />;
-  if (lower.includes("laptop") || lower.includes("computer") || lower.includes("tech")) return <Laptop className={className} />;
-  if (lower.includes("gift") || lower.includes("present")) return <Gift className={className} />;
-  if (lower.includes("bank") || lower.includes("account")) return <Banknote className={className} />;
+  if (
+    lower.includes("rent") ||
+    lower.includes("home") ||
+    lower.includes("house")
+  )
+    return <Home className={className} />;
+  if (
+    lower.includes("laptop") ||
+    lower.includes("computer") ||
+    lower.includes("tech")
+  )
+    return <Laptop className={className} />;
+  if (lower.includes("gift") || lower.includes("present"))
+    return <Gift className={className} />;
+  if (lower.includes("bank") || lower.includes("account"))
+    return <Banknote className={className} />;
   return <User className={className} />;
 }
 
 function nextRunPayment(payments: ScheduledPayment[]): ScheduledPayment | null {
-  const active = payments.filter((p) => p.status === "ACTIVE" || p.status === "PAUSED");
+  const active = payments.filter(
+    (p) => p.status === "ACTIVE" || p.status === "PAUSED",
+  );
   if (active.length === 0) return null;
-  return active.reduce((min, p) => (p.nextExecutionAt < min.nextExecutionAt ? p : min), active[0]);
+  return active.reduce(
+    (min, p) => (p.nextExecutionAt < min.nextExecutionAt ? p : min),
+    active[0],
+  );
 }
 
 export function ScheduledPaymentList({
@@ -82,7 +105,10 @@ export function ScheduledPaymentList({
 
   const nextRun = useMemo(() => nextRunPayment(payments), [payments]);
 
-  async function handleStatusChange(id: string, action: "pause" | "resume") {
+  async function handleStatusChange(
+    id: string,
+    action: "pause" | "resume" | "cancel",
+  ) {
     if (!onStatusChange) return;
     setPendingId(id);
     try {
@@ -126,7 +152,9 @@ export function ScheduledPaymentList({
                 {formatIrr(parseAmount(nextRun.amount))}
               </span>
               {" / "}
-              <span className="truncate align-bottom">{paymentName(nextRun)}</span>
+              <span className="truncate align-bottom">
+                {paymentName(nextRun)}
+              </span>
             </p>
           </div>
         </div>
@@ -190,7 +218,9 @@ export function ScheduledPaymentList({
                         <button
                           type="button"
                           disabled={isPending}
-                          onClick={() => void handleStatusChange(payment.id, "pause")}
+                          onClick={() =>
+                            void handleStatusChange(payment.id, "pause")
+                          }
                           className="flex items-center gap-1 text-success hover:underline disabled:opacity-50"
                         >
                           <Pause className="h-3.5 w-3.5" />
@@ -200,11 +230,27 @@ export function ScheduledPaymentList({
                         <button
                           type="button"
                           disabled={isPending}
-                          onClick={() => void handleStatusChange(payment.id, "resume")}
+                          onClick={() =>
+                            void handleStatusChange(payment.id, "resume")
+                          }
                           className="flex items-center gap-1 text-warning hover:underline disabled:opacity-50"
                         >
                           <Play className="h-3.5 w-3.5" />
                           {t.scheduled.resumeBtn}
+                        </button>
+                      ) : null}
+                      {payment.status === "ACTIVE" ||
+                      payment.status === "PAUSED" ? (
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() =>
+                            void handleStatusChange(payment.id, "cancel")
+                          }
+                          className="flex items-center gap-1 text-danger hover:underline disabled:opacity-50"
+                        >
+                          <XCircle className="h-3.5 w-3.5" />
+                          {t.scheduled.cancelBtn}
                         </button>
                       ) : null}
                       <span className="text-muted">|</span>
@@ -212,7 +258,7 @@ export function ScheduledPaymentList({
                         href={`/scheduled/${payment.id}`}
                         className="text-success hover:underline"
                       >
-                        View
+                        {t.common.view}
                       </Link>
                     </div>
                   </TableCell>
@@ -274,11 +320,26 @@ export function ScheduledPaymentList({
                   <button
                     type="button"
                     disabled={isPending}
-                    onClick={() => void handleStatusChange(payment.id, "resume")}
+                    onClick={() =>
+                      void handleStatusChange(payment.id, "resume")
+                    }
                     className="flex items-center gap-1 text-warning hover:underline disabled:opacity-50"
                   >
                     <Play className="h-3.5 w-3.5" />
                     {t.scheduled.resumeBtn}
+                  </button>
+                ) : null}
+                {payment.status === "ACTIVE" || payment.status === "PAUSED" ? (
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() =>
+                      void handleStatusChange(payment.id, "cancel")
+                    }
+                    className="flex items-center gap-1 text-danger hover:underline disabled:opacity-50"
+                  >
+                    <XCircle className="h-3.5 w-3.5" />
+                    {t.scheduled.cancelBtn}
                   </button>
                 ) : null}
                 <span className="text-muted">|</span>
@@ -286,7 +347,7 @@ export function ScheduledPaymentList({
                   href={`/scheduled/${payment.id}`}
                   className="text-success hover:underline"
                 >
-                  View
+                  {t.common.view}
                 </Link>
               </div>
             </div>

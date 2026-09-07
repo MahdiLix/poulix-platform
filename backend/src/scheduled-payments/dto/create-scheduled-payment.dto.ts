@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   MaxLength,
   Min,
@@ -49,4 +50,8 @@ export class CreateScheduledPaymentDto {
   @IsOptional()
   @IsEnum(TransactionCategoryDto)
   category?: TransactionCategoryDto;
+
+  @IsOptional()
+  @IsUUID()
+  envelopeId?: string;
 }

@@ -66,6 +66,9 @@ const SERVER_MESSAGE_KEYS: Record<string, MessageKey> = {
   "Amount exceeds goal saved balance": "goalSavedBalanceExceeded",
   "Goal title is required": "goalTitleRequired",
   "Envelope is not active": "envelopeNotActive",
+  "Envelope not found": "envelopeNotActive",
+  "Active envelope not found": "envelopeNotActive",
+  "Insufficient envelope funds": "envelopeBalanceExceeded",
   "Envelope cannot be cancelled": "envelopeCannotBeCancelled",
   "Amount exceeds envelope balance": "envelopeBalanceExceeded",
   "Envelope name is required": "envelopeNameRequired",
@@ -131,5 +134,5 @@ export function localizeError(
     });
   }
 
-  return trimmed;
+  return messages[fallback];
 }

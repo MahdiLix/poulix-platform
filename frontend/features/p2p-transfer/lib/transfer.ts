@@ -26,6 +26,9 @@ export type SendConfirmPayload = {
   recipient: string;
   recipientUser: TransferRecipient;
   amount: number;
+  envelopeId?: string;
+  fundingSourceLabel?: string;
+  fundingSourceBalance?: number;
   reason?: string;
   category?: TransactionCategory;
 };

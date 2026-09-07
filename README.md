@@ -21,8 +21,9 @@ Deposits connect to **ZarinPal (زرین‌پال)** sandbox, not a live bank ac
 - Duplicate callback protection so a payment is not credited twice
 - Statistics overview with income and expense charts
 - Bilingual UI (English / Persian) with RTL support
-- Light and dark mode
+- Light and dark mode (next-themes, persisted as `poulix-theme`)
 - Responsive layout with a desktop sidebar
+- Admin dashboard: users, transactions, payments, withdrawals, security events, audit logs
 
 ## Services and ports
 
@@ -53,6 +54,32 @@ docker compose --env-file .env.docker up --build
 ```
 
 4. Open http://localhost:3000
+
+### Admin login (Docker)
+
+`.env.docker` bootstraps an admin on backend startup:
+
+- Email / username: `admin@poulix.local` / `admin`
+- Password: `Admin_Password_12345678`
+
+Change these values before any shared or production use. After changing them, recreate the backend container so bootstrap runs (`docker compose --env-file .env.docker up -d --build backend`). Set `ADMIN_RESET_PASSWORD=true` only if you need the env password written onto an existing admin.
+
+How to use admin:
+
+1. Open http://localhost:3000/login
+2. Sign in with the admin email (or username) and password
+3. You are sent to `/admin`
+4. From the admin sidebar you can:
+   - **Dashboard** — live user, wallet, payment, and security totals
+   - **Users** — search, filter, open a user, then disable / lock / unlock (confirmation required)
+   - **Transactions** — filter by type, user, date; open a transaction for related transfer/goal/envelope data
+   - **Payments** — ZarinPal deposits (status, amount, ref, user; no provider secrets)
+   - **Withdrawals** — withdrawal transactions
+   - **Security** — failed logins, limits, suspicious events
+   - **Audit logs** — every sensitive admin action
+5. Normal wallet features stay at http://localhost:3000 (Profile also has **Open admin dashboard**)
+
+A normal user who opens `/admin` is redirected home. Admin APIs return `403` for non-admins and `401` when signed out. Roles cannot be changed from the UI or public API.
 
 Stop with `Ctrl+C`, or run `docker compose --env-file .env.docker down`. Postgres data is stored in the `postgres_data` volume.
 
@@ -110,6 +137,8 @@ npm run dev
 ```
 
 6. Open http://localhost:3000
+
+If `ADMIN_EMAIL`, `ADMIN_USERNAME`, and `ADMIN_PASSWORD` are set in `backend/.env`, the backend creates or promotes that admin on startup. Sign in at `/login`, then use `/admin` as described above.
 
 Host backend tests:
 

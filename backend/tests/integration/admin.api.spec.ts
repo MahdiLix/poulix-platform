@@ -233,7 +233,7 @@ describe('Admin API', () => {
       .expect(200);
 
     expect(
-      otherHistory.body.some(
+      otherHistory.body.items.some(
         (item: { amount: { toString(): string } | number }) =>
           Number(item.amount) === 1_000_000,
       ),

@@ -10,6 +10,10 @@ import { api } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatIrr } from "@/features/wallet/lib/wallet";
+import {
+  transactionReasonLabel,
+  transactionTypeLabel,
+} from "@/features/wallet/lib/transactionDisplay";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import type { AdminTransactionDetail } from "@/features/admin/lib/admin";
 
@@ -48,7 +52,7 @@ export default function AdminTransactionDetailPage() {
       ) : (
         <Card className="space-y-2 p-4 text-sm">
           <p className="text-lg font-bold">
-            {item.type} · {formatIrr(item.amount)}
+            {transactionTypeLabel(item.type, t)} · {formatIrr(item.amount)}
           </p>
           <p>
             {t.admin.role}: {item.user.username} · {item.user.email}
@@ -58,7 +62,7 @@ export default function AdminTransactionDetailPage() {
           </p>
           {item.reason ? (
             <p>
-              {t.history.reasonLabel}: {item.reason}
+              {t.history.reasonLabel}: {transactionReasonLabel(item.reason, t)}
             </p>
           ) : null}
           {item.counterparty ? (
@@ -71,7 +75,7 @@ export default function AdminTransactionDetailPage() {
               href={`/admin/transactions/${item.relatedTransaction.id}`}
               className="block text-primary"
             >
-              {item.relatedTransaction.type} ·{" "}
+              {transactionTypeLabel(item.relatedTransaction.type, t)} ·{" "}
               {formatIrr(item.relatedTransaction.amount)}
             </Link>
           ) : null}

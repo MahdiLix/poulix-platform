@@ -17,21 +17,26 @@ export function formatIrr(
   currency = "IRR",
   locale: string | "en" | "fa" = "en-US",
 ): string {
+  void locale;
   const whole = Number.isFinite(amount) ? Math.trunc(amount) : 0;
-  const resolvedLocale =
-    locale === "fa" ? "fa-IR" : locale === "en" ? "en-US" : locale;
-  return `${whole.toLocaleString(resolvedLocale, { maximumFractionDigits: 0 })} ${currency}`;
+  const formatted = new Intl.NumberFormat("en-US", {
+    numberingSystem: "latn",
+    maximumFractionDigits: 0,
+  }).format(whole);
+  return `${formatted} ${currency}`;
 }
 
 export function formatAmountDigits(
   amount: number | string,
   language: "en" | "fa" = "en",
 ): string {
+  void language;
   const whole =
     typeof amount === "number"
       ? Math.trunc(amount)
       : Math.trunc(Number(amount) || 0);
-  return whole.toLocaleString(language === "fa" ? "fa-IR" : "en-US", {
+  return new Intl.NumberFormat("en-US", {
+    numberingSystem: "latn",
     maximumFractionDigits: 0,
-  });
+  }).format(whole);
 }

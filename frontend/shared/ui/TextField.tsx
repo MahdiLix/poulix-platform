@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useRef,
   useState,
   type InputHTMLAttributes,
   type ReactNode,
@@ -14,7 +15,7 @@ import {
   isVirtualKeyboardEnabled,
 } from "@/shared/preferences/virtualKeyboard";
 
-type TextFieldProps = InputHTMLAttributes<HTMLInputElement> & {
+export type TextFieldProps = InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   error?: string | null;
   hint?: string;
@@ -44,6 +45,7 @@ export function TextField({
   const [focused, setFocused] = useState(false);
   const [showKeypad, setShowKeypad] = useState(false);
   const [keypadEnabled, setKeypadEnabled] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function syncPreference() {
@@ -66,6 +68,17 @@ export function TextField({
     setShowKeypad(isMobileViewport());
   }, [focused, numeric, keypadEnabled]);
 
+  useEffect(() => {
+    if (!showKeypad) return;
+    const frame = window.requestAnimationFrame(() => {
+      containerRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [showKeypad]);
+
   function emitValue(next: string) {
     onChange?.({
       target: { value: numeric ? toLatinDigits(next) : next },
@@ -75,7 +88,7 @@ export function TextField({
   const currentValue = String(value ?? "");
 
   return (
-    <div>
+    <div ref={containerRef}>
       <label
         htmlFor={fieldId}
         className="mb-1.5 block text-xs font-semibold text-foreground"
@@ -135,7 +148,7 @@ export function TextField({
       </div>
       {showKeypad ? (
         <NumericKeypad
-          className="mt-2 lg:hidden"
+          className="mt-2 xl:hidden"
           onDigit={(digit) => emitValue(`${currentValue}${digit}`)}
           onBackspace={() => emitValue(currentValue.slice(0, -1))}
           onDone={() => setShowKeypad(false)}

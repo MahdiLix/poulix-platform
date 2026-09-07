@@ -186,4 +186,65 @@ describe('Withdrawal API', () => {
       .send({ amount: 100_000, accountNumber: ACCOUNT_NUMBER })
       .expect(401);
   });
+
+  it('funds a withdrawal from an envelope without debiting the wallet', async () => {
+    await deposit(1_000_000);
+    const envelope = await db.envelope.create({
+      data: {
+        userId: session.userId,
+        name: 'Bills',
+        allocatedAmount: 400_000,
+      },
+    });
+
+    await request(app.getHttpServer())
+      .post('/wallets/withdraw')
+      .set('Authorization', `Bearer ${session.accessToken}`)
+      .send({
+        amount: 250_000,
+        accountNumber: ACCOUNT_NUMBER,
+        envelopeId: envelope.id,
+      })
+      .expect(201);
+
+    const wallet = await db.wallet.findUniqueOrThrow({
+      where: { userId: session.userId },
+    });
+    const updatedEnvelope = await db.envelope.findUniqueOrThrow({
+      where: { id: envelope.id },
+    });
+    const withdrawal = await db.transaction.findFirstOrThrow({
+      where: { walletId: wallet.id, type: 'WITHDRAWAL' },
+    });
+
+    expect(balanceOf(wallet.balance)).toBe(1_000_000);
+    expect(balanceOf(updatedEnvelope.allocatedAmount)).toBe(150_000);
+    expect(withdrawal.envelopeId).toBe(envelope.id);
+  });
+
+  it('rejects an envelope-funded withdrawal with insufficient allocation', async () => {
+    await deposit(1_000_000);
+    const envelope = await db.envelope.create({
+      data: {
+        userId: session.userId,
+        name: 'Small budget',
+        allocatedAmount: 50_000,
+      },
+    });
+
+    await request(app.getHttpServer())
+      .post('/wallets/withdraw')
+      .set('Authorization', `Bearer ${session.accessToken}`)
+      .send({
+        amount: 100_000,
+        accountNumber: ACCOUNT_NUMBER,
+        envelopeId: envelope.id,
+      })
+      .expect(400);
+
+    const unchanged = await db.envelope.findUniqueOrThrow({
+      where: { id: envelope.id },
+    });
+    expect(balanceOf(unchanged.allocatedAmount)).toBe(50_000);
+  });
 });

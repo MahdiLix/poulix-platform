@@ -77,6 +77,7 @@ export class WalletsController {
       {
         reason: dto.reason,
         category: dto.category,
+        envelopeId: dto.envelopeId,
       },
     );
 
@@ -103,6 +104,7 @@ export class WalletsController {
       {
         reason: dto.reason,
         category: dto.category,
+        envelopeId: dto.envelopeId,
       },
     );
   }

@@ -3,4 +3,5 @@ export interface AuthenticatedUser {
   email: string;
   role: 'USER' | 'ADMIN';
   status: 'ACTIVE' | 'DISABLED' | 'LOCKED';
+  sessionId?: string;
 }

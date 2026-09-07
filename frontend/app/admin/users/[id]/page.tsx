@@ -21,10 +21,13 @@ import { api } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatIrr } from "@/features/wallet/lib/wallet";
+import { transactionTypeLabel } from "@/features/wallet/lib/transactionDisplay";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import type { AdminUserDetail } from "@/features/admin/lib/admin";
 
-function statusVariant(status: string): "success" | "warning" | "danger" | "muted" {
+function statusVariant(
+  status: string,
+): "success" | "warning" | "danger" | "muted" {
   if (status === "ACTIVE" || status === "PAID") return "success";
   if (status === "LOCKED" || status === "FAILED") return "danger";
   if (status === "DISABLED" || status === "PENDING") return "warning";
@@ -80,10 +83,14 @@ export default function AdminUserDetailPage() {
                   <UserRound className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-lg font-bold text-foreground">{user.username}</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {user.username}
+                  </p>
                   <p className="text-sm text-muted">{user.email}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <Badge variant={user.role === "ADMIN" ? "default" : "muted"}>
+                    <Badge
+                      variant={user.role === "ADMIN" ? "default" : "muted"}
+                    >
                       {user.role}
                     </Badge>
                     <Badge variant={statusVariant(user.status)}>
@@ -101,11 +108,7 @@ export default function AdminUserDetailPage() {
           </Card>
 
           <div className="grid gap-4 lg:grid-cols-3">
-            <InfoCard
-              icon={UserRound}
-              label={t.admin.role}
-              value={user.role}
-            />
+            <InfoCard icon={UserRound} label={t.admin.role} value={user.role} />
             <InfoCard
               icon={Wallet}
               label={t.common.currentBalance}
@@ -124,11 +127,7 @@ export default function AdminUserDetailPage() {
 
           <Card className="grid gap-3 p-5 sm:grid-cols-2">
             <DetailRow label="User ID" value={user.id} mono />
-            <DetailRow
-              label="Wallet ID"
-              value={user.wallet?.id ?? "—"}
-              mono
-            />
+            <DetailRow label="Wallet ID" value={user.wallet?.id ?? "—"} mono />
             <DetailRow
               label={t.admin.status}
               value={t.admin.statuses[user.status]}
@@ -141,10 +140,7 @@ export default function AdminUserDetailPage() {
                   : "—"
               }
             />
-            <DetailRow
-              label="Status reason"
-              value={user.statusReason ?? "—"}
-            />
+            <DetailRow label="Status reason" value={user.statusReason ?? "—"} />
             <DetailRow
               label="Wallet created"
               value={
@@ -163,14 +159,16 @@ export default function AdminUserDetailPage() {
               <Table className="border-0">
                 <TableHead>
                   <TableHeaderCell>{t.admin.type}</TableHeaderCell>
-                  <TableHeaderCell>Amount</TableHeaderCell>
-                  <TableHeaderCell>Date</TableHeaderCell>
+                  <TableHeaderCell>{t.common.amount}</TableHeaderCell>
+                  <TableHeaderCell>{t.common.createdAt}</TableHeaderCell>
                   <TableHeaderCell> </TableHeaderCell>
                 </TableHead>
                 <TableBody>
                   {user.recentTransactions.map((tx) => (
                     <TableRow key={tx.id}>
-                      <TableCell className="font-semibold">{tx.type}</TableCell>
+                      <TableCell className="font-semibold">
+                        {transactionTypeLabel(tx.type, t)}
+                      </TableCell>
                       <TableCell>{formatIrr(tx.amount)}</TableCell>
                       <TableCell className="text-xs text-muted">
                         {formatDisplayDateTime(tx.createdAt, language)}
@@ -182,7 +180,7 @@ export default function AdminUserDetailPage() {
                           variant="outline"
                           className="w-auto"
                         >
-                          View
+                          {t.common.view}
                         </ButtonLink>
                       </TableCell>
                     </TableRow>
@@ -200,8 +198,8 @@ export default function AdminUserDetailPage() {
               <Table className="border-0">
                 <TableHead>
                   <TableHeaderCell>{t.admin.status}</TableHeaderCell>
-                  <TableHeaderCell>Amount</TableHeaderCell>
-                  <TableHeaderCell>Ref</TableHeaderCell>
+                  <TableHeaderCell>{t.common.amount}</TableHeaderCell>
+                  <TableHeaderCell>{t.common.reference}</TableHeaderCell>
                   <TableHeaderCell> </TableHeaderCell>
                 </TableHead>
                 <TableBody>
@@ -223,7 +221,7 @@ export default function AdminUserDetailPage() {
                           variant="outline"
                           className="w-auto"
                         >
-                          View
+                          {t.common.view}
                         </ButtonLink>
                       </TableCell>
                     </TableRow>
@@ -321,7 +319,9 @@ function DetailRow({
   return (
     <div>
       <p className="text-[11px] font-semibold text-muted">{label}</p>
-      <p className={`mt-1 text-sm text-foreground ${mono ? "break-all font-mono text-xs" : ""}`}>
+      <p
+        className={`mt-1 text-sm text-foreground ${mono ? "break-all font-mono text-xs" : ""}`}
+      >
         {value}
       </p>
     </div>

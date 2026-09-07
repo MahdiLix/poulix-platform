@@ -15,16 +15,15 @@ export function Card({
   padding = false,
 }: CardProps) {
   const variants = {
-    default: "border border-border bg-surface shadow-[var(--shadow-card)]",
+    default: "fintech-card",
     glass: "glass-card",
-    elevated:
-      "border border-border bg-surface-elevated shadow-[var(--shadow-card)]",
+    elevated: "fintech-card bg-surface-elevated",
   };
 
   return (
     <div
       className={cn(
-        "rounded-[14px] transition hover:border-primary/25",
+        "rounded-[14px] transition",
         variants[variant],
         padding && "p-4",
         className,

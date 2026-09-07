@@ -1,4 +1,5 @@
 export const SESSION_EXPIRED_EVENT = "poulix:session-expired";
+export const SESSION_SYNC_STORAGE_KEY = "poulix:session-sync";
 export const DEFAULT_TOKEN_MAX_AGE_SECONDS = 900;
 
 const PUBLIC_AUTH_PATHS = ["/login", "/register", "/deposit/callback"];
@@ -43,7 +44,20 @@ export function isPublicAuthPath(pathname: string): boolean {
   );
 }
 
+export function broadcastSessionLogout() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      SESSION_SYNC_STORAGE_KEY,
+      JSON.stringify({ type: "logout", at: Date.now() }),
+    );
+  } catch {
+    // Storage can be unavailable in private browsing.
+  }
+}
+
 export function notifySessionExpired() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+  broadcastSessionLogout();
 }

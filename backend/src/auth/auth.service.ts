@@ -65,7 +65,7 @@ export class AuthService {
     };
   }
 
-  async register(dto: RegisterDto) {
+  async register(dto: RegisterDto, userAgent?: string, ipAddress?: string) {
     const existingUser = await this.db.user.findFirst({
       where: { OR: [{ email: dto.email }, { username: dto.username }] },
     });
@@ -97,8 +97,8 @@ export class AuthService {
 
       const sessionId = await this.securityService.recordSuccessfulLogin(
         user.id,
-        undefined,
-        undefined,
+        userAgent,
+        ipAddress,
         { emitNewDeviceEvent: false },
       );
 
@@ -136,7 +136,7 @@ export class AuthService {
 
     if (!user || !this.verifyPassword(dto.password, user.passwordHash)) {
       if (user) {
-        void this.securityService.recordFailedLogin(user.id, ipAddress);
+        await this.securityService.recordFailedLogin(user.id, ipAddress);
       }
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -174,5 +174,13 @@ export class AuthService {
       role: user.role,
       sessionId,
     });
+  }
+
+  async logout(userId: string, sessionId?: string) {
+    if (!sessionId) {
+      throw new UnauthorizedException('Session is not revocable');
+    }
+
+    return this.securityService.revokeSession(userId, sessionId);
   }
 }

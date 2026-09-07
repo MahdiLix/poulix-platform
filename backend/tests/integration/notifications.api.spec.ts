@@ -42,7 +42,12 @@ describe('Notifications API', () => {
       .set('Authorization', `Bearer ${user.accessToken}`)
       .expect(200);
 
-    expect(response.body).toEqual([]);
+    expect(response.body).toEqual({
+      items: [],
+      page: 1,
+      pageSize: 50,
+      total: 0,
+    });
   });
 
   it('creates notifications when withdrawing and lists them', async () => {
@@ -57,11 +62,11 @@ describe('Notifications API', () => {
       .set('Authorization', `Bearer ${user.accessToken}`)
       .expect(200);
 
-    expect(listResponse.body.length).toBe(1);
-    expect(listResponse.body[0].type).toBe('WITHDRAWAL_SUCCESS');
-    expect(listResponse.body[0].category).toBe('SUCCESS');
-    expect(listResponse.body[0].isRead).toBe(false);
-    expect(listResponse.body[0].metadata.amount).toBe(100_000);
+    expect(listResponse.body.total).toBe(1);
+    expect(listResponse.body.items[0].type).toBe('WITHDRAWAL_SUCCESS');
+    expect(listResponse.body.items[0].category).toBe('SUCCESS');
+    expect(listResponse.body.items[0].isRead).toBe(false);
+    expect(listResponse.body.items[0].metadata.amount).toBe(100_000);
 
     const countResponse = await request(app.getHttpServer())
       .get('/notifications/unread-count')
@@ -87,7 +92,7 @@ describe('Notifications API', () => {
       .expect(200);
 
     expect(
-      senderNotifications.body.some(
+      senderNotifications.body.items.some(
         (n: { type: string }) => n.type === 'TRANSFER_SUCCESS',
       ),
     ).toBe(true);
@@ -98,7 +103,7 @@ describe('Notifications API', () => {
       .expect(200);
 
     expect(
-      recipientNotifications.body.some(
+      recipientNotifications.body.items.some(
         (n: { type: string }) => n.type === 'TRANSFER_RECEIVED',
       ),
     ).toBe(true);
@@ -125,7 +130,7 @@ describe('Notifications API', () => {
       .set('Authorization', `Bearer ${user.accessToken}`)
       .expect(200);
 
-    const firstId = listResponse.body[0].id as string;
+    const firstId = listResponse.body.items[0].id as string;
 
     const markOne = await request(app.getHttpServer())
       .post(`/notifications/${firstId}/read`)
@@ -152,6 +157,29 @@ describe('Notifications API', () => {
       .expect(200);
 
     expect(countAfterAll.body.count).toBe(0);
+  });
+
+  it('paginates and filters notifications', async () => {
+    await request(app.getHttpServer())
+      .post('/wallets/withdraw')
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .send({ amount: 50_000, accountNumber: '1234567890' })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post('/wallets/transfer')
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .send({ recipient: recipient.username, amount: 100_000 })
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .get('/notifications?page=1&pageSize=1&category=SUCCESS&isRead=false')
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .expect(200);
+
+    expect(response.body.page).toBe(1);
+    expect(response.body.pageSize).toBe(1);
+    expect(response.body.total).toBe(2);
+    expect(response.body.items).toHaveLength(1);
   });
 
   it('rejects unauthenticated access', async () => {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   LayoutDashboard,
+  LogOut,
   Shield,
   User,
   X,
@@ -30,7 +31,7 @@ export function ProfileMenu({
   label,
 }: ProfileMenuProps) {
   const { t, language } = useLanguage();
-  const { user, status } = useUser();
+  const { user, status, signOut } = useUser();
   const initials = useUserInitials(user);
   const [open, setOpen] = useState(false);
   const panelId = useId();
@@ -151,7 +152,7 @@ export function ProfileMenu({
                 type="button"
                 onClick={() => setOpen(false)}
                 className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-muted transition hover:bg-surface-muted hover:text-foreground"
-                aria-label="Close"
+                aria-label={t.common.close}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -161,13 +162,13 @@ export function ProfileMenu({
               <div className="space-y-2 rounded-[12px] border border-border bg-surface-muted/50 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-xs font-semibold text-foreground">
-                    {language === "fa" ? "حالت تیره / روشن" : "Dark / Light Mode"}
+                    {t.common.appearance}
                   </span>
                   <ThemeToggle variant="compact" />
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-xs font-semibold text-foreground">
-                    EN / FA
+                    {t.common.language}
                   </span>
                   <LanguageToggle variant="compact" />
                 </div>
@@ -211,6 +212,19 @@ export function ProfileMenu({
                 <Shield className="h-4 w-4 text-primary" />
                 {t.security.title}
               </Link>
+            </div>
+            <div className="border-t border-border p-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  signOut();
+                }}
+                className="flex w-full cursor-pointer items-center gap-3 rounded-[10px] bg-danger-soft px-3 py-2.5 text-sm font-semibold text-danger transition hover:bg-danger hover:text-white active:scale-[0.98]"
+              >
+                <LogOut className="h-4 w-4" />
+                {t.common.logOut}
+              </button>
             </div>
           </div>
         </>

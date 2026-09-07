@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -13,48 +13,29 @@ import {
   Wallet,
 } from "lucide-react";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
-import { SearchInput } from "@/shared/ui/SearchInput";
 import { BrandLogo } from "@/shared/brand/BrandLogo";
 import { ProfileMenu } from "@/shared/layout/ProfileMenu";
+import { AppHeader } from "@/shared/layout/AppHeader";
+import { GlobalSearch } from "@/shared/search/GlobalSearch";
 import { cn } from "@/shared/cn";
+import { ThemeToggle } from "@/shared/theme/ThemeToggle";
+import { LanguageToggle } from "@/shared/theme/LanguageToggle";
+import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 
 export function AdminShell({
   title,
   subtitle,
   children,
+  showHeading = true,
 }: {
   title: string;
   subtitle?: string;
   children: ReactNode;
+  showHeading?: boolean;
   user?: { email?: string; username?: string } | null;
 }) {
   const pathname = usePathname();
   const { t } = useLanguage();
-  const searchRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      const isMod = event.metaKey || event.ctrlKey;
-      if (!isMod || event.key.toLowerCase() !== "k") return;
-
-      const target = event.target as HTMLElement | null;
-      const tag = target?.tagName;
-      const isEditable =
-        tag === "INPUT" ||
-        tag === "TEXTAREA" ||
-        tag === "SELECT" ||
-        target?.isContentEditable;
-
-      if (isEditable && target !== searchRef.current) return;
-
-      event.preventDefault();
-      searchRef.current?.focus();
-      searchRef.current?.select();
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
 
   const navItems = [
     { href: "/admin", label: t.admin.nav.dashboard, icon: LayoutDashboard },
@@ -77,7 +58,7 @@ export function AdminShell({
   return (
     <div className="h-dvh overflow-hidden bg-canvas text-foreground">
       <div className="flex h-full">
-        <aside className="hidden h-full shrink-0 flex-col overflow-y-auto bg-sidebar text-sidebar-foreground lg:flex lg:w-[72px] xl:w-64">
+        <aside className="fintech-sidebar hidden h-full shrink-0 flex-col overflow-y-auto border-e border-white/5 text-sidebar-foreground lg:flex lg:w-[72px] xl:w-60">
           <div className="flex min-h-0 flex-1 flex-col justify-between p-3 xl:p-5">
             <div className="space-y-6">
               <div className="flex items-center gap-3 lg:justify-center xl:justify-start">
@@ -105,9 +86,9 @@ export function AdminShell({
                       href={item.href}
                       title={item.label}
                       className={cn(
-                        "flex cursor-pointer items-center gap-3 rounded-[10px] px-2.5 py-2.5 text-[13px] font-medium transition hover:shadow-sm active:scale-[0.98] lg:justify-center xl:justify-start xl:px-3",
+                        "flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 text-[12px] font-medium transition active:scale-[0.98] lg:justify-center xl:justify-start xl:px-3",
                         isActive
-                          ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                          ? "bg-gradient-to-r from-primary to-[#4d8cff] text-primary-foreground shadow-[0_8px_24px_rgba(43,107,235,0.32)]"
                           : "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground",
                       )}
                     >
@@ -134,29 +115,40 @@ export function AdminShell({
         </aside>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <header className="flex shrink-0 items-center gap-4 border-b border-border bg-surface/90 px-4 py-3 backdrop-blur-md lg:px-6">
-            <div className="mx-auto hidden w-full max-w-xl flex-1 lg:block">
-              <SearchInput
-                ref={searchRef}
-                placeholder={t.admin.search}
-                shortcut="⌘K"
-                id="admin-search"
-              />
-            </div>
-            <div className="ms-auto flex items-center gap-2 lg:hidden">
-              <ProfileMenu />
-            </div>
-          </header>
+          <AppHeader
+            start={
+              <Link href="/admin" className="lg:hidden">
+                <BrandLogo size={32} />
+              </Link>
+            }
+            center={
+              <div className="mx-auto hidden max-w-xl lg:block">
+                <GlobalSearch scope="admin" placeholder={t.admin.search} />
+              </div>
+            }
+            end={
+              <div className="flex items-center gap-2">
+                <NotificationBell />
+                <div className="hidden items-center gap-1 lg:flex">
+                  <ThemeToggle variant="compact" />
+                  <LanguageToggle variant="compact" />
+                </div>
+                <ProfileMenu />
+              </div>
+            }
+          />
 
-          <main className="min-h-0 flex-1 overflow-y-auto bg-background p-4 lg:p-8">
-            <div className="mb-6 text-center lg:mb-8 lg:text-start">
-              <h1 className="text-lg font-semibold tracking-tight text-foreground lg:text-xl">
-                {title}
-              </h1>
-              {subtitle ? (
-                <p className="mt-1 text-sm text-muted">{subtitle}</p>
-              ) : null}
-            </div>
+          <main className="dashboard-canvas min-h-0 flex-1 overflow-y-auto p-4 lg:p-5">
+            {showHeading ? (
+              <div className="mb-6 text-center lg:text-start">
+                <h1 className="text-lg font-semibold tracking-tight text-foreground lg:text-xl">
+                  {title}
+                </h1>
+                {subtitle ? (
+                  <p className="mt-1 text-sm text-muted">{subtitle}</p>
+                ) : null}
+              </div>
+            ) : null}
             {children}
           </main>
         </div>

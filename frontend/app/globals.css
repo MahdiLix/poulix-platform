@@ -188,6 +188,7 @@
 
 html[dir="rtl"],
 body[dir="rtl"],
+html[dir="rtl"] body,
 [dir="rtl"] {
   font-family:
     var(--font-vazirmatn),
@@ -234,6 +235,54 @@ body {
   background-repeat: no-repeat;
   background-size: 100% 100%;
 }
+
+.fintech-card.bg-ink-hero {
+  background: linear-gradient(
+    110deg,
+    #071a36 0%,
+    #0c3a7c 58%,
+    #1468e8 135%
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+/* Keep the Available Balance ink gradient in dark mode (do not let .dark .fintech-card win). */
+.dark .fintech-card.bg-ink-hero {
+  background: linear-gradient(
+    110deg,
+    #071a36 0%,
+    #0c3a7c 58%,
+    #1468e8 135%
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+/* Farsi RTL: keep the same continuous LTR ink gradient (no mid-card seam). */
+[dir="rtl"] .fintech-card.bg-ink-hero,
+.dark[dir="rtl"] .fintech-card.bg-ink-hero,
+html[dir="rtl"] .fintech-card.bg-ink-hero,
+html.dark[dir="rtl"] .fintech-card.bg-ink-hero {
+  background: linear-gradient(
+    110deg,
+    #071a36 0%,
+    #0c3a7c 58%,
+    #1468e8 135%
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+/* Farsi RTL: pin the half-width glow to the physical right, matching English. */
+[dir="rtl"] .fintech-card.bg-ink-hero > [data-ink-hero-glow],
+html[dir="rtl"] .fintech-card.bg-ink-hero > [data-ink-hero-glow] {
+  inset-inline-end: auto;
+  right: 0;
+}
+
+
+ 
 
 .dashboard-canvas {
   background:
@@ -313,14 +362,6 @@ body {
 
 [dir="rtl"] .fintech-grid-pattern {
   mask-image: linear-gradient(to right, black, transparent 85%);
-}
-
-.hero-art-fade {
-  mask-image: linear-gradient(to right, transparent, black 22%);
-}
-
-[dir="rtl"] .hero-art-fade {
-  mask-image: linear-gradient(to left, transparent, black 22%);
 }
 
 .dark .fintech-card {

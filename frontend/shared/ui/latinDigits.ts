@@ -7,6 +7,11 @@ export function toLatinDigits(value: string): string {
     .replace(/[٠-٩]/g, (digit) => String(ARABIC_DIGITS.indexOf(digit)));
 }
 
+/** Strip grouping separators and non-digits so payment logic can use a raw integer string. */
+export function toRawAmountDigits(value: unknown): string {
+  return toLatinDigits(String(value ?? "")).replace(/\D/g, "");
+}
+
 export function localizeDigits(
   value: string | number,
   language: "en" | "fa" = "en",

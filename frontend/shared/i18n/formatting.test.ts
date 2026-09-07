@@ -3,7 +3,7 @@ import { en } from "@/shared/i18n/messages/en";
 import { fa } from "@/shared/i18n/messages/fa";
 import { formatDisplayDate, monthLabel } from "@/shared/i18n/dates";
 import { localizeError } from "@/shared/i18n/localizeError";
-import { formatIrr } from "@/features/wallet/lib/wallet";
+import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import {
   transactionReasonLabel,
   transactionTypeLabel,
@@ -15,6 +15,17 @@ describe("localized formatting", () => {
     expect(formatDisplayDate("2026-09-06T00:00:00Z", "fa")).not.toMatch(
       /[۰-۹]/,
     );
+  });
+
+  it("parses comma-formatted payment amounts into raw integers", () => {
+    expect(parseAmount("1,000,000")).toBe(1_000_000);
+    expect(parseAmount("۵۰,۰۰۰")).toBe(50_000);
+    expect(parseAmount("10,000")).toBe(10_000);
+  });
+
+  it("keeps display grouping after parsing formatted payment amounts", () => {
+    expect(formatIrr("1,000,000", "IRR")).toBe("1,000,000 IRR");
+    expect(formatIrr(1_000_000, "IRR")).toBe("1,000,000 IRR");
   });
 
   it("uses Intl calendar month names", () => {

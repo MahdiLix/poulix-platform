@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toLatinDigits } from "@/shared/ui/latinDigits";
+import { toLatinDigits, toRawAmountDigits } from "@/shared/ui/latinDigits";
 import {
   applyOfferPercent,
   getNormalizedOffer,
@@ -12,6 +12,13 @@ describe("toLatinDigits", () => {
 
   it("converts Arabic-Indic digits", () => {
     expect(toLatinDigits("٥٠٠٠٠")).toBe("50000");
+  });
+});
+
+describe("toRawAmountDigits", () => {
+  it("removes thousand separators before payment values are processed", () => {
+    expect(toRawAmountDigits("1,000,000")).toBe("1000000");
+    expect(toRawAmountDigits("۱۰,۰۰۰")).toBe("10000");
   });
 });
 

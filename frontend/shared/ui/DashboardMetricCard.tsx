@@ -91,10 +91,7 @@ export function DashboardMetricCard({
       </div>
       <p
         className={cn(
-          "amount mt-2 font-extrabold tracking-tight text-foreground",
-          value.length > 14
-            ? "text-sm leading-tight sm:text-base"
-            : "text-xl leading-none sm:text-2xl",
+          "amount mt-2 overflow-hidden text-[13px] font-extrabold tracking-tight text-ellipsis whitespace-nowrap sm:text-sm 2xl:text-base",
           styles.value,
         )}
       >

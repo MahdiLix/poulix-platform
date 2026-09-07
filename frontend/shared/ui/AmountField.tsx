@@ -2,8 +2,7 @@
 
 import type { ChangeEvent } from "react";
 import { TextField, type TextFieldProps } from "@/shared/ui/TextField";
-import { toLatinDigits } from "@/shared/ui/latinDigits";
-import { useLanguage } from "@/shared/i18n/LanguageProvider";
+import { toLatinDigits, toRawAmountDigits } from "@/shared/ui/latinDigits";
 
 type AmountFieldProps = Omit<
   TextFieldProps,
@@ -14,7 +13,7 @@ type AmountFieldProps = Omit<
 
 /** Numeric IRR input with one shared suffix and virtual-keypad behavior. */
 export function formatAmountInput(value: unknown): string {
-  const digits = toLatinDigits(String(value ?? "")).replace(/\D/g, "");
+  const digits = toRawAmountDigits(value);
   if (!digits) return "";
   return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
@@ -26,24 +25,22 @@ export function AmountField({
   value,
   ...props
 }: AmountFieldProps) {
-  const { t } = useLanguage();
   return (
     <TextField
       {...props}
       type="text"
       inputMode="numeric"
-      pattern="[0-9]*"
       autoComplete="off"
       placeholder={toLatinDigits(placeholder)}
       value={formatAmountInput(value)}
       className={className}
       rightIcon={
         <span className="pointer-events-none pe-1 text-[11px] font-semibold text-muted">
-          {t.common.currency}
+          IRR
         </span>
       }
       onChange={(event) => {
-        const value = toLatinDigits(event.target.value).replace(/\D/g, "");
+        const value = toRawAmountDigits(event.target.value);
         onChange?.({
           ...event,
           target: { ...event.target, value },

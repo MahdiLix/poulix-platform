@@ -86,6 +86,9 @@ export function TextField({
   }
 
   const currentValue = String(value ?? "");
+  const keypadValue = numeric
+    ? toLatinDigits(currentValue).replace(/[,\s]/g, "")
+    : currentValue;
 
   return (
     <div ref={containerRef}>
@@ -149,8 +152,8 @@ export function TextField({
       {showKeypad ? (
         <NumericKeypad
           className="mt-2 xl:hidden"
-          onDigit={(digit) => emitValue(`${currentValue}${digit}`)}
-          onBackspace={() => emitValue(currentValue.slice(0, -1))}
+          onDigit={(digit) => emitValue(`${keypadValue}${digit}`)}
+          onBackspace={() => emitValue(keypadValue.slice(0, -1))}
           onDone={() => setShowKeypad(false)}
         />
       ) : null}

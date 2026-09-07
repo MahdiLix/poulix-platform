@@ -49,7 +49,8 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const usernameIsValid = username.trim().length >= 3 && !fieldErrors.username;
+  const usernameIsValid =
+    username.trim().length >= 3 && !fieldErrors.username;
   const emailIsValid =
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && !fieldErrors.email;
 
@@ -100,12 +101,8 @@ export default function RegisterPage() {
         <div className="flex items-center gap-3">
           <BrandLogo size={40} priority />
           <div>
-            <p className="text-base font-bold tracking-tight">
-              {t.common.appName}
-            </p>
-            <p className="text-[11px] text-sidebar-muted">
-              {t.home.financialWallet}
-            </p>
+            <p className="text-base font-bold tracking-tight">{t.common.appName}</p>
+            <p className="text-[11px] text-sidebar-muted">{t.home.financialWallet}</p>
           </div>
         </div>
         <div className="space-y-4">
@@ -132,7 +129,7 @@ export default function RegisterPage() {
           </ul>
         </div>
         <p className="text-[11px] text-sidebar-muted">
-          {t.common.bilingualHint}
+          English and Persian · Light and dark supported
         </p>
       </div>
 
@@ -278,17 +275,11 @@ export default function RegisterPage() {
 
               <p className="text-center text-[11px] leading-relaxed text-muted">
                 By creating an account, you agree to our{" "}
-                <Link
-                  href="#"
-                  className="font-semibold text-primary hover:underline"
-                >
+                <Link href="#" className="font-semibold text-primary hover:underline">
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link
-                  href="#"
-                  className="font-semibold text-primary hover:underline"
-                >
+                <Link href="#" className="font-semibold text-primary hover:underline">
                   Privacy Policy
                 </Link>
                 .

@@ -148,30 +148,6 @@ export type TranslationDictionary = {
     close: string;
     appearance: string;
     language: string;
-    id: string;
-    user: string;
-    actions: string;
-    resource: string;
-    status: string;
-    createdAt: string;
-    updatedAt: string;
-    success: string;
-    successful: string;
-    failed: string;
-    page: string;
-    export: string;
-    gateway: string;
-    reference: string;
-    amount: string;
-    view: string;
-    event: string;
-    time: string;
-    bilingualHint: string;
-    toggleBalanceVisibility: string;
-    name: string;
-    email: string;
-    method: string;
-    bankTransfer: string;
   };
   nav: {
     home: string;
@@ -245,7 +221,6 @@ export type TranslationDictionary = {
     greeting: string;
     welcomeToPoulix: string;
     walletInsight: string;
-    walletInsightDown: string;
     walletInsightFlat: string;
     allocated: string;
     spendable: string;
@@ -580,8 +555,6 @@ export type TranslationDictionary = {
     remaining: string;
     saveLimit: string;
     savingLimit: string;
-    thisDevice: string;
-    limitAmountLabel: string;
     limitTypes: {
       DAILY_TRANSFER: string;
       DAILY_WITHDRAWAL: string;
@@ -666,16 +639,6 @@ export type TranslationDictionary = {
     offerSaved: string;
     dashboardWelcome: string;
     usersOnPlatform: string;
-    totalEvents: string;
-    walletId: string;
-    paymentId: string;
-    relatedTransaction: string;
-    securityInsights: string;
-    eventMix: string;
-    eventTimeline: string;
-    loginActivity: string;
-    eventTypesTitle: string;
-    sample: string;
     statuses: {
       ACTIVE: string;
       DISABLED: string;
@@ -696,7 +659,6 @@ export type TranslationDictionary = {
     loadingHistory: string;
     signInToViewHistory: string;
     historyPrivateMsg: string;
-    subtitle: string;
     noTransactionsYet: string;
     noTransactionsSub: string;
     deposit: string;

@@ -5,10 +5,15 @@ import {
   Get,
   Post,
   Query,
+  Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
+import type { Request, Response } from 'express';
 import { CurrentUser, JwtAuthGuard, type AuthenticatedUser } from '../common';
 import { PaymentsService } from '../payments/payments.service';
+import { getBrowserDepositCallbackUrl } from '../payments/zarinpal.config';
 import { FinancialDestinationsService } from '../financial-destinations/financial-destinations.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { DepositDto } from './dto/deposit.dto';
@@ -44,16 +49,38 @@ export class WalletsController {
   }
 
   @Get('deposit/callback')
-  handleDepositCallback(
+  @SkipThrottle()
+  async handleDepositCallback(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @Query('Authority') authority: string,
     @Query('Status') status: string,
     @Query('authority') authorityAlt?: string,
     @Query('status') statusAlt?: string,
   ) {
-    return this.paymentsService.handleCallback(
-      authority ?? authorityAlt,
-      status ?? statusAlt,
+    const resolvedAuthority = authority ?? authorityAlt;
+    const resolvedStatus = status ?? statusAlt;
+    const result = await this.paymentsService.handleCallback(
+      resolvedAuthority,
+      resolvedStatus,
     );
+
+    const accept = String(req.headers.accept ?? '');
+    const isBrowserNavigation =
+      accept.includes('text/html') && !accept.includes('application/json');
+    if (isBrowserNavigation) {
+      const target = new URL(getBrowserDepositCallbackUrl());
+      if (resolvedAuthority) {
+        target.searchParams.set('Authority', resolvedAuthority);
+      }
+      if (resolvedStatus) {
+        target.searchParams.set('Status', resolvedStatus);
+      }
+      res.redirect(302, target.toString());
+      return;
+    }
+
+    return result;
   }
 
   @Post('withdraw')

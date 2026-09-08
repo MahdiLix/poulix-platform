@@ -7,6 +7,15 @@ import { DatabaseService } from '../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ZarinpalService } from './zarinpal.service';
 
+function toJsonNumber(value: unknown): number | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  const numeric = Number(String(value));
+  return Number.isFinite(numeric) ? numeric : undefined;
+}
+
 @Injectable()
 export class PaymentsService {
   constructor(
@@ -215,11 +224,15 @@ export class PaymentsService {
       result.userId &&
       result.amount
     ) {
-      void this.notificationsService.createDepositSuccess(result.userId, {
-        amount: Number(result.amount),
-        currency: result.currency ?? 'IRR',
-        refId: result.refId,
-      });
+      try {
+        await this.notificationsService.createDepositSuccess(result.userId, {
+          amount: Number(result.amount),
+          currency: result.currency ?? 'IRR',
+          refId: result.refId,
+        });
+      } catch {
+        // A verified deposit must still succeed if notification persistence fails.
+      }
     }
 
     return {
@@ -227,7 +240,7 @@ export class PaymentsService {
       alreadyVerified: result.alreadyVerified,
       authority: result.authority,
       refId: result.refId,
-      balance: result.balance,
+      balance: toJsonNumber(result.balance),
       currency: result.currency,
     };
   }

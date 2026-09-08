@@ -29,3 +29,36 @@ export function getZarinpalConfig(): ZarinpalConfig {
 export function getPaymentStartUrl(baseUrl: string, authority: string): string {
   return `${baseUrl}/pg/StartPay/${authority}`;
 }
+
+export function getBrowserDepositCallbackUrl(): string {
+  const configured = process.env.ZARINPAL_CALLBACK_URL ?? '';
+
+  try {
+    const url = new URL(configured);
+    const path = url.pathname.replace(/\/$/, '');
+    if (
+      path.endsWith('/deposit/callback') &&
+      !path.includes('/wallets/') &&
+      !path.includes('/api/')
+    ) {
+      url.search = '';
+      url.hash = '';
+      return url.toString().replace(/\/$/, '');
+    }
+
+    const frontendBase = process.env.FRONTEND_URL;
+    if (frontendBase) {
+      return `${frontendBase.replace(/\/$/, '')}/deposit/callback`;
+    }
+
+    if (url.port === '3001') {
+      url.port = '3000';
+    }
+    url.pathname = '/deposit/callback';
+    url.search = '';
+    url.hash = '';
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return 'http://localhost:3000/deposit/callback';
+  }
+}

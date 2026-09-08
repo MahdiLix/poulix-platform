@@ -73,7 +73,7 @@ export const fa: TranslationDictionary = {
     limitedTime: "مدت محدود",
     specialOffer: "پیشنهاد ویژه افزایش موجودی امروز",
     specialOfferDesc:
-      "تا 20% اعتبار هدیه در افزایش موجودی بعدی خود دریافت کنید.",
+      "با افزایش موجودی بعدی، تا ۲۰٪ اعتبار هدیه به کیف پول شما اضافه می‌شود.",
     requestMoneyAlert: "لینک درخواست پول در کلیپ‌بورد کپی شد!",
     financialWallet: "کیف پول دیجیتال",
     preferences: "تنظیمات",
@@ -147,16 +147,16 @@ export const fa: TranslationDictionary = {
     createOne: "ایجاد کنید",
     alreadyHaveAccount: "قبلاً ثبت‌نام کرده‌اید؟",
     signInLink: "ورود",
-    loginHeadline: "پولی که منظم می‌ماند.",
+    loginHeadline: "پولت رو هوشمندانه مدیریت کن.",
     registerHeadline: "کیف پول خصوصی ریالی باز کنید.",
     loginTagline:
-      "کیف پول خصوصی ریالی برای واریز، انتقال همتا، پرداخت زمان‌بندی‌شده، اهداف و پاکت‌ها.",
+      "کیف پول ریالی خصوصی برای مدیریت موجودی، انتقال وجه، پرداخت‌های زمان‌بندی‌شده و اهداف مالی.",
     registerTagline:
       "حساب بسازید تا ارسال کنید، با زرین‌پال افزایش موجودی دهید، برداشت کنید و با اهداف و پاکت‌ها بودجه ببندید.",
     adminNote: "حساب‌های مدیر پس از ورود به کنسول مدیریت هدایت می‌شوند.",
-    proofZarinpal: "افزایش موجودی سندباکس زرین‌پال",
+    proofZarinpal: "افزایش موجودی با زرین‌پال",
     proofTransfers: "انتقال آنی پولیکس",
-    proofLimits: "سقف روزانه و ماهانه",
+    proofLimits: "کنترل سقف های پرداخت"
   },
   deposit: {
     depositTitle: "افزایش موجودی کیف پول",
@@ -172,6 +172,8 @@ export const fa: TranslationDictionary = {
     depositCancelled: "افزایش موجودی لغو شد",
     depositFailed: "افزایش موجودی ناموفق بود",
     confirmingPayment: "در حال بررسی پرداخت با زرین‌پال...",
+    gatewayNote:
+      "موجودی کیف پول فقط پس از تأیید پرداخت توسط زرین‌پال افزایش می‌یابد. درخواست‌های تکراری نادیده گرفته می‌شوند.",
   },
   withdrawal: {
     withdrawTitle: "برداشت از حساب",

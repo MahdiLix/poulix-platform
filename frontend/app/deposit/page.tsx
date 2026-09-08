@@ -8,6 +8,12 @@ import { Badge } from "@/shared/ui/Badge";
 import { Button } from "@/shared/ui/Button";
 import { DepositForm } from "@/features/deposit/components/DepositForm";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
+import { useUser } from "@/shared/user/UserProvider";
+import {
+  activateHomepageOffer,
+  getHomepageOffer,
+  localizeOfferCopy,
+} from "@/features/offers/lib/offers";
 
 const steps = [
   {
@@ -29,6 +35,8 @@ const steps = [
 
 export default function DepositPage() {
   const { t } = useLanguage();
+  const { user } = useUser();
+  const displayOffer = localizeOfferCopy(getHomepageOffer(), t.home);
 
   return (
     <AppShell showBottomNav={false}>
@@ -93,25 +101,29 @@ export default function DepositPage() {
 
               <div className="relative overflow-hidden rounded-[14px] border border-warning/35 bg-promo-gradient p-5 text-foreground shadow-[var(--shadow-card)]">
                 <Badge variant="warning" className="mb-3">
-                  Limited time
+                  {t.home.limitedTime}
                 </Badge>
                 <p className="max-w-[70%] text-sm font-bold text-foreground">
-                  Get up to 20% bonus cashback
+                  {displayOffer.title}
                 </p>
                 <p className="mt-1 max-w-[70%] text-xs text-foreground/75">
-                  on your next wallet top up.
+                  {displayOffer.description}
                 </p>
                 <Button
                   variant="primary"
                   size="sm"
                   className="mt-4 w-auto"
                   onClick={() => {
-                    document
-                      .getElementById("deposit-form")
-                      ?.scrollIntoView({ behavior: "smooth" });
+                    activateHomepageOffer(getHomepageOffer(), user?.id);
+                    const form = document.getElementById(
+                      "zarinpal-deposit-form",
+                    );
+                    if (form instanceof HTMLFormElement) {
+                      form.requestSubmit();
+                    }
                   }}
                 >
-                  Top Up Now
+                  {t.home.topUpNow}
                 </Button>
                 <div className="absolute -bottom-3 -end-3 opacity-90">
                   <Gift className="h-24 w-24 text-warning/50" />

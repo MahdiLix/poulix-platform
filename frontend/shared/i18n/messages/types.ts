@@ -286,6 +286,7 @@ export type TranslationDictionary = {
     depositCancelled: string;
     depositFailed: string;
     confirmingPayment: string;
+    gatewayNote: string;
   };
   withdrawal: {
     withdrawTitle: string;

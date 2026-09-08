@@ -22,6 +22,8 @@ import {
   applyOfferPercent,
   consumeActiveOffer,
   getActiveOffer,
+  localizeOfferCopy,
+  OFFER_CHANGED_EVENT,
   type ActiveOffer,
 } from "@/features/offers/lib/offers";
 
@@ -49,7 +51,16 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
   const [activeOffer, setActiveOffer] = useState<ActiveOffer | null>(null);
 
   useEffect(() => {
-    setActiveOffer(getActiveOffer());
+    function syncOffer() {
+      setActiveOffer(getActiveOffer());
+    }
+    syncOffer();
+    window.addEventListener(OFFER_CHANGED_EVENT, syncOffer);
+    window.addEventListener("storage", syncOffer);
+    return () => {
+      window.removeEventListener(OFFER_CHANGED_EVENT, syncOffer);
+      window.removeEventListener("storage", syncOffer);
+    };
   }, []);
 
   async function handleDeposit(e: FormEvent) {
@@ -90,6 +101,9 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
     ? applyOfferPercent(numericAmount, activeOffer.percent)
     : 0;
   const afterBalance = currentBalance + numericAmount + bonus;
+  const displayActiveOffer = activeOffer
+    ? localizeOfferCopy(activeOffer, t.home)
+    : null;
 
   function balanceLabel(): string {
     if (balanceStatus === "loading" || balanceStatus === "idle") {
@@ -112,17 +126,17 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
   }
 
   return (
-    <form onSubmit={handleDeposit} className="space-y-6">
+    <form id="zarinpal-deposit-form" onSubmit={handleDeposit} className="space-y-6">
       {error && (
         <div className="rounded-xl bg-danger-soft p-3 text-center text-xs font-semibold text-danger">
           {error}
         </div>
       )}
 
-      {activeOffer ? (
+      {displayActiveOffer ? (
         <div className="rounded-xl border border-warning/40 bg-warning-soft p-3 text-xs">
-          <p className="font-bold text-foreground">{activeOffer.title}</p>
-          <p className="mt-1 text-muted">{activeOffer.description}</p>
+          <p className="font-bold text-foreground">{displayActiveOffer.title}</p>
+          <p className="mt-1 text-muted">{displayActiveOffer.description}</p>
           {bonus > 0 ? (
             <p className="mt-2 font-semibold text-secondary">
               +{formatIrr(bonus, currency, language)}
@@ -218,8 +232,7 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
       <div className="flex items-center justify-center gap-2 text-xs text-muted">
         <Lock className="h-3.5 w-3.5 shrink-0" />
         <span className="text-center">
-          Wallet is credited only after ZarinPal verifies the payment. Duplicate
-          callbacks are ignored.
+          {t.deposit.gatewayNote}
         </span>
       </div>
     </form>

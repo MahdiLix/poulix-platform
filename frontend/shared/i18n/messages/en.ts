@@ -172,6 +172,8 @@ export const en: TranslationDictionary = {
     depositCancelled: "Deposit Cancelled",
     depositFailed: "Deposit Failed",
     confirmingPayment: "Verifying payment with ZarinPal...",
+    gatewayNote:
+      "Wallet is credited only after ZarinPal verifies the payment. Duplicate callbacks are ignored.",
   },
   withdrawal: {
     withdrawTitle: "Withdraw Funds",

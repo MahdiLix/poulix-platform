@@ -50,6 +50,7 @@ import { parseEnvelopeAmount } from "@/features/envelopes/lib/envelopes";
 import {
   activateHomepageOffer,
   getHomepageOffer,
+  localizeOfferCopy,
   type HomepageOffer,
 } from "@/features/offers/lib/offers";
 
@@ -203,11 +204,12 @@ export default function HomePage() {
     0,
   );
   const spendable = Math.max(0, (balance ?? 0) - allocated);
+  const displayOffer = offer ? localizeOfferCopy(offer, t.home) : null;
 
   const openTopUp = (fromOffer = false) => {
     if (!getStoredToken()) router.push("/login");
     else {
-      if (fromOffer && offer) activateHomepageOffer(offer);
+      if (fromOffer && offer) activateHomepageOffer(offer, user?.id);
       setIsDepositOpen(true);
     }
   };
@@ -445,7 +447,7 @@ export default function HomePage() {
           </div>
         </Card>
 
-        {offer?.enabled ? (
+        {displayOffer?.enabled ? (
           <section className="relative isolate grid min-h-44 grid-cols-[minmax(0,3fr)_minmax(8rem,2fr)] overflow-hidden rounded-[14px] border border-cyan-300/25 bg-gradient-to-r from-[#10c995] via-[#087bdc] to-[#175df2] text-primary-foreground shadow-[0_14px_34px_rgba(0,97,219,0.2)] sm:min-h-40 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,38%)]">
             <div className="fintech-grid-pattern pointer-events-none absolute inset-0 opacity-40" />
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_15%,rgba(255,255,255,0.25),transparent_35%)]" />
@@ -454,10 +456,10 @@ export default function HomePage() {
                 {t.home.limitedTime}
               </span>
               <h2 className="mt-3 text-lg font-black leading-tight sm:text-xl">
-                {offer.title}
+                {displayOffer.title}
               </h2>
               <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-white/75 sm:text-sm">
-                {offer.description}
+                {displayOffer.description}
               </p>
               <Button
                 size="sm"

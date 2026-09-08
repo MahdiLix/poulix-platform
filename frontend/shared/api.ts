@@ -117,7 +117,7 @@ export type DepositCallbackResponse = {
   currency?: string;
 };
 
-/** Same-origin by default; Next.js rewrites proxy to the Nest backend on :3001. */
+/** Same-origin by default. Local Next rewrites /api to Nest; Docker/VPS Nginx does. */
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 const ACCESS_TOKEN_COOKIE = "poulix_access_token";
@@ -228,6 +228,7 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   const token = getStoredToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    Accept: "application/json",
     ...(options.headers as Record<string, string>),
   };
 

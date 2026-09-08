@@ -42,7 +42,12 @@ export function GlobalSearch({
 
   useEffect(() => {
     function focusSearch(event: KeyboardEvent) {
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "k") {
+      if (!(event.metaKey || event.ctrlKey)) {
+        return;
+      }
+      const isK =
+        event.code === "KeyK" || event.key.toLowerCase() === "k";
+      if (!isK) {
         return;
       }
       const target = event.target as HTMLElement | null;

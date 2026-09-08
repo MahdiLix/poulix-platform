@@ -123,8 +123,13 @@ function SavedDestinationsCard({ items }: { items: FinancialDestination[] }) {
       ) : (
         <div className="space-y-2">
           {display.map((item) => (
-            <div
+            <Link
               key={item.id}
+              href={
+                item.type === "P2P_USER"
+                  ? `/send?destinationId=${encodeURIComponent(item.id)}`
+                  : `/transfer?destinationId=${encodeURIComponent(item.id)}`
+              }
               className="flex items-center gap-3 rounded-xl border border-border bg-surface-muted px-3 py-2 transition hover:border-primary/30"
             >
               <DestinationIcon type={item.type} />
@@ -137,7 +142,7 @@ function SavedDestinationsCard({ items }: { items: FinancialDestination[] }) {
                 </p>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
-            </div>
+            </Link>
           ))}
         </div>
       )}

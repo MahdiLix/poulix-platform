@@ -105,6 +105,7 @@ export default function HistoryPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     setPage(1);
@@ -194,6 +195,78 @@ export default function HistoryPage() {
     }
   }
 
+  async function exportHistory() {
+    if (!getStoredToken() || exporting) return;
+    setExporting(true);
+    try {
+      const pageSize = 100;
+      let pageNumber = 1;
+      const items: Transaction[] = [];
+      let totalCount = 0;
+      do {
+        const data = await api.getTransactionsPage<Transaction>({
+          page: pageNumber,
+          pageSize,
+        });
+        totalCount = data.total;
+        items.push(...data.items);
+        if (data.items.length === 0 || items.length >= totalCount) {
+          break;
+        }
+        pageNumber += 1;
+      } while (pageNumber <= 100);
+
+      const header = [
+        t.history.transactionId,
+        "type",
+        t.history.categoryLabel,
+        t.history.reasonLabel,
+        t.history.counterparty,
+        "amount",
+        "createdAt",
+      ];
+      const rows = items.map((tx) => [
+        tx.id,
+        transactionTypeLabel(tx.type, t),
+        tx.category && isTransactionCategory(tx.category)
+          ? t.history.categories[tx.category]
+          : "",
+        tx.reason ? transactionReasonLabel(tx.reason, t) : "",
+        tx.counterpartyUser?.username || tx.counterpartyUser?.email || "",
+        String(parseAmount(tx.amount)),
+        formatDisplayDateTime(tx.createdAt, language),
+      ]);
+      const csv = [header, ...rows]
+        .map((row) =>
+          row
+            .map((cell) => {
+              const value = String(cell ?? "");
+              if (/[",\n]/.test(value)) {
+                return `"${value.replace(/"/g, '""')}"`;
+              }
+              return value;
+            })
+            .join(","),
+        )
+        .join("\n");
+      const blob = new Blob([`\uFEFF${csv}`], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "transactions.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(localizeError(err, t.messages, "failedToLoadHistory"));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <AppShell>
       <HeaderBar
@@ -204,7 +277,8 @@ export default function HistoryPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => alert("Export not yet implemented")}
+            onClick={() => void exportHistory()}
+            disabled={exporting || status === "unauthenticated"}
             className="w-auto gap-1.5"
           >
             <Download className="h-3.5 w-3.5" />

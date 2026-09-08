@@ -132,11 +132,15 @@ export function TextField({
             "h-10 w-full rounded-[10px] border bg-surface text-sm text-foreground transition placeholder:text-muted/80 hover:border-primary/30 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none",
             numeric && "tabular-nums placeholder:font-normal",
             leftIcon && rightIcon
-              ? "ps-10 pe-10"
+              ? numeric
+                ? "ps-10 pr-10"
+                : "ps-10 pe-10"
               : leftIcon
                 ? "ps-10 pe-3.5"
                 : rightIcon
-                  ? "ps-3.5 pe-10"
+                  ? numeric
+                    ? "ps-3.5 pr-10"
+                    : "ps-3.5 pe-10"
                   : "px-3.5",
             error ? "border-danger" : "border-border",
             className,
@@ -144,7 +148,13 @@ export function TextField({
           {...props}
         />
         {rightIcon ? (
-          <span className="absolute inset-y-0 end-0 flex items-center pe-2">
+          <span
+            className={
+              numeric
+                ? "absolute inset-y-0 right-0 flex items-center pe-2"
+                : "absolute inset-y-0 end-0 flex items-center pe-2"
+            }
+          >
             {rightIcon}
           </span>
         ) : null}

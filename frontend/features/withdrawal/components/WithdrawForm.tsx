@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/shared/ui/Button";
 import { TextField } from "@/shared/ui/TextField";
 import { AmountField } from "@/shared/ui/AmountField";
@@ -43,6 +43,7 @@ import {
 
 export function WithdrawForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t } = useLanguage();
   const {
     status,
@@ -74,8 +75,11 @@ export function WithdrawForm() {
   });
 
   useEffect(() => {
-    setAccountNumber(getSavedAccountNumber());
-    setShabaNumber(getSavedShabaNumber());
+    const destinationId = searchParams.get("destinationId");
+    if (!destinationId) {
+      setAccountNumber(getSavedAccountNumber());
+      setShabaNumber(getSavedShabaNumber());
+    }
     setRecentAccounts(listRecentAccountNumbers());
     setRecentShabas(listRecentShabaNumbers());
     if (getStoredToken()) {
@@ -101,9 +105,23 @@ export function WithdrawForm() {
           [...new Set([...current, ...accounts])],
         );
         setRecentShabas((current) => [...new Set([...current, ...shabas])]);
+        if (destinationId) {
+          const selected = await api
+            .getDestinationValue(destinationId)
+            .catch(() => null);
+          if (selected?.type === "BANK_ACCOUNT") {
+            setDestination("account");
+            setAccountNumber(selected.accountNumber);
+            saveAccountNumber(selected.accountNumber);
+          } else if (selected?.type === "SHABA") {
+            setDestination("shaba");
+            setShabaNumber(selected.shabaNumber);
+            saveShabaNumber(selected.shabaNumber);
+          }
+        }
       });
     }
-  }, [destination]);
+  }, [destination, searchParams]);
 
   function destinationFieldError() {
     if (destination === "account") {

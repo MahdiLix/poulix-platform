@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Send, Eye, EyeOff, Check, User } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { TextField } from "@/shared/ui/TextField";
@@ -32,6 +32,7 @@ import type { FinancialDestination } from "@/features/financial-destinations/lib
 
 export function SendForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t } = useLanguage();
   const {
     status,
@@ -71,6 +72,20 @@ export function SendForm() {
       setDestinations([...unique.values()].slice(0, 8));
     });
   }, []);
+
+  useEffect(() => {
+    const destinationId = searchParams.get("destinationId");
+    if (!destinationId || !getStoredToken()) return;
+    void api
+      .getDestinationValue(destinationId)
+      .then((value) => {
+        if (value?.type === "P2P_USER" && value.recipientUsername) {
+          setRecipient(value.recipientUsername);
+          setFieldError(null);
+        }
+      })
+      .catch(() => {});
+  }, [searchParams]);
 
   useEffect(() => {
     const trimmed = recipient.trim();

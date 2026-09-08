@@ -1,8 +1,13 @@
 import type { AuthResponse, LoginPayload, RegisterPayload } from "@/shared/api";
 import { api, setStoredToken } from "@/shared/api";
 import type { TranslationDictionary } from "@/shared/i18n/translations";
+import validator from "validator";
 
 type Messages = TranslationDictionary["messages"];
+
+export function isValidEmailAddress(email: string): boolean {
+  return validator.isEmail(email.trim());
+}
 
 export function validateUsername(
   username: string,
@@ -20,7 +25,7 @@ export function validateEmail(
 ): string | null {
   const value = email.trim();
   if (!value) return messages.emailRequired;
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return messages.emailInvalid;
+  if (!isValidEmailAddress(value)) return messages.emailInvalid;
   return null;
 }
 

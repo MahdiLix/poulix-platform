@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { AppShell } from "@/shared/layout/AppShell";
 import { HeaderBar } from "@/shared/layout/HeaderBar";
 import { Card } from "@/shared/ui/Card";
@@ -46,7 +46,9 @@ export default function SendPage() {
       <div className="mx-auto flex w-full max-w-6xl flex-1 gap-6 p-4 lg:p-6">
         <div className="flex-1">
           <Card className="p-6">
-            <SendForm />
+            <Suspense fallback={null}>
+              <SendForm />
+            </Suspense>
           </Card>
         </div>
 

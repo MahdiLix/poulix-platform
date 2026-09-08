@@ -213,7 +213,9 @@ export default function DestinationsPage() {
                       <div className="flex shrink-0 items-center gap-2">
                         <Link
                           href={
-                            item.type === "P2P_USER" ? "/send" : "/transfer"
+                            item.type === "P2P_USER"
+                              ? `/send?destinationId=${encodeURIComponent(item.id)}`
+                              : `/transfer?destinationId=${encodeURIComponent(item.id)}`
                           }
                         >
                           <Button size="sm" variant="secondary" className="w-auto">

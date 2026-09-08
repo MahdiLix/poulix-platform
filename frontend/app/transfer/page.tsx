@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Info } from "lucide-react";
 import { AppShell } from "@/shared/layout/AppShell";
@@ -59,7 +59,9 @@ export default function WithdrawPage() {
               </p>
             </div>
           </div>
-          <WithdrawForm />
+          <Suspense fallback={null}>
+            <WithdrawForm />
+          </Suspense>
         </Card>
 
         <div className="hidden w-80 shrink-0 flex-col gap-4 lg:flex">
@@ -82,18 +84,20 @@ export default function WithdrawPage() {
             ) : (
               <ul className="space-y-2">
                 {saved.slice(0, 4).map((item) => (
-                  <li
-                    key={item.id}
-                    className="flex items-center justify-between rounded-xl border border-border px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">
-                        {item.label}
-                      </p>
-                      <p className="truncate text-[11px] text-muted">
-                        {item.maskedValue}
-                      </p>
-                    </div>
+                  <li key={item.id}>
+                    <Link
+                      href={`/transfer?destinationId=${encodeURIComponent(item.id)}`}
+                      className="flex items-center justify-between rounded-xl border border-border px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">
+                          {item.label}
+                        </p>
+                        <p className="truncate text-[11px] text-muted">
+                          {item.maskedValue}
+                        </p>
+                      </div>
+                    </Link>
                   </li>
                 ))}
               </ul>

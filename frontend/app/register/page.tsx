@@ -26,6 +26,7 @@ import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { formatMessage, localizeError } from "@/shared/i18n/localizeError";
 import {
   registerAndStoreSession,
+  isValidEmailAddress,
   validateEmail,
   validatePassword,
   validateUsername,
@@ -52,7 +53,7 @@ export default function RegisterPage() {
   const usernameIsValid =
     username.trim().length >= 3 && !fieldErrors.username;
   const emailIsValid =
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && !fieldErrors.email;
+    isValidEmailAddress(email) && !fieldErrors.email;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

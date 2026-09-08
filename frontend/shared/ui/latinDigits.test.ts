@@ -44,4 +44,16 @@ describe("homepage offers", () => {
   it("applies cashback to the next top up amount", () => {
     expect(applyOfferPercent(100000, 20)).toBe(20000);
   });
+
+  it("localizes default English offer copy for Farsi", async () => {
+    const { localizeOfferCopy, DEFAULT_HOMEPAGE_OFFER } = await import(
+      "@/features/offers/lib/offers"
+    );
+    const localized = localizeOfferCopy(DEFAULT_HOMEPAGE_OFFER, {
+      specialOffer: "پیشنهاد ویژه افزایش موجودی امروز",
+      specialOfferDesc:
+        "با افزایش موجودی بعدی، تا ۲۰٪ اعتبار هدیه به کیف پول شما اضافه می‌شود.",
+    });
+    expect(localized.title).toBe("پیشنهاد ویژه افزایش موجودی امروز");
+  });
 });

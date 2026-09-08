@@ -1,3 +1,6 @@
+import { createWriteStream, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
+import type { WriteStream } from 'node:fs';
 import build from 'pino-abstract-transport';
 
 const RESET = '\x1b[0m';
@@ -19,7 +22,9 @@ type HttpLogObject = {
   context?: string;
   msg?: string;
   responseTime?: number;
-  req?: { method?: string; url?: string };
+  userId?: string;
+  ip?: string;
+  req?: { method?: string; url?: string; ip?: string };
   res?: { statusCode?: number };
 };
 
@@ -44,14 +49,16 @@ function formatTime(time: string | number | undefined): string {
     .replace(/\.\d{3}Z$/, '');
 }
 
-function formatLine(obj: HttpLogObject): string | null {
+function formatLine(obj: HttpLogObject, colorize: boolean): string | null {
   if (obj.context && SKIP_CONTEXTS.has(obj.context)) {
     return null;
   }
 
   const statusCode = obj.res?.statusCode;
-  const color = colorFor(obj.level ?? 30, statusCode);
-  const parts = [`${DIM}${formatTime(obj.time)}${RESET}`];
+  const color = colorize ? colorFor(obj.level ?? 30, statusCode) : '';
+  const dim = colorize ? DIM : '';
+  const reset = colorize ? RESET : '';
+  const parts = [`${dim}${formatTime(obj.time)}${reset}`];
 
   if (obj.req?.method && obj.req.url) {
     parts.push(`${obj.req.method} ${obj.req.url}`);
@@ -63,22 +70,43 @@ function formatLine(obj: HttpLogObject): string | null {
     if (typeof obj.responseTime === 'number') {
       parts.push(`${obj.responseTime}ms`);
     }
+
+    const ip = obj.req.ip ?? obj.ip;
+    if (ip) {
+      parts.push(ip);
+    }
+
+    if (obj.userId) {
+      parts.push(`user=${obj.userId}`);
+    }
   } else if (obj.msg) {
     parts.push(obj.msg);
   } else {
     return null;
   }
 
-  return `${color}${parts.join(' ')}${RESET}`;
+  return `${color}${parts.join(' ')}${reset}`;
 }
 
-export default function pinoConsoleTransport() {
+export default function pinoConsoleTransport(options?: { file?: string }) {
+  const file = options?.file;
+  let stream: WriteStream | undefined;
+
+  if (file) {
+    mkdirSync(dirname(file), { recursive: true });
+    stream = createWriteStream(file, { flags: 'a' });
+  }
+
   return build((source) => {
     source.on('data', (obj: HttpLogObject) => {
-      const line = formatLine(obj);
+      const line = formatLine(obj, !file);
 
       if (line) {
-        process.stdout.write(`${line}\n`);
+        if (stream) {
+          stream.write(`${line}\n`);
+        } else {
+          process.stdout.write(`${line}\n`);
+        }
       }
     });
   });

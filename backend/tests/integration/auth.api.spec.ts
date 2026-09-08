@@ -42,6 +42,14 @@ describe('Auth API', () => {
     expect(response.body.accessToken.length).toBeGreaterThan(20);
   });
 
+  it('rejects registration with an invalid email address', async () => {
+    const user = uniqueUser();
+    await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ ...user, email: 'not-an-email' })
+      .expect(400);
+  });
+
   it('logs in with valid credentials and returns a JWT', async () => {
     const user = uniqueUser();
     const registered = await request(app.getHttpServer())

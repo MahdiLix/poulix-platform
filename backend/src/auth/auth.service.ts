@@ -1,8 +1,10 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import validator from 'validator';
 import { JwtService } from '@nestjs/jwt';
 import { DatabaseService } from '../database/database.service';
 import { SecurityService } from '../security/security.service';
@@ -66,6 +68,10 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto, userAgent?: string, ipAddress?: string) {
+    if (!validator.isEmail(dto.email)) {
+      throw new BadRequestException('Invalid email');
+    }
+
     const existingUser = await this.db.user.findFirst({
       where: { OR: [{ email: dto.email }, { username: dto.username }] },
     });

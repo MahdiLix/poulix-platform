@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
@@ -17,6 +19,19 @@ import { loggerParams } from './common/logger.config';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot({
+      throttlers: [
+        process.env.NODE_ENV === 'test'
+          ? {
+              ttl: 60_000,
+              limit: 10_000,
+            }
+          : {
+              ttl: 10_000,
+              limit: 60,
+            },
+      ],
+    }),
     LoggerModule.forRoot(loggerParams),
     DatabaseModule,
     AuthModule,
@@ -31,6 +46,12 @@ import { loggerParams } from './common/logger.config';
     SpendingLimitsModule,
     SecurityModule,
     AdminModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

@@ -12,5 +12,8 @@
 node_modules/
 dist/
 logs/
-coverage/
 *.log
+http.log*
+*.1.log
+*.2.log
+coverage/

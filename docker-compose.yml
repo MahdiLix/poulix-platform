@@ -1,11 +1,15 @@
 # Dual-mode local setup:
-# 1) Full stack:
+# 1) Full stack (Nginx on port 80):
 #      cp .env.docker.example .env.docker
 #      docker compose --env-file .env.docker up --build
-
-# 2) Host Node.js + Docker Postgres only:
+#
+# 2) Host Node.js + Docker Postgres only (no Nginx):
 #      docker compose --env-file .env.docker up postgres
 #      then use backend/.env and frontend/.env.local with localhost URLs
+#
+# Production / VPS: same Compose file. Set public URLs in .env.docker
+# (FRONTEND_URL, ZARINPAL_CALLBACK_URL) to your domain. Only Nginx is
+# published on the host network; app ports bind to localhost.
 
 services:
   postgres:
@@ -14,7 +18,7 @@ services:
     env_file:
       - .env.docker
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -30,7 +34,7 @@ services:
     env_file:
       - .env.docker
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     depends_on:
       postgres:
         condition: service_healthy
@@ -57,8 +61,20 @@ services:
     env_file:
       - .env.docker
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
+      - backend
+
+  nginx:
+    build:
+      context: ./nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
       - backend
 
 volumes:

@@ -4,8 +4,12 @@
 /node_modules
 
 # Logs
+# Generated HTTP / request logs (pino)
 logs/
 *.log
+http.log*
+*.1.log
+*.2.log
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*

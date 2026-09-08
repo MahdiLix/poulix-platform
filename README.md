@@ -11,7 +11,7 @@ Deposits connect to **ZarinPal (زرین‌پال)** sandbox, not a live bank ac
 - Auth: JWT
 - Payments: ZarinPal sandbox (request, StartPay, callback, verify)
 - UI: English and Persian (RTL), light and dark themes
-- Deploy: Docker and Docker Compose
+- Deploy: Docker, Docker Compose, and Nginx reverse proxy
 
 ## Features
 
@@ -27,13 +27,14 @@ Deposits connect to **ZarinPal (زرین‌پال)** sandbox, not a live bank ac
 
 ## Services and ports
 
-- Frontend: http://localhost:3000
-- Backend: http://localhost:3001
-- PostgreSQL: localhost:5432
+- Docker / VPS (Nginx): http://localhost
+- Host Node.js frontend: http://localhost:3000
+- Host Node.js backend: http://localhost:3001
+- PostgreSQL: localhost:5432 (bound to 127.0.0.1 in Compose)
 
 ## Setup with Docker Compose (full stack)
 
-Use this when PostgreSQL, backend, and frontend should all run in containers.
+Use this when PostgreSQL, backend, frontend, and Nginx should all run in containers.
 
 1. Copy the Compose env file and set real values (password, JWT secret, matching `DATABASE_URL`):
 
@@ -41,11 +42,12 @@ Use this when PostgreSQL, backend, and frontend should all run in containers.
 cp .env.docker.example .env.docker
 ```
 
-2. In `.env.docker`, keep these Compose hostnames:
+2. In `.env.docker`, keep these Compose values:
 
 - Database host: `postgres` (service name)
-- Backend URL for the frontend: `http://backend:3001`
-- ZarinPal callback (browser): `http://localhost:3000/deposit/callback`
+- Public UI origin: `FRONTEND_URL=http://localhost`
+- ZarinPal callback (browser, through Nginx): `http://localhost/deposit/callback`
+- On a VPS, set `FRONTEND_URL` and `ZARINPAL_CALLBACK_URL` to your public domain (https).
 
 3. Start the stack:
 
@@ -53,7 +55,7 @@ cp .env.docker.example .env.docker
 docker compose --env-file .env.docker up --build
 ```
 
-4. Open http://localhost:3000
+4. Open http://localhost (Nginx). Frontend `:3000` and backend `:3001` stay on localhost only.
 
 ### Admin login (Docker)
 
@@ -66,7 +68,7 @@ Change these values before any shared or production use. After changing them, re
 
 How to use admin:
 
-1. Open http://localhost:3000/login
+1. Open http://localhost/login
 2. Sign in with the admin email (or username) and password
 3. You are sent to `/admin`
 4. From the admin sidebar you can:
@@ -77,7 +79,7 @@ How to use admin:
    - **Withdrawals** — withdrawal transactions
    - **Security** — failed logins, limits, suspicious events
    - **Audit logs** — every sensitive admin action
-5. Normal wallet features stay at http://localhost:3000 (Profile also has **Open admin dashboard**)
+5. Normal wallet features stay at http://localhost (Profile also has **Open admin dashboard**)
 
 A normal user who opens `/admin` is redirected home. Admin APIs return `403` for non-admins and `401` when signed out. Roles cannot be changed from the UI or public API.
 
@@ -91,7 +93,7 @@ docker compose --env-file .env.docker --profile test run --rm --build backend-te
 
 ## Setup with Docker Postgres and host Node.js
 
-Use this when only the database runs in Docker, and backend/frontend run on the host with Node.js.
+Use this when only the database runs in Docker, and backend/frontend run on the host with Node.js. Nginx is not used in this mode; Next.js rewrites `/api` to `http://localhost:3001`.
 
 1. Start PostgreSQL:
 
@@ -154,6 +156,7 @@ npm test
 ```text
 backend/     NestJS API, Prisma, ZarinPal integration, tests
 frontend/    Next.js wallet UI
+nginx/       Reverse proxy config for Docker / VPS
 docker-compose.yml
 .env.docker.example
 ```
@@ -163,3 +166,5 @@ docker-compose.yml
 - Do not commit `.env`, `.env.docker`, or other secret files.
 - ZarinPal sandbox is for development and testing only.
 - Replace `ZARINPAL_MERCHANT_ID` and related values before any real payment usage.
+
+On a VPS, point DNS at the server and set `FRONTEND_URL` and `ZARINPAL_CALLBACK_URL` to that domain. Terminate TLS in front of this Nginx (or add a 443 server block and mount certificates). Port 80 must be free, or change the Nginx `ports` mapping in `docker-compose.yml`.

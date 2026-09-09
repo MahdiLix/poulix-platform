@@ -27,10 +27,10 @@ Deposits connect to **ZarinPal (زرین‌پال)** sandbox, not a live bank ac
 
 ## Services and ports
 
-- Docker / VPS (Nginx): http://localhost
-- Host Node.js frontend: http://localhost:3000
-- Host Node.js backend: http://localhost:3001
-- PostgreSQL: localhost:5432 (bound to 127.0.0.1 in Compose)
+- Docker / VPS (Nginx): http://localhost (local) and https://poulix.ir (production, port 443). `www.poulix.ir` redirects to `https://poulix.ir`.
+- Host Node.js frontend: http://localhost:3000 (not published in Compose)
+- Host Node.js backend: http://localhost:3001 (not published in Compose)
+- PostgreSQL: localhost:5432 (bound to 127.0.0.1 in Compose, not the public interface)
 
 ## Setup with Docker Compose (full stack)
 
@@ -47,7 +47,7 @@ cp .env.docker.example .env.docker
 - Database host: `postgres` (service name)
 - Public UI origin: `FRONTEND_URL=http://localhost`
 - ZarinPal callback (browser, through Nginx): `http://localhost/deposit/callback`
-- On a VPS, set `FRONTEND_URL` and `ZARINPAL_CALLBACK_URL` to your public domain (https).
+- Production domain `poulix.ir` (behind Cloudflare): set `FRONTEND_URL` and `ZARINPAL_CALLBACK_URL` to `https://poulix.ir`. Put `origin.crt`, `origin.key`, and `client.crt` in `/etc/nginx/certs`. Set Cloudflare SSL/TLS mode to **Full (strict)** and enable Authenticated Origin Pulls. `www.poulix.ir` redirects to `https://poulix.ir`.
 
 3. Start the stack:
 
@@ -55,7 +55,7 @@ cp .env.docker.example .env.docker
 docker compose --env-file .env.docker up --build
 ```
 
-4. Open http://localhost (Nginx). Frontend `:3000` and backend `:3001` stay on localhost only.
+4. Open http://localhost (Nginx). Frontend `:3000` and backend `:3001` are not published on the host; Nginx reaches them on the Docker network.
 
 ### Admin login (Docker)
 
@@ -156,7 +156,8 @@ npm test
 ```text
 backend/     NestJS API, Prisma, ZarinPal integration, tests
 frontend/    Next.js wallet UI
-nginx/       Reverse proxy config for Docker / VPS
+nginx/       Reverse proxy (poulix.ir, HTTP + HTTPS) for Docker / VPS
+nginx/certs/ Placeholder only; production certs are on the host at /etc/nginx/certs
 docker-compose.yml
 .env.docker.example
 ```
@@ -167,4 +168,4 @@ docker-compose.yml
 - ZarinPal sandbox is for development and testing only.
 - Replace `ZARINPAL_MERCHANT_ID` and related values before any real payment usage.
 
-On a VPS, point DNS at the server and set `FRONTEND_URL` and `ZARINPAL_CALLBACK_URL` to that domain. Terminate TLS in front of this Nginx (or add a 443 server block and mount certificates). Port 80 must be free, or change the Nginx `ports` mapping in `docker-compose.yml`.
+Production public hostnames are `poulix.ir` (canonical) and `www.poulix.ir` (redirects to `https://poulix.ir`). Cloudflare terminates the browser TLS session and connects to origin Nginx on port 443 using `origin.crt` / `origin.key`, presenting `client.crt` which Nginx verifies. Compose publishes only ports 80 and 443. Frontend (3000), backend (3001), and Postgres stay on the Docker network (Postgres is also bound to `127.0.0.1:5432` for host Node.js local mode).

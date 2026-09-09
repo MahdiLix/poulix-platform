@@ -8,6 +8,10 @@
 .DS_Store
 .idea/
 
+# TLS private keys and certificates (do not commit secrets).
+nginx/certs/*
+!nginx/certs/.gitkeep
+
 # Artifacts if they appear at the repository root
 node_modules/
 dist/

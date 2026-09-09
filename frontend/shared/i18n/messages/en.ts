@@ -147,16 +147,16 @@ export const en: TranslationDictionary = {
     createOne: "Create one",
     alreadyHaveAccount: "Already have an account?",
     signInLink: "Sign In",
-    loginHeadline: "Money that stays organized.",
+    loginHeadline: "Manage Your Money Smarter.",
     registerHeadline: "Open a private IRR wallet.",
     loginTagline:
-      "A private IRR wallet for deposits, P2P transfers, scheduled payments, goals, and envelopes.",
+      "A private Rial wallet built to help you manage your balance, transfer money, schedule payments, and stay on track with your financial goals.",
     registerTagline:
       "Create an account to send, top up with ZarinPal sandbox, withdraw, and budget with goals and envelopes.",
     adminNote: "Admin accounts open the Admin Console after sign-in.",
-    proofZarinpal: "ZarinPal sandbox top-ups",
-    proofTransfers: "Instant Poulix transfers",
-    proofLimits: "Daily and monthly limits",
+    proofZarinpal: "Top up securely with ZarinPal",
+    proofTransfers: "Send money instantly with Poulix",
+    proofLimits: "Set and manage payment limits",
   },
   deposit: {
     depositTitle: "Top Up Wallet",

@@ -1,171 +1,201 @@
 # Poulix
 
-Poulix is a personal digital wallet. Users can create an account, view their IRR balance, top up the wallet, withdraw to an account number or Shaba number, and review transaction history.
+Poulix is a personal digital wallet. Users can register, view an IRR balance, top up through ZarinPal, withdraw to an account or Sheba number, and review history. An admin dashboard covers users, payments, withdrawals, security events, and audit logs.
 
-Deposits connect to **ZarinPal (زرین‌پال)** sandbox, not a live bank account. The wallet is credited only after ZarinPal verifies the payment. The default merchant and base URL target the ZarinPal sandbox environment.
+The application runs in Docker only. Do not run the frontend or backend with `npm`, `node`, or `pm2` on the host.
 
-## Stack
+## Architecture
 
-- Frontend: Next.js 16, React 19, Tailwind CSS 4
-- Backend: NestJS 11, Prisma 7, PostgreSQL
-- Auth: JWT
-- Payments: ZarinPal sandbox (request, StartPay, callback, verify)
-- UI: English and Persian (RTL), light and dark themes
-- Deploy: Docker, Docker Compose, and Nginx reverse proxy
+Two isolated Docker environments share application code, Prisma schema, and Nginx routing. They do not share env files, Compose project names, or Postgres volumes.
 
-## Features
+```text
+Browser
+   ↓
+Nginx          ← only public ports
+   ├── frontend:3000
+   └── backend:3001
+             ↓
+        postgres:5432
+```
 
-- Register, login, and JWT-protected wallet APIs
-- Wallet balance, deposit, withdraw, and transaction history
-- ZarinPal sandbox top-up: pending payment first, then credit on successful verify
-- Duplicate callback protection so a payment is not credited twice
-- Statistics overview with income and expense charts
-- Bilingual UI (English / Persian) with RTL support
-- Light and dark mode (next-themes, persisted as `poulix-theme`)
-- Responsive layout with a desktop sidebar
-- Admin dashboard: users, transactions, payments, withdrawals, security events, audit logs
+| | Local | Production |
+| --- | --- | --- |
+| Compose | `docker-compose.yml` + `docker-compose.dev.yml` | `docker-compose.yml` + `docker-compose.prod.yml` |
+| Env file | `.env.docker` | `.env.production` |
+| Project name | `poulix-dev` | `poulix-prod` |
+| Postgres volume | `poulix_dev_postgres` | `poulix-platform_postgres_data` |
+| Public origin | `http://localhost` | `https://poulix.ir` |
+| Public ports | 80 | 80 and 443 |
+| Payments | ZarinPal sandbox | ZarinPal live API |
 
-## Services and ports
+`www.poulix.ir` is not a second origin. Production Nginx redirects it to `https://poulix.ir`.
 
-- Docker / VPS (Nginx): http://localhost (local) and https://poulix.ir (production, port 443). `www.poulix.ir` redirects to `https://poulix.ir`.
-- Host Node.js frontend: http://localhost:3000 (not published in Compose)
-- Host Node.js backend: http://localhost:3001 (not published in Compose)
-- PostgreSQL: localhost:5432 (bound to 127.0.0.1 in Compose, not the public interface)
+Do not start the shared Compose file alone. Do not use `.env.docker` on the VPS or `.env.production` on a developer machine.
 
-## Setup with Docker Compose (full stack)
+## Requirements
 
-Use this when PostgreSQL, backend, frontend, and Nginx should all run in containers.
+- Docker and Docker Compose v2
 
-1. Copy the Compose env file and set real values (password, JWT secret, matching `DATABASE_URL`):
+## Environment files
+
+| File | Purpose |
+| --- | --- |
+| `.env.docker.example` → `.env.docker` | Local Docker. Origin `http://localhost`. Sandbox ZarinPal. |
+| `.env.production.example` → `.env.production` | Production Docker on the VPS. Origin `https://poulix.ir`. Live ZarinPal. |
+
+Do not commit filled env files. `POSTGRES_PASSWORD` must match the password inside `DATABASE_URL`. `DATABASE_URL` must use hostname `postgres` (the Compose service), never `localhost`.
+
+## Local commands
 
 ```bash
 cp .env.docker.example .env.docker
 ```
 
-2. In `.env.docker`, keep these Compose values:
-
-- Database host: `postgres` (service name)
-- Public UI origin: `FRONTEND_URL=http://localhost`
-- ZarinPal callback (browser, through Nginx): `http://localhost/deposit/callback`
-- Production domain `poulix.ir` (behind Cloudflare): set `FRONTEND_URL` and `ZARINPAL_CALLBACK_URL` to `https://poulix.ir`. Put `origin.crt`, `origin.key`, and `client.crt` in `/etc/nginx/certs`. Set Cloudflare SSL/TLS mode to **Full (strict)** and enable Authenticated Origin Pulls. `www.poulix.ir` redirects to `https://poulix.ir`.
-
-3. Start the stack:
+Set local secrets. Keep `FRONTEND_URL=http://localhost`, `ZARINPAL_CALLBACK_URL=http://localhost/deposit/callback`, and `ZARINPAL_BASE_URL=https://sandbox.zarinpal.com`.
 
 ```bash
-docker compose --env-file .env.docker up --build
+# start
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker up --build
+
+# stop
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker down
+
+# rebuild
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker up --build
+
+# restart (no rebuild)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker up -d
+
+# logs
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker logs -f
+
+# status
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker ps
 ```
 
-4. Open http://localhost (Nginx). Frontend `:3000` and backend `:3001` are not published on the host; Nginx reaches them on the Docker network.
+Open http://localhost
 
-### Admin login (Docker)
+Local Nginx serves HTTP only. Production certificate files are not used.
 
-`.env.docker` bootstraps an admin on backend startup:
+## Production commands
 
-- Email / username: `admin@poulix.local` / `admin`
-- Password: `Admin_Password_12345678`
-
-Change these values before any shared or production use. After changing them, recreate the backend container so bootstrap runs (`docker compose --env-file .env.docker up -d --build backend`). Set `ADMIN_RESET_PASSWORD=true` only if you need the env password written onto an existing admin.
-
-How to use admin:
-
-1. Open http://localhost/login
-2. Sign in with the admin email (or username) and password
-3. You are sent to `/admin`
-4. From the admin sidebar you can:
-   - **Dashboard** — live user, wallet, payment, and security totals
-   - **Users** — search, filter, open a user, then disable / lock / unlock (confirmation required)
-   - **Transactions** — filter by type, user, date; open a transaction for related transfer/goal/envelope data
-   - **Payments** — ZarinPal deposits (status, amount, ref, user; no provider secrets)
-   - **Withdrawals** — withdrawal transactions
-   - **Security** — failed logins, limits, suspicious events
-   - **Audit logs** — every sensitive admin action
-5. Normal wallet features stay at http://localhost (Profile also has **Open admin dashboard**)
-
-A normal user who opens `/admin` is redirected home. Admin APIs return `403` for non-admins and `401` when signed out. Roles cannot be changed from the UI or public API.
-
-Stop with `Ctrl+C`, or run `docker compose --env-file .env.docker down`. Postgres data is stored in the `postgres_data` volume.
-
-Run backend tests in Docker:
+On the VPS:
 
 ```bash
-docker compose --env-file .env.docker --profile test run --rm --build backend-test
+cp .env.production.example .env.production
 ```
 
-## Setup with Docker Postgres and host Node.js
+Set unique production secrets. Keep `FRONTEND_URL=https://poulix.ir`, `ZARINPAL_CALLBACK_URL=https://poulix.ir/deposit/callback`, and `ZARINPAL_BASE_URL=https://api.zarinpal.com`.
 
-Use this when only the database runs in Docker, and backend/frontend run on the host with Node.js. Nginx is not used in this mode; Next.js rewrites `/api` to `http://localhost:3001`.
-
-1. Start PostgreSQL:
+Host certificates stay at `/etc/nginx/certs` (`origin.crt`, `origin.key`, and the existing origin-pull client certificate). Do not change those paths.
 
 ```bash
-cp .env.docker.example .env.docker
-docker compose --env-file .env.docker up postgres
+# start / rebuild
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production up -d --build
+
+# restart (no rebuild)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production up -d
+
+# logs
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production logs -f
+
+# status
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production ps
+
+# stop (does not delete the Postgres volume)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production down
 ```
 
-2. Backend env (use `localhost`, not `postgres`). Credentials must match `.env.docker`:
+Rebuild after backend, frontend, Dockerfile, or Compose build-arg changes. Recreate containers (`up -d`) after runtime env changes. Bind-mounted Nginx conf can be reloaded with `docker compose ... exec nginx nginx -s reload`.
+
+## Tests
+
+Run tests through Docker. Unit and integration tests live in the existing backend and frontend test suites.
 
 ```bash
-cp backend/.env.example backend/.env
+# backend (unit + integration)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker --profile test run --rm --build backend-test
+
+# frontend
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker --profile test run --rm --build frontend-test
 ```
 
-Example:
+There is no separate e2e suite.
 
-```text
-DATABASE_URL="postgresql://poulix:YOUR_PASSWORD@localhost:5432/poulix_db?schema=public"
-```
+Do not run the test profile with the production Compose files.
 
-3. Install and start the backend:
+## Database
+
+Both environments use the same Prisma schema and migrations. Only `DATABASE_URL` / credentials / volume differ. The backend container runs `npx prisma migrate deploy` on start.
 
 ```bash
-cd backend
-npm install
-npx prisma generate
-npx prisma migrate deploy
-npm run start:dev
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker exec backend npx prisma migrate status
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker exec backend npx prisma migrate deploy
 ```
 
-4. Optional frontend env (defaults to `http://localhost:3001`):
+Do not run destructive Prisma commands against production.
+
+## Logging
+
+### Request logs
+
+Request logs are **not stored in the database**. They are JSON lines on the backend container stdout. Inspect them with Docker logs.
 
 ```bash
-cp frontend/.env.example frontend/.env.local
+# local
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker logs -f backend
+
+# production
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production logs -f backend
 ```
 
-5. Install and start the frontend:
+Look for `"msg":"request completed"` (method, path, status, request id). Bodies, cookies, tokens, and payment secrets are not logged.
+
+### Audit logs
+
+There are two audit stores:
+
+| Store | What it records | How to view it |
+| --- | --- | --- |
+| `AdminAuditLog` | Admin actions (admin login, disable/lock user) | Admin UI: http://localhost/admin/audit (admin account required). Production: https://poulix.ir/admin/audit |
+| `AuditLog` | App events (login, register, deposits, transfers, withdrawals) | Postgres only; no app page |
+
+Confirm Postgres user and database names from the running container, then query `AuditLog`:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker exec postgres env | grep -E 'POSTGRES_(USER|DB|DATABASE)'
+
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker exec postgres \
+  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT \"createdAt\", event, action, result, \"userId\", \"requestId\" FROM \"AuditLog\" ORDER BY \"createdAt\" DESC LIMIT 20;"'
 ```
 
-6. Open http://localhost:3000
-
-If `ADMIN_EMAIL`, `ADMIN_USERNAME`, and `ADMIN_PASSWORD` are set in `backend/.env`, the backend creates or promotes that admin on startup. Sign in at `/login`, then use `/admin` as described above.
-
-Host backend tests:
+Production (on the VPS):
 
 ```bash
-cd backend
-npm test
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production exec postgres env | grep -E 'POSTGRES_(USER|DB|DATABASE)'
+
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production exec postgres \
+  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT \"createdAt\", event, action, result, \"userId\", \"requestId\" FROM \"AuditLog\" ORDER BY \"createdAt\" DESC LIMIT 20;"'
 ```
 
-`DATABASE_URL` and `JWT_SECRET` must be set in `backend/.env`.
+The example env files use `POSTGRES_USER=poulix` and `POSTGRES_DB=poulix_db`. Use the values from the `env | grep` output if you changed them.
 
-## Project layout
+## Important URLs
 
-```text
-backend/     NestJS API, Prisma, ZarinPal integration, tests
-frontend/    Next.js wallet UI
-nginx/       Reverse proxy (poulix.ir, HTTP + HTTPS) for Docker / VPS
-nginx/certs/ Placeholder only; production certs are on the host at /etc/nginx/certs
-docker-compose.yml
-.env.docker.example
+| | Local | Production |
+| --- | --- | --- |
+| Application | http://localhost | https://poulix.ir |
+| API | http://localhost/api | https://poulix.ir/api |
+| ZarinPal callback | http://localhost/deposit/callback | https://poulix.ir/deposit/callback |
+
+## Troubleshooting
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker ps
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker logs --tail=100 backend frontend nginx postgres
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker up -d --build --force-recreate
+curl -sS -o /dev/null -w "%{http_code}\n" http://localhost/
+curl -sS -o /dev/null -w "%{http_code}\n" http://localhost/api/auth/login
 ```
 
-## Notes
-
-- Do not commit `.env`, `.env.docker`, or other secret files.
-- ZarinPal sandbox is for development and testing only.
-- Replace `ZARINPAL_MERCHANT_ID` and related values before any real payment usage.
-
-Production public hostnames are `poulix.ir` (canonical) and `www.poulix.ir` (redirects to `https://poulix.ir`). Cloudflare terminates the browser TLS session and connects to origin Nginx on port 443 using `origin.crt` / `origin.key`, presenting `client.crt` which Nginx verifies. Compose publishes only ports 80 and 443. Frontend (3000), backend (3001), and Postgres stay on the Docker network (Postgres is also bound to `127.0.0.1:5432` for host Node.js local mode).
+If ZarinPal sandbox calls fail with DNS errors, the backend service already uses `8.8.8.8` and `1.1.1.1`. Confirm `ZARINPAL_BASE_URL` is the sandbox URL locally and `https://api.zarinpal.com` in production.

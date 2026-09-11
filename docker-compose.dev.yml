@@ -1,0 +1,45 @@
+# Local Docker environment (http://localhost through Nginx).
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker up --build
+#
+# Isolated from production: project name poulix-dev and volume poulix_dev_postgres.
+# PostgreSQL, backend, and frontend are not published on the host.
+
+name: poulix-dev
+
+volumes:
+  postgres_data:
+    name: poulix_dev_postgres
+
+services:
+  postgres:
+    env_file:
+      - .env.docker
+
+  backend:
+    env_file:
+      - .env.docker
+    environment:
+      APP_ENV: development
+
+  frontend:
+    env_file:
+      - .env.docker
+    environment:
+      APP_ENV: development
+
+  nginx:
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/proxy_locations.conf:/etc/nginx/proxy_locations.conf:ro
+    # Local HTTP does not use TLS. Production cert entrypoint stays unchanged.
+    entrypoint: ["nginx"]
+    command: ["-g", "daemon off;"]
+
+  backend-test:
+    env_file:
+      - .env.docker
+    environment:
+      NODE_ENV: test
+      APP_ENV: test

@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim AS build
+FROM node:22-bookworm-slim AS deps
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -6,7 +6,13 @@ RUN npm ci
 
 COPY . .
 
-ARG BACKEND_URL=http://localhost:3001
+FROM deps AS test
+ENV NODE_ENV=test
+ENV NEXT_TELEMETRY_DISABLED=1
+CMD ["npm", "test"]
+
+FROM deps AS build
+ARG BACKEND_URL=http://backend:3001
 ENV BACKEND_URL=$BACKEND_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 

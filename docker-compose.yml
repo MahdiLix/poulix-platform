@@ -1,29 +1,25 @@
-# Dual-mode local setup:
-# 1) Full stack (Nginx on ports 80 and 443):
-#      cp .env.docker.example .env.docker
-#      docker compose --env-file .env.docker up --build
+# Shared Compose services. Do not start this file alone.
+# Local:      docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker up --build
+# Production: docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production up -d --build
 #
-# 2) Host Node.js + Docker Postgres only (no Nginx):
-#      docker compose --env-file .env.docker up postgres
-#      then use backend/.env and frontend/.env.local with localhost URLs
-#
-# Production / VPS (poulix.ir behind Cloudflare):
-#   Same Compose file. Set FRONTEND_URL and ZARINPAL_CALLBACK_URL to
-#   https://poulix.ir. Host certificates live in /etc/nginx/certs:
-#   origin.crt, origin.key, client.crt. Canonical host is poulix.ir;
-#   www.poulix.ir redirects. Only Nginx publishes host ports (80 and 443).
-#   Frontend and backend stay on the Docker network. Postgres is bound
-#   to 127.0.0.1:5432 for host Node.js local mode (not public).
+# Frontend (3000), backend (3001), and PostgreSQL stay on the Compose network.
+# Nginx is the only public entry point (ports are published in the env overlay).
+
+networks:
+  poulix:
+    driver: bridge
+
+volumes:
+  postgres_data:
 
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
-    env_file:
-      - .env.docker
-    # Host Node.js local mode only. Not published on the public interface.
-    ports:
-      - "127.0.0.1:5432:5432"
+    networks:
+      - poulix
+    expose:
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -36,23 +32,15 @@ services:
     build:
       context: ./backend
     restart: unless-stopped
-    env_file:
-      - .env.docker
+    networks:
+      - poulix
+    # Public DNS is required when the host resolver is not inherited
+    # (VPN/tether), which otherwise makes sandbox.zarinpal.com fail with EAI_AGAIN.
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     expose:
       - "3001"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  backend-test:
-    profiles: ["test"]
-    build:
-      context: ./backend
-      target: test
-    env_file:
-      - .env.docker
-    environment:
-      NODE_ENV: test
     depends_on:
       postgres:
         condition: service_healthy
@@ -63,8 +51,8 @@ services:
       args:
         BACKEND_URL: ${BACKEND_URL:-http://backend:3001}
     restart: unless-stopped
-    env_file:
-      - .env.docker
+    networks:
+      - poulix
     expose:
       - "3000"
     depends_on:
@@ -74,17 +62,30 @@ services:
     build:
       context: ./nginx
     restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/proxy_locations.conf:/etc/nginx/proxy_locations.conf:ro
-      - ./nginx/ssl_params.conf:/etc/nginx/ssl_params.conf:ro
-      - /etc/nginx/certs:/etc/nginx/certs:ro
+    networks:
+      - poulix
     depends_on:
       - frontend
       - backend
 
-volumes:
-  postgres_data:
+  backend-test:
+    profiles: ["test"]
+    build:
+      context: ./backend
+      target: test
+    networks:
+      - poulix
+    environment:
+      NODE_ENV: test
+      APP_ENV: test
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend-test:
+    profiles: ["test"]
+    build:
+      context: ./frontend
+      target: test
+    networks:
+      - poulix

@@ -1,0 +1,43 @@
+# Production Docker environment on the VPS (https://poulix.ir through Nginx).
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production up -d --build
+#
+# Isolated from local Docker: project name poulix-prod.
+# Volume name keeps the existing VPS Postgres data.
+# PostgreSQL, backend, and frontend stay on the Compose network.
+# Nginx publishes 80 and 443 only. Certificate files and ssl_params.conf are
+# unchanged from the existing production origin setup.
+
+name: poulix-prod
+
+volumes:
+  postgres_data:
+    name: poulix-platform_postgres_data
+
+services:
+  postgres:
+    env_file:
+      - .env.production
+
+  backend:
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      APP_ENV: production
+
+  frontend:
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      APP_ENV: production
+
+  nginx:
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/proxy_locations.conf:/etc/nginx/proxy_locations.conf:ro
+      - ./nginx/ssl_params.conf:/etc/nginx/ssl_params.conf:ro
+      - /etc/nginx/certs:/etc/nginx/certs:ro

@@ -1,8 +1,8 @@
 # never commit
 .env
 .env.*
-!.env.example
 !.env.docker.example
+!.env.production.example
 
 # OS / editor
 .DS_Store

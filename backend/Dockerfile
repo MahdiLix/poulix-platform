@@ -10,7 +10,7 @@ RUN npm ci
 
 COPY . .
 
-# Placeholder only — real DATABASE_URL comes from Compose/.env.docker at runtime.
+# Placeholder only — real DATABASE_URL comes from Compose env at runtime.
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build?schema=public"
 RUN npx prisma generate
 

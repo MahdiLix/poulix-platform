@@ -5,7 +5,6 @@ coverage
 *.log
 .env
 .env.*
-!.env.example
 .git
 .gitignore
 Dockerfile

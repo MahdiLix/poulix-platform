@@ -28,6 +28,7 @@ export class ZarinpalService {
     description: string;
     callbackOrderId: string;
     email?: string;
+    callbackUrl?: string;
   }): Promise<{ authority: string; paymentUrl: string }> {
     const config = this.getConfig();
     const payload = {
@@ -35,7 +36,7 @@ export class ZarinpalService {
       amount: params.amount,
       currency: 'IRR',
       description: params.description,
-      callback_url: config.callbackUrl,
+      callback_url: params.callbackUrl ?? config.callbackUrl,
       metadata: {
         email: params.email,
         order_id: params.callbackOrderId,
@@ -112,10 +113,11 @@ export class ZarinpalService {
     payload: Record<string, unknown>,
   ): Promise<ZarinpalResponse> {
     const config = this.getConfig();
+    const url = `${config.baseUrl}${path}`;
     let response: Response;
 
     try {
-      response = await fetch(`${config.baseUrl}${path}`, {
+      response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

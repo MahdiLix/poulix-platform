@@ -7,9 +7,9 @@ describe('ZarinpalService', () => {
 
   beforeEach(() => {
     process.env.ZARINPAL_MERCHANT_ID = '11111111-1111-1111-1111-111111111111';
-    process.env.ZARINPAL_CALLBACK_URL =
-      'http://localhost:3000/deposit/callback';
+    process.env.ZARINPAL_CALLBACK_URL = 'http://localhost/deposit/callback';
     process.env.ZARINPAL_BASE_URL = 'https://sandbox.zarinpal.com';
+    delete process.env.FRONTEND_URL;
   });
 
   afterEach(() => {
@@ -55,7 +55,7 @@ describe('ZarinpalService', () => {
           amount: 1_000_000,
           currency: 'IRR',
           description: 'Wallet deposit payment-1',
-          callback_url: 'http://localhost:3000/deposit/callback',
+          callback_url: 'http://localhost/deposit/callback',
           metadata: {
             email: 'user@example.com',
             order_id: 'payment-1',

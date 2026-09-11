@@ -1,6 +1,3 @@
-import { createWriteStream, mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
-import type { WriteStream } from 'node:fs';
 import build from 'pino-abstract-transport';
 
 const RESET = '\x1b[0m';
@@ -22,9 +19,14 @@ type HttpLogObject = {
   context?: string;
   msg?: string;
   responseTime?: number;
+  requestId?: string;
   userId?: string;
   ip?: string;
-  req?: { method?: string; url?: string; ip?: string };
+  method?: string;
+  path?: string;
+  statusCode?: number;
+  err?: { type?: string; message?: string };
+  req?: { id?: string; method?: string; url?: string };
   res?: { statusCode?: number };
 };
 
@@ -54,14 +56,17 @@ function formatLine(obj: HttpLogObject, colorize: boolean): string | null {
     return null;
   }
 
-  const statusCode = obj.res?.statusCode;
+  const statusCode = obj.statusCode ?? obj.res?.statusCode;
   const color = colorize ? colorFor(obj.level ?? 30, statusCode) : '';
   const dim = colorize ? DIM : '';
   const reset = colorize ? RESET : '';
   const parts = [`${dim}${formatTime(obj.time)}${reset}`];
+  const method = obj.method ?? obj.req?.method;
+  const path = obj.path ?? obj.req?.url;
+  const requestId = obj.requestId ?? obj.req?.id;
 
-  if (obj.req?.method && obj.req.url) {
-    parts.push(`${obj.req.method} ${obj.req.url}`);
+  if (method && path) {
+    parts.push(method, path);
 
     if (statusCode !== undefined) {
       parts.push(String(statusCode));
@@ -71,13 +76,20 @@ function formatLine(obj: HttpLogObject, colorize: boolean): string | null {
       parts.push(`${obj.responseTime}ms`);
     }
 
-    const ip = obj.req.ip ?? obj.ip;
-    if (ip) {
-      parts.push(ip);
+    if (obj.ip) {
+      parts.push(obj.ip);
     }
 
     if (obj.userId) {
       parts.push(`user=${obj.userId}`);
+    }
+
+    if (requestId) {
+      parts.push(`req=${requestId}`);
+    }
+
+    if (obj.err?.message) {
+      parts.push(`error=${obj.err.message}`);
     }
   } else if (obj.msg) {
     parts.push(obj.msg);
@@ -88,25 +100,13 @@ function formatLine(obj: HttpLogObject, colorize: boolean): string | null {
   return `${color}${parts.join(' ')}${reset}`;
 }
 
-export default function pinoConsoleTransport(options?: { file?: string }) {
-  const file = options?.file;
-  let stream: WriteStream | undefined;
-
-  if (file) {
-    mkdirSync(dirname(file), { recursive: true });
-    stream = createWriteStream(file, { flags: 'a' });
-  }
-
+export default function pinoConsoleTransport() {
   return build((source) => {
     source.on('data', (obj: HttpLogObject) => {
-      const line = formatLine(obj, !file);
+      const line = formatLine(obj, true);
 
       if (line) {
-        if (stream) {
-          stream.write(`${line}\n`);
-        } else {
-          process.stdout.write(`${line}\n`);
-        }
+        process.stdout.write(`${line}\n`);
       }
     });
   });

@@ -11,6 +11,7 @@ import {
 import { FakeZarinpalService } from '../helpers/zarinpal';
 import type { DatabaseService } from '../../src/database/database.service';
 import { ZarinpalService } from '../../src/payments/zarinpal.service';
+import { getBrowserDepositCallbackUrl } from '../../src/payments/zarinpal.config';
 
 const DEPOSIT_AMOUNT = 1_000_000;
 
@@ -209,6 +210,7 @@ describe('Deposit API (callback and verification)', () => {
       description: `Wallet deposit ${created.paymentId}`,
       callbackOrderId: created.paymentId,
       email: session.email,
+      callbackUrl: getBrowserDepositCallbackUrl(),
     });
   });
 

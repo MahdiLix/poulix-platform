@@ -135,6 +135,7 @@ export async function cleanupUser(db: DatabaseService, userId?: string) {
   await db.securityEvent.deleteMany({ where: { userId } });
   await db.userSession.deleteMany({ where: { userId } });
   await db.adminAuditLog.deleteMany({ where: { adminUserId: userId } });
+  await db.auditLog.deleteMany({ where: { userId } });
 
   await db.user.deleteMany({ where: { id: userId } });
 }

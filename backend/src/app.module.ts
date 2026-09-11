@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { LoggerModule } from 'nestjs-pino';
 import { DatabaseModule } from './database/database.module';
+import { RequestLoggingModule } from './request-logging/request-logging.module';
+import { AuditLoggingModule } from './audit-logging/audit-logging.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { WalletsModule } from './wallets/wallets.module';
@@ -15,7 +16,6 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { SecurityModule } from './security/security.module';
 import { SpendingLimitsModule } from './spending-limits/spending-limits.module';
 import { AdminModule } from './admin/admin.module';
-import { loggerParams } from './common/logger.config';
 
 @Module({
   imports: [
@@ -32,7 +32,8 @@ import { loggerParams } from './common/logger.config';
             },
       ],
     }),
-    LoggerModule.forRoot(loggerParams),
+    RequestLoggingModule,
+    AuditLoggingModule,
     DatabaseModule,
     AuthModule,
     UsersModule,

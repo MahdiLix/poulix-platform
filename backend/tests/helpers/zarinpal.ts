@@ -13,6 +13,7 @@ export class FakeZarinpalService {
     description: string;
     callbackOrderId: string;
     email?: string;
+    callbackUrl?: string;
   };
 
   async requestPayment(params: {
@@ -20,6 +21,7 @@ export class FakeZarinpalService {
     description: string;
     callbackOrderId: string;
     email?: string;
+    callbackUrl?: string;
   }): Promise<{ authority: string; paymentUrl: string }> {
     this.requestCalls += 1;
     this.lastRequest = { ...params };

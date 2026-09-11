@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
+import { BACKEND_LISTEN_PORT } from './config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -24,7 +25,7 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(3001);
-  logger.log('Application is running on: http://localhost:3001');
+  await app.listen(BACKEND_LISTEN_PORT);
+  logger.log(`Backend listening on port ${BACKEND_LISTEN_PORT}`);
 }
 void bootstrap();

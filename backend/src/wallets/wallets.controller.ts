@@ -13,7 +13,10 @@ import { SkipThrottle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { CurrentUser, JwtAuthGuard, type AuthenticatedUser } from '../common';
 import { PaymentsService } from '../payments/payments.service';
-import { getBrowserDepositCallbackUrl } from '../payments/zarinpal.config';
+import {
+  getBrowserDepositCallbackUrl,
+  publicOriginFromRequest,
+} from '../payments/zarinpal.config';
 import { FinancialDestinationsService } from '../financial-destinations/financial-destinations.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { DepositDto } from './dto/deposit.dto';
@@ -44,8 +47,16 @@ export class WalletsController {
 
   @Post('deposit')
   @UseGuards(JwtAuthGuard)
-  deposit(@CurrentUser() user: AuthenticatedUser, @Body() dto: DepositDto) {
-    return this.paymentsService.createDeposit(user.id, dto.amount);
+  deposit(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: DepositDto,
+    @Req() req: Request,
+  ) {
+    return this.paymentsService.createDeposit(
+      user.id,
+      dto.amount,
+      publicOriginFromRequest(req),
+    );
   }
 
   @Get('deposit/callback')
@@ -69,7 +80,9 @@ export class WalletsController {
     const isBrowserNavigation =
       accept.includes('text/html') && !accept.includes('application/json');
     if (isBrowserNavigation) {
-      const target = new URL(getBrowserDepositCallbackUrl());
+      const target = new URL(
+        getBrowserDepositCallbackUrl(publicOriginFromRequest(req)),
+      );
       if (resolvedAuthority) {
         target.searchParams.set('Authority', resolvedAuthority);
       }

@@ -34,7 +34,7 @@ export function getTokenMaxAgeSeconds(
 
 export function isTokenExpired(token: string, now = Date.now()): boolean {
   const expiryMs = getTokenExpiryMs(token);
-  if (expiryMs == null) return false;
+  if (expiryMs == null) return true;
   return expiryMs <= now;
 }
 

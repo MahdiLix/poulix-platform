@@ -19,7 +19,7 @@ import { claimHomepageOffer } from "@/features/offers/lib/offers";
 
 function DepositCallbackContent() {
   const searchParams = useSearchParams();
-  const { t } = useLanguage();
+  const { t, isLanguageReady } = useLanguage();
   const { user } = useUser();
   const { pushToast } = useToast();
   const authority =
@@ -30,8 +30,10 @@ function DepositCallbackContent() {
   const [result, setResult] = useState<
     "pending" | "paid" | "cancelled" | "failed"
   >("pending");
+  const [alreadyVerified, setAlreadyVerified] = useState(false);
   const [message, setMessage] = useState<string>(t.deposit.confirmingPayment);
   const toastedRef = useRef(false);
+  const requestedKeyRef = useRef<string | null>(null);
 
   function notify(toast: {
     title: string;
@@ -45,13 +47,23 @@ function DepositCallbackContent() {
 
   useEffect(() => {
     let cancelled = false;
+    const requestKey = `${authority}:${gatewayStatus}`;
 
     async function completePayment() {
+      if (!isLanguageReady) {
+        return;
+      }
+
       if (!authority) {
         setResult("failed");
         setMessage(t.messages.missingAuthority);
         return;
       }
+
+      if (requestedKeyRef.current === requestKey) {
+        return;
+      }
+      requestedKeyRef.current = requestKey;
 
       try {
         const response = await api.completeDepositCallback(
@@ -62,11 +74,7 @@ function DepositCallbackContent() {
 
         if (response.status === "PAID") {
           setResult("paid");
-          setMessage(
-            response.alreadyVerified
-              ? t.messages.paymentAlreadyVerified
-              : t.messages.paymentVerified,
-          );
+          setAlreadyVerified(Boolean(response.alreadyVerified));
           notify({
             title: t.deposit.depositSuccessful,
             description: t.messages.success.depositSuccess,
@@ -123,7 +131,10 @@ function DepositCallbackContent() {
     return () => {
       cancelled = true;
     };
-  }, [authority, gatewayStatus, pushToast, refresh, t]);
+    // Wait until the language cookie is applied so success copy is not mixed
+    // EN/FA. Do not depend on `t` or the verify would run twice.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authority, gatewayStatus, isLanguageReady]);
 
   useEffect(() => {
     if (result === "paid") {
@@ -138,7 +149,9 @@ function DepositCallbackContent() {
       <div className="flex flex-1 flex-col justify-between space-y-6 p-6 lg:mx-auto lg:w-full lg:max-w-md">
         <Card className="mt-2 space-y-6 p-6 text-center shadow-2xl">
           {result === "pending" && (
-            <p className="text-xs font-semibold text-muted">{message}</p>
+            <p className="text-xs font-semibold text-muted">
+              {t.deposit.confirmingPayment}
+            </p>
           )}
 
           {result === "paid" && (
@@ -151,7 +164,9 @@ function DepositCallbackContent() {
                   {t.deposit.depositSuccessful}
                 </h2>
                 <p className="mx-auto mt-1 max-w-[240px] text-xs font-medium text-muted">
-                  {message}
+                  {alreadyVerified
+                    ? t.messages.paymentAlreadyVerified
+                    : t.messages.paymentVerified}
                 </p>
               </div>
               <WalletBalance

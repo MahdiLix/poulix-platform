@@ -104,6 +104,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
       clearExpiryTimer();
       setUser(null);
       setStatus("unauthenticated");
+      if (
+        typeof window !== "undefined" &&
+        !isPublicAuthPath(window.location.pathname)
+      ) {
+        redirectToLogin();
+      }
       return;
     }
 
@@ -117,6 +123,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
       if (!getStoredToken()) {
         setUser(null);
         setStatus("unauthenticated");
+        if (
+          typeof window !== "undefined" &&
+          !isPublicAuthPath(window.location.pathname)
+        ) {
+          redirectToLogin();
+        }
         return;
       }
       setUser(null);

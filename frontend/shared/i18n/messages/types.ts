@@ -514,6 +514,14 @@ export type TranslationDictionary = {
       SECURITY_WARNING: { title: string; message: string };
       SPENDING_LIMIT_WARNING: { title: string; message: string };
     };
+    details: {
+      NEW_DEVICE_LOGIN: { title: string; message: string };
+      FAILED_LOGIN: { title: string; message: string };
+      SUSPICIOUS_ACTIVITY: { title: string; message: string };
+      ACCOUNT_DISABLED: { title: string; message: string };
+      ACCOUNT_LOCKED: { title: string; message: string };
+      ACCOUNT_ACTIVE: { title: string; message: string };
+    };
   };
   destinations: {
     title: string;

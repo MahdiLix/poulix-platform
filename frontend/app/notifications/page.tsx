@@ -11,6 +11,7 @@ import {
   Send,
   Shield,
   Target,
+  User,
   Wallet,
 } from "lucide-react";
 import { AppShell } from "@/shared/layout/AppShell";
@@ -26,11 +27,11 @@ import { cn } from "@/shared/cn";
 import {
   notificationCategoryClass,
   notificationContent,
+  notificationDisplayCategory,
 } from "@/features/notifications/lib/notificationContent";
 import type {
   Notification,
   NotificationCategory,
-  NotificationType,
 } from "@/features/notifications/lib/notifications";
 
 type PageStatus = "loading" | "ready" | "unauthenticated" | "error";
@@ -39,8 +40,12 @@ type Filter = "ALL" | NotificationCategory;
 const FILTERS: Filter[] = ["ALL", "SUCCESS", "WARNING", "ERROR", "INFO"];
 const PAGE_SIZE = 10;
 
-function notificationIcon(type: NotificationType) {
-  switch (type) {
+function notificationIcon(notification: Notification) {
+  if (notification.metadata?.reason === "NEW_DEVICE_LOGIN") {
+    return User;
+  }
+
+  switch (notification.type) {
     case "DEPOSIT_SUCCESS":
       return ArrowDownLeft;
     case "WITHDRAWAL_SUCCESS":
@@ -57,6 +62,8 @@ function notificationIcon(type: NotificationType) {
       return Target;
     case "GOAL_COMPLETED":
       return PiggyBank;
+    case "ACCOUNT_EVENT":
+      return User;
     case "SECURITY_WARNING":
       return Shield;
     case "SPENDING_LIMIT_WARNING":
@@ -270,7 +277,8 @@ export default function NotificationsPage() {
               <div className="divide-y divide-border">
                 {filtered.map((notification) => {
                   const content = notificationContent(notification, t);
-                  const Icon = notificationIcon(notification.type);
+                  const category = notificationDisplayCategory(notification);
+                  const Icon = notificationIcon(notification);
                   return (
                     <button
                       key={notification.id}
@@ -281,7 +289,7 @@ export default function NotificationsPage() {
                       <div
                         className={cn(
                           "flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]",
-                          iconTileClass(notification.category),
+                          iconTileClass(category),
                         )}
                       >
                         <Icon className="h-4 w-4" />
@@ -296,10 +304,10 @@ export default function NotificationsPage() {
                       </div>
                       <span
                         className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold sm:inline ${notificationCategoryClass(
-                          notification.category,
+                          category,
                         )}`}
                       >
-                        {t.notifications.categories[notification.category]}
+                        {t.notifications.categories[category]}
                       </span>
                       <time className="hidden shrink-0 text-[11px] font-medium text-muted md:block">
                         {formatDisplayDateTime(

@@ -192,7 +192,7 @@ export default function SecurityPage() {
   }
 
   return (
-    <AppShell showBottomNav={false}>
+    <AppShell showBottomNav={false} showTopBar={false}>
       <HeaderBar
         title={t.security.title}
         backHref="/"

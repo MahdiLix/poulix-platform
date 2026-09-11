@@ -171,7 +171,7 @@ export default function RegisterPage() {
                   autoComplete="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="john_doe"
+                  placeholder="sara"
                   error={fieldErrors.username}
                   disabled={loading}
                   leftIcon={<User className="h-4 w-4" />}

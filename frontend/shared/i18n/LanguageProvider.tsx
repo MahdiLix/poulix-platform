@@ -22,6 +22,7 @@ type LanguageContextType = {
   language: Language;
   dir: "ltr" | "rtl";
   isRtl: boolean;
+  isLanguageReady: boolean;
   setLanguage: (lang: Language) => void;
   toggleLanguage: () => void;
   t: TranslationDictionary;
@@ -55,10 +56,11 @@ function writeLanguageCookie(lang: Language) {
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(DEFAULT_LANGUAGE);
+  const [isLanguageReady, setIsLanguageReady] = useState(false);
 
   useEffect(() => {
-    const saved = readLanguageCookie();
-    setLanguageState(saved);
+    setLanguageState(readLanguageCookie());
+    setIsLanguageReady(true);
   }, []);
 
   const setLanguage = useCallback((lang: Language) => {
@@ -91,11 +93,12 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       language,
       dir,
       isRtl: dir === "rtl",
+      isLanguageReady,
       setLanguage,
       toggleLanguage,
       t: translations[language],
     };
-  }, [language, setLanguage, toggleLanguage]);
+  }, [language, isLanguageReady, setLanguage, toggleLanguage]);
 
   return (
     <LanguageContext.Provider value={value}>

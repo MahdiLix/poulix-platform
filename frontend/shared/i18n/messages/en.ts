@@ -77,7 +77,7 @@ export const en: TranslationDictionary = {
     requestMoneyAlert: "Request Money link copied to clipboard!",
     financialWallet: "Digital Wallet",
     preferences: "Preferences",
-    searchPlaceholder: "Search wallet, people, payments...",
+    searchPlaceholder: "Search...",
     quickStats: "Quick Stats",
     recentActivity: "Recent Activity",
     balanceOverview: "Balance Overview",
@@ -442,6 +442,36 @@ export const en: TranslationDictionary = {
       SPENDING_LIMIT_WARNING: {
         title: "Spending Limit Warning",
         message: "You have approached or reached your spending limit.",
+      },
+    },
+    details: {
+      NEW_DEVICE_LOGIN: {
+        title: "Signed in from a new device",
+        message: "A new device was used to sign in to your account.",
+      },
+      FAILED_LOGIN: {
+        title: "Failed sign-in attempt",
+        message:
+          "Someone tried to sign in to your account with incorrect details.",
+      },
+      SUSPICIOUS_ACTIVITY: {
+        title: "Unusual account activity",
+        message:
+          "Multiple failed financial attempts were detected on your account.",
+      },
+      ACCOUNT_DISABLED: {
+        title: "Account disabled",
+        message:
+          "Your account has been disabled. Contact support if you need help.",
+      },
+      ACCOUNT_LOCKED: {
+        title: "Account locked",
+        message:
+          "Your account has been locked. Contact support if you need help.",
+      },
+      ACCOUNT_ACTIVE: {
+        title: "Account restored",
+        message: "Your account is active again.",
       },
     },
   },

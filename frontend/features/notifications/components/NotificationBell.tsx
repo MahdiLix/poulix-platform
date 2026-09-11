@@ -19,6 +19,7 @@ import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import {
   notificationCategoryClass,
   notificationContent,
+  notificationDisplayCategory,
 } from "@/features/notifications/lib/notificationContent";
 import type { Notification } from "@/features/notifications/lib/notifications";
 
@@ -241,6 +242,7 @@ export function NotificationBell({
             ) : (
               notifications.map((item) => {
                 const content = notificationContent(item, t);
+                const category = notificationDisplayCategory(item);
                 return (
                   <div
                     key={item.id}
@@ -252,7 +254,7 @@ export function NotificationBell({
                     }`}
                   >
                     <div className="mt-0.5">
-                      {getCategoryIcon(item.category)}
+                      {getCategoryIcon(category)}
                     </div>
                     <div className="flex-1 min-w-0 space-y-0.5">
                       <div className="flex items-center justify-between gap-1">
@@ -269,10 +271,10 @@ export function NotificationBell({
                       <div className="flex items-center justify-between pt-1">
                         <span
                           className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${notificationCategoryClass(
-                            item.category,
+                            category,
                           )}`}
                         >
-                          {t.notifications.categories[item.category]}
+                          {t.notifications.categories[category]}
                         </span>
                         <span className="text-[10px] text-muted font-mono">
                           {formatDisplayDateTime(item.createdAt, language)}

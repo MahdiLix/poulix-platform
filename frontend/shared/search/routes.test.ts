@@ -17,6 +17,13 @@ describe("resolveSearchRoutes", () => {
         role: "USER",
       })[0]?.href,
     ).toBe("/goals");
+    expect(
+      resolveSearchRoutes({
+        query: "sa",
+        language: "en",
+        role: "USER",
+      }).map((item) => item.href),
+    ).toEqual(expect.arrayContaining(["/destinations", "/goals"]));
   });
 
   it("keeps admin routes role and scope aware", () => {

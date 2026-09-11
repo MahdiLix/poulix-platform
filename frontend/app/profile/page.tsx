@@ -122,7 +122,7 @@ export default function ProfilePage() {
   ];
 
   return (
-    <AppShell>
+    <AppShell showTopBar={false}>
       <HeaderBar title={t.profile.profileTitle} backHref="/" />
 
       <div className="mx-auto max-w-4xl flex-1 space-y-6 p-4 sm:p-6 lg:p-8">

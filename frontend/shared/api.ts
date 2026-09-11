@@ -56,6 +56,7 @@ import {
   notifySessionExpired,
 } from "@/shared/user/session";
 import { parseAmount } from "@/features/wallet/lib/wallet";
+import { API_BASE_URL } from "@/shared/config";
 
 export type AuthUser = {
   id: string;
@@ -116,9 +117,6 @@ export type DepositCallbackResponse = {
   balance?: string | number;
   currency?: string;
 };
-
-/** Same-origin by default. Local Next rewrites /api to Nest; Docker/VPS Nginx does. */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 const ACCESS_TOKEN_COOKIE = "poulix_access_token";
 const LEGACY_TOKEN_STORAGE_KEY = "poulix_access_token";

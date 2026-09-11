@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ArrowUpRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
@@ -28,6 +29,11 @@ export function GlobalSearch({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [menuBox, setMenuBox] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
   const role: SearchRole = user?.role === "ADMIN" ? "ADMIN" : "USER";
   const results = useMemo(
     () =>
@@ -39,6 +45,7 @@ export function GlobalSearch({
       }),
     [language, query, role, scope],
   );
+  const showResults = open && Boolean(query.trim()) && results.length > 0;
 
   useEffect(() => {
     function focusSearch(event: KeyboardEvent) {
@@ -65,6 +72,32 @@ export function GlobalSearch({
     return () => window.removeEventListener("keydown", focusSearch);
   }, []);
 
+  useLayoutEffect(() => {
+    if (!showResults) {
+      setMenuBox(null);
+      return;
+    }
+
+    function updateBox() {
+      const node = inputRef.current;
+      if (!node) return;
+      const rect = node.getBoundingClientRect();
+      setMenuBox({
+        top: rect.bottom + 8,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+
+    updateBox();
+    window.addEventListener("resize", updateBox);
+    window.addEventListener("scroll", updateBox, true);
+    return () => {
+      window.removeEventListener("resize", updateBox);
+      window.removeEventListener("scroll", updateBox, true);
+    };
+  }, [showResults, query, language]);
+
   function navigate(index = activeIndex) {
     const result = results[index] ?? results[0];
     if (!result) return;
@@ -84,7 +117,7 @@ export function GlobalSearch({
         }
         shortcut="⌘K"
         role="combobox"
-        aria-expanded={open && results.length > 0}
+        aria-expanded={showResults}
         aria-controls="global-search-results"
         aria-autocomplete="list"
         onFocus={() => setOpen(true)}
@@ -112,35 +145,44 @@ export function GlobalSearch({
         }}
       />
 
-      {open && query.trim() && results.length > 0 ? (
-        <div
-          id="global-search-results"
-          role="listbox"
-          className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-50 overflow-hidden rounded-xl border border-border bg-surface p-1.5 shadow-xl"
-        >
-          {results.map((result, index) => (
-            <button
-              key={result.href}
-              type="button"
-              role="option"
-              aria-selected={index === activeIndex}
+      {showResults && menuBox
+        ? createPortal(
+            <div
+              id="global-search-results"
+              role="listbox"
               onMouseDown={(event) => event.preventDefault()}
-              onClick={() => navigate(index)}
-              onMouseEnter={() => setActiveIndex(index)}
-              className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-start text-sm transition ${
-                index === activeIndex
-                  ? "bg-primary-soft text-primary"
-                  : "text-foreground hover:bg-surface-muted"
-              }`}
+              className="fixed z-[80] overflow-hidden rounded-xl border border-border bg-surface p-1.5 shadow-xl"
+              style={{
+                top: menuBox.top,
+                left: menuBox.left,
+                width: menuBox.width,
+              }}
             >
-              <span className="min-w-0 flex-1 truncate font-medium">
-                {result.label[language]}
-              </span>
-              <ArrowUpRight className="h-3.5 w-3.5 shrink-0 rtl:-rotate-90" />
-            </button>
-          ))}
-        </div>
-      ) : null}
+              {results.map((result, index) => (
+                <button
+                  key={result.href}
+                  type="button"
+                  role="option"
+                  aria-selected={index === activeIndex}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => navigate(index)}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-start text-sm transition ${
+                    index === activeIndex
+                      ? "bg-primary-soft text-primary"
+                      : "text-foreground hover:bg-surface-muted"
+                  }`}
+                >
+                  <span className="min-w-0 flex-1 truncate font-medium">
+                    {result.label[language]}
+                  </span>
+                  <ArrowUpRight className="h-3.5 w-3.5 shrink-0 rtl:-rotate-90" />
+                </button>
+              ))}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

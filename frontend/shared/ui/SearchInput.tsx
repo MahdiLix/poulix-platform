@@ -20,13 +20,14 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     ref,
   ) {
     return (
+      
       <div className={cn("relative", className)}>
         <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
         <input
           ref={ref}
           type="search"
           placeholder={placeholder}
-          className="h-10 w-full rounded-[10px] border border-border bg-surface py-2.5 ps-10 pe-16 text-sm text-foreground transition placeholder:text-muted hover:border-primary/30 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+          className="h-10 w-full rounded-[10px] border border-border bg-surface py-2.5 ps-10 text-sm text-foreground transition placeholder:text-muted hover:border-primary/30 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
           {...props}
         />
         {shortcut ? (

@@ -37,7 +37,7 @@ export function TopBar({
       }
       center={
         showSearch ? (
-          <div className="mx-auto hidden max-w-xl lg:block">
+          <div className="mx-auto w-full max-w-xl">
             <GlobalSearch scope="app" />
           </div>
         ) : null

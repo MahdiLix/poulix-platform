@@ -26,6 +26,14 @@ export const metadata: Metadata = {
   description:
     "Poulix is a personal digital wallet for deposits, transfers, goals, envelopes, and more.",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/poulix-logo.png", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/poulix-logo.png",
+  },
 };
 
 export const viewport: Viewport = {

@@ -136,12 +136,6 @@ export default function LoginPage() {
                 <p className="text-sm text-muted">{t.auth.loginSub}</p>
               </div>
 
-              {error ? (
-                <div className="rounded-xl bg-danger-soft p-3 text-xs font-medium text-danger">
-                  {error}
-                </div>
-              ) : null}
-
               <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 <TextField
                   label={t.auth.username}
@@ -182,6 +176,12 @@ export default function LoginPage() {
                     </button>
                   }
                 />
+
+                {error ? (
+                  <div className="rounded-xl bg-danger-soft p-3 text-xs font-medium text-danger">
+                    {error}
+                  </div>
+                ) : null}
 
                 <Button type="submit" disabled={loading}>
                   {loading ? (

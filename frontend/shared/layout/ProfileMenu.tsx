@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -121,8 +122,9 @@ export function ProfileMenu({
         {label}
       </button>
 
-      {open ? (
-        <>
+      {open
+        ? createPortal(
+            <>
           <div
             className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-[1px]"
             aria-hidden
@@ -158,7 +160,7 @@ export function ProfileMenu({
               </button>
             </div>
 
-            <div className="flex-1 space-y-1 overflow-y-auto p-3">
+            <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
               <div className="space-y-2 rounded-[12px] border border-border bg-surface-muted/50 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-xs font-semibold text-foreground">
@@ -213,7 +215,7 @@ export function ProfileMenu({
                 {t.security.title}
               </Link>
             </div>
-            <div className="border-t border-border p-3">
+            <div className="shrink-0 border-t border-border p-3">
               <button
                 type="button"
                 onClick={() => {
@@ -227,8 +229,10 @@ export function ProfileMenu({
               </button>
             </div>
           </div>
-        </>
-      ) : null}
+            </>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

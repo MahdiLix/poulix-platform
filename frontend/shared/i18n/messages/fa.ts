@@ -77,7 +77,7 @@ export const fa: TranslationDictionary = {
     requestMoneyAlert: "لینک درخواست پول در کلیپ‌بورد کپی شد!",
     financialWallet: "کیف پول دیجیتال",
     preferences: "تنظیمات",
-    searchPlaceholder: "جستجو...",
+    searchPlaceholder: "جست و جو...",
     quickStats: "آمار سریع",
     recentActivity: "فعالیت‌های اخیر",
     balanceOverview: "نمای کلی موجودی",
@@ -442,6 +442,32 @@ export const fa: TranslationDictionary = {
       SPENDING_LIMIT_WARNING: {
         title: "هشدار سقف هزینه",
         message: "به سقف تعیین‌شده برای تراکنش‌ها نزدیک شده‌اید.",
+      },
+    },
+    details: {
+      NEW_DEVICE_LOGIN: {
+        title: "ورود از دستگاه جدید",
+        message: "ورود به حساب شما از یک دستگاه جدید انجام شد.",
+      },
+      FAILED_LOGIN: {
+        title: "تلاش ناموفق برای ورود",
+        message: "تلاش ناموفقی برای ورود به حساب شما ثبت شد.",
+      },
+      SUSPICIOUS_ACTIVITY: {
+        title: "فعالیت غیرمعمول حساب",
+        message: "چند تلاش ناموفق مالی روی حساب شما شناسایی شد.",
+      },
+      ACCOUNT_DISABLED: {
+        title: "حساب غیرفعال شد",
+        message: "حساب شما غیرفعال شده است. در صورت نیاز با پشتیبانی تماس بگیرید.",
+      },
+      ACCOUNT_LOCKED: {
+        title: "حساب قفل شد",
+        message: "حساب شما قفل شده است. در صورت نیاز با پشتیبانی تماس بگیرید.",
+      },
+      ACCOUNT_ACTIVE: {
+        title: "حساب فعال شد",
+        message: "حساب شما دوباره فعال است.",
       },
     },
   },

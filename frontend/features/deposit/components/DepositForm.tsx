@@ -12,7 +12,6 @@ import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
-import { flashToast } from "@/shared/ui/Toast";
 import {
   DEPOSIT_PRESETS,
   startZarinpalDeposit,
@@ -81,10 +80,6 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
 
     const numericAmount = parseAmount(amount);
     setLoading(true);
-    flashToast({
-      title: t.deposit.redirecting,
-      variant: "info",
-    });
 
     try {
       if (activeOffer) consumeActiveOffer();

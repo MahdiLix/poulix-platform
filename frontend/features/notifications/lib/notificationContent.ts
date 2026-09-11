@@ -22,6 +22,48 @@ function metadataString(metadata: Record<string, unknown> | null, key: string) {
   return typeof value === "string" ? value : "";
 }
 
+function specializedAccountContent(
+  notification: Notification,
+  t: TranslationDictionary,
+) {
+  const metadata = notification.metadata;
+  const details = t.notifications.details;
+  const reason = metadataString(metadata, "reason");
+  const status = metadataString(metadata, "status");
+
+  if (reason === "NEW_DEVICE_LOGIN") {
+    return details.NEW_DEVICE_LOGIN;
+  }
+  if (reason === "FAILED_LOGIN") {
+    return details.FAILED_LOGIN;
+  }
+  if (reason === "SUSPICIOUS_ACTIVITY") {
+    return details.SUSPICIOUS_ACTIVITY;
+  }
+  if (notification.type === "ACCOUNT_EVENT") {
+    if (status === "DISABLED") {
+      return details.ACCOUNT_DISABLED;
+    }
+    if (status === "LOCKED") {
+      return details.ACCOUNT_LOCKED;
+    }
+    if (status === "ACTIVE") {
+      return details.ACCOUNT_ACTIVE;
+    }
+    return t.notifications.types.ACCOUNT_EVENT;
+  }
+  return t.notifications.types.SECURITY_WARNING;
+}
+
+export function notificationDisplayCategory(
+  notification: Notification,
+): Notification["category"] {
+  if (metadataString(notification.metadata, "reason") === "NEW_DEVICE_LOGIN") {
+    return "INFO";
+  }
+  return notification.category;
+}
+
 export function notificationContent(
   notification: Notification,
   t: TranslationDictionary,
@@ -121,15 +163,8 @@ export function notificationContent(
           ),
       };
     case "ACCOUNT_EVENT":
-      return {
-        title: types.ACCOUNT_EVENT.title,
-        message: types.ACCOUNT_EVENT.message,
-      };
     case "SECURITY_WARNING":
-      return {
-        title: types.SECURITY_WARNING.title,
-        message: types.SECURITY_WARNING.message,
-      };
+      return specializedAccountContent(notification, t);
     case "SPENDING_LIMIT_WARNING":
       return {
         title: types.SPENDING_LIMIT_WARNING.title,

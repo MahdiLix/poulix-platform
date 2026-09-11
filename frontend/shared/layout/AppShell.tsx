@@ -23,7 +23,7 @@ export function AppShell({
   variant = "default",
   className,
   rightPanel,
-  showTopBar = false,
+  showTopBar = true,
   showSearch = true,
 }: AppShellProps) {
   const isDashboard = variant === "dashboard";
@@ -45,7 +45,14 @@ export function AppShell({
                 className,
               )}
             >
-              <div className="flex flex-1 flex-col">{children}</div>
+              <div
+                className={cn(
+                  "flex flex-1 flex-col",
+                  showTopBar && !isDashboard && "pt-3",
+                )}
+              >
+                {children}
+              </div>
               {showBottomNav && <BottomNav />}
             </main>
 

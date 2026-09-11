@@ -26,6 +26,14 @@ describe("session expiry", () => {
     expect(isTokenExpired(makeToken(exp))).toBe(true);
   });
 
+  it("treats tokens without an expiry as expired", () => {
+    const payload = btoa(JSON.stringify({ sub: "user-1" }))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/g, "");
+    expect(isTokenExpired(`header.${payload}.sig`)).toBe(true);
+  });
+
   it("keeps login and register public", () => {
     expect(isPublicAuthPath("/login")).toBe(true);
     expect(isPublicAuthPath("/register")).toBe(true);

@@ -112,7 +112,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
               label={t.auth.username}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="john_doe"
+              placeholder="sara"
               disabled={loading}
             />
           ) : null}
@@ -129,7 +129,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
                 setEmail(e.target.value);
               }
             }}
-            placeholder="user@example.com"
+            placeholder={isLogin ? "sara" : "user@example.com"}
             disabled={loading}
           />
 

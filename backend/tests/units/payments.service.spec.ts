@@ -1,6 +1,8 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Decimal } from '@prisma/client/runtime/client';
 import { PaymentsService } from '../../src/payments/payments.service';
+import { getBrowserDepositCallbackUrl } from '../../src/payments/zarinpal.config';
+import type { AuditLogService } from '../../src/audit-logging/audit-log.service';
 import type { DatabaseService } from '../../src/database/database.service';
 import type { ZarinpalService } from '../../src/payments/zarinpal.service';
 import type { NotificationsService } from '../../src/notifications/notifications.service';
@@ -56,6 +58,12 @@ function createMockNotifications() {
   } as unknown as NotificationsService;
 }
 
+function createMockAuditLog() {
+  return {
+    log: jest.fn(),
+  } as unknown as AuditLogService;
+}
+
 describe('PaymentsService', () => {
   describe('createDeposit', () => {
     it('creates a PENDING payment and does not change wallet balance', async () => {
@@ -82,6 +90,7 @@ describe('PaymentsService', () => {
         db,
         zarinpal,
         createMockNotifications(),
+        createMockAuditLog(),
       );
       const result = await service.createDeposit('user-1', 1_000_000);
 
@@ -101,6 +110,7 @@ describe('PaymentsService', () => {
         description: 'Wallet deposit payment-1',
         callbackOrderId: 'payment-1',
         email: 'user@example.com',
+        callbackUrl: getBrowserDepositCallbackUrl(),
       });
       expect(result).toEqual({
         paymentId: 'payment-1',
@@ -135,6 +145,7 @@ describe('PaymentsService', () => {
         db,
         zarinpal,
         createMockNotifications(),
+        createMockAuditLog(),
       );
       const result = await service.createDeposit('user-1', 250_000);
 
@@ -167,6 +178,7 @@ describe('PaymentsService', () => {
         db,
         zarinpal,
         createMockNotifications(),
+        createMockAuditLog(),
       );
 
       await expect(service.createDeposit('user-1', 1_000_000)).rejects.toThrow(
@@ -177,6 +189,55 @@ describe('PaymentsService', () => {
         data: { status: 'FAILED' },
       });
     });
+
+    it('does not send a spoofed origin to ZarinPal as the browser callback', async () => {
+      const originalFrontend = process.env.FRONTEND_URL;
+      const originalCallback = process.env.ZARINPAL_CALLBACK_URL;
+      process.env.FRONTEND_URL = 'https://poulix.ir';
+      process.env.ZARINPAL_CALLBACK_URL = 'http://localhost/deposit/callback';
+
+      const db = createMockDb();
+      const zarinpal = createMockZarinpal();
+
+      db.wallet.findUnique = jest.fn().mockResolvedValue({ id: 'wallet-1' });
+      db.user.findUnique = jest
+        .fn()
+        .mockResolvedValue({ email: 'user@example.com' });
+      db.payment.create = jest.fn().mockResolvedValue({
+        id: 'payment-1',
+        walletId: 'wallet-1',
+        amount: new Decimal(1_000_000),
+        status: 'PENDING',
+      });
+      db.payment.update = jest.fn().mockResolvedValue({});
+      zarinpal.requestPayment.mockResolvedValue({
+        authority: 'Sauthority123',
+        paymentUrl: 'https://www.zarinpal.com/pg/StartPay/Sauthority123',
+      });
+
+      const service = new PaymentsService(
+        db,
+        zarinpal,
+        createMockNotifications(),
+        createMockAuditLog(),
+      );
+
+      try {
+        await service.createDeposit(
+          'user-1',
+          1_000_000,
+          'https://evil.example',
+        );
+        expect(zarinpal.requestPayment).toHaveBeenCalledWith(
+          expect.objectContaining({
+            callbackUrl: 'https://poulix.ir/deposit/callback',
+          }),
+        );
+      } finally {
+        process.env.FRONTEND_URL = originalFrontend;
+        process.env.ZARINPAL_CALLBACK_URL = originalCallback;
+      }
+    });
   });
 
   describe('handleCallback', () => {
@@ -185,6 +246,7 @@ describe('PaymentsService', () => {
         createMockDb(),
         createMockZarinpal(),
         createMockNotifications(),
+        createMockAuditLog(),
       );
       await expect(service.handleCallback(undefined, 'OK')).rejects.toThrow(
         BadRequestException,
@@ -198,6 +260,7 @@ describe('PaymentsService', () => {
         db,
         createMockZarinpal(),
         createMockNotifications(),
+        createMockAuditLog(),
       );
 
       await expect(service.handleCallback('Sunknown', 'OK')).rejects.toThrow(
@@ -223,6 +286,7 @@ describe('PaymentsService', () => {
         db,
         zarinpal,
         createMockNotifications(),
+        createMockAuditLog(),
       );
       const result = await service.handleCallback('Sauthority123', 'NOK');
 
@@ -272,6 +336,7 @@ describe('PaymentsService', () => {
         db,
         zarinpal,
         createMockNotifications(),
+        createMockAuditLog(),
       );
       await service.handleCallback('Sauthority123', 'OK');
 
@@ -321,6 +386,7 @@ describe('PaymentsService', () => {
         db,
         zarinpal,
         createMockNotifications(),
+        createMockAuditLog(),
       );
       await service.handleCallback('CALLBACK_AUTHORITY', 'OK');
 
@@ -352,6 +418,7 @@ describe('PaymentsService', () => {
         db,
         zarinpal,
         createMockNotifications(),
+        createMockAuditLog(),
       );
       const result = await service.handleCallback('Sauthority123', 'OK');
 
@@ -383,6 +450,7 @@ describe('PaymentsService', () => {
         db,
         zarinpal,
         createMockNotifications(),
+        createMockAuditLog(),
       );
 
       await expect(
@@ -440,6 +508,7 @@ describe('PaymentsService', () => {
         db,
         zarinpal,
         createMockNotifications(),
+        createMockAuditLog(),
       );
       const result = await service.handleCallback('Sauthority123', 'OK');
 
@@ -496,6 +565,7 @@ describe('PaymentsService', () => {
         db,
         zarinpal,
         createMockNotifications(),
+        createMockAuditLog(),
       );
       const result = await service.handleCallback('Sauthority123', 'OK');
 
@@ -552,6 +622,7 @@ describe('PaymentsService', () => {
         db,
         zarinpal,
         createMockNotifications(),
+        createMockAuditLog(),
       );
 
       await expect(

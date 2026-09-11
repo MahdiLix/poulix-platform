@@ -6,6 +6,7 @@ import type {
 } from '../generated/prisma/client';
 import { DatabaseService } from '../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AuditLogService } from '../audit-logging/audit-log.service';
 import type { UpdateSpendingLimitDto } from './dto/update-spending-limit.dto';
 
 export const DEFAULT_SPENDING_LIMITS: Record<SpendingLimitType, number> = {
@@ -27,6 +28,7 @@ export class SpendingLimitsService {
   constructor(
     private readonly db: DatabaseService,
     private readonly notificationsService: NotificationsService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async getLimitsWithUsage(userId: string) {
@@ -92,6 +94,16 @@ export class SpendingLimitsService {
       update: {
         maxAmount: dto.maxAmount,
       },
+    });
+
+    this.auditLogService.log({
+      event: 'security.limit_updated',
+      action: 'update',
+      result: 'success',
+      userId,
+      resourceType: 'spending_limit',
+      resourceId: limit.id,
+      metadata: { type: limit.type, maxAmount: Number(limit.maxAmount) },
     });
 
     return {

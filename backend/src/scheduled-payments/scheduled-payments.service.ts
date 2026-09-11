@@ -6,6 +6,7 @@ import {
 import { Prisma } from '../generated/prisma/client';
 import { DatabaseService } from '../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AuditLogService } from '../audit-logging/audit-log.service';
 import { SpendingLimitsService } from '../spending-limits/spending-limits.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import type { CreateScheduledPaymentDto } from './dto/create-scheduled-payment.dto';
@@ -48,6 +49,7 @@ export class ScheduledPaymentsService {
     private readonly transactionsService: TransactionsService,
     private readonly notificationsService: NotificationsService,
     private readonly spendingLimitsService: SpendingLimitsService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async create(userId: string, dto: CreateScheduledPaymentDto) {
@@ -401,6 +403,17 @@ export class ScheduledPaymentsService {
             senderUsername: notification.senderUsername,
           },
         );
+        this.auditLogService.log({
+          event: 'transfer.completed',
+          action: 'complete',
+          result: 'success',
+          userId: notification.userId,
+          resourceType: 'scheduled_payment',
+          metadata: {
+            amount: notification.amount,
+            currency: notification.currency,
+          },
+        });
       } else if (notification?.kind === 'failed') {
         void this.notificationsService.createScheduledPaymentFailed(
           notification.userId,
@@ -411,6 +424,17 @@ export class ScheduledPaymentsService {
             reason: notification.reason,
           },
         );
+        this.auditLogService.log({
+          event: 'transfer.failed',
+          action: 'complete',
+          result: 'failure',
+          userId: notification.userId,
+          resourceType: 'scheduled_payment',
+          metadata: {
+            amount: notification.amount,
+            reason: notification.reason,
+          },
+        });
       }
 
       return true;

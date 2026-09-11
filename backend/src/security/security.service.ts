@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import type { SecurityEventType, Prisma } from '../generated/prisma/client';
+import { AuditLogService } from '../audit-logging/audit-log.service';
 import { DatabaseService } from '../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
@@ -17,6 +18,7 @@ export class SecurityService {
   constructor(
     private readonly db: DatabaseService,
     private readonly notificationsService: NotificationsService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async recordSuccessfulLogin(
@@ -45,8 +47,8 @@ export class SecurityService {
       );
 
       void this.notificationsService.createNotification(userId, {
-        type: 'SECURITY_WARNING',
-        category: 'WARNING',
+        type: 'ACCOUNT_EVENT',
+        category: 'INFO',
         metadata: {
           reason: 'NEW_DEVICE_LOGIN',
           deviceLabel: deviceLabelFromUserAgent(ua),
@@ -69,6 +71,13 @@ export class SecurityService {
 
   async recordFailedLogin(userId: string, ipAddress?: string) {
     await this.recordEvent(userId, 'FAILED_LOGIN', undefined, ipAddress);
+    void this.notificationsService.createNotification(userId, {
+      type: 'SECURITY_WARNING',
+      category: 'WARNING',
+      metadata: {
+        reason: 'FAILED_LOGIN',
+      },
+    });
   }
 
   async recordFailedTransfer(
@@ -229,6 +238,16 @@ export class SecurityService {
     await this.recordEvent(userId, 'SESSION_REVOKED', {
       sessionId,
       deviceKey: session.deviceKey,
+    });
+
+    this.auditLogService.log({
+      event: 'auth.session_revoked',
+      action: 'revoke',
+      result: 'success',
+      userId,
+      resourceType: 'session',
+      resourceId: sessionId,
+      metadata: { scope: 'device' },
     });
 
     return { success: true };

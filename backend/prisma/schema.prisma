@@ -500,3 +500,23 @@ model AdminAuditLog {
   @@index([adminUserId, createdAt])
   @@index([action, createdAt])
 }
+
+model AuditLog {
+  id String @id @default(uuid())
+
+  createdAt DateTime @default(now())
+  event     String   @db.VarChar(80)
+  action    String   @db.VarChar(40)
+  result    String   @db.VarChar(20)
+
+  userId       String?
+  resourceType String? @db.VarChar(80)
+  resourceId   String? @db.VarChar(64)
+  requestId    String? @db.VarChar(64)
+  ip           String? @db.VarChar(45)
+  userAgent    String? @db.VarChar(200)
+  metadata     Json?
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}

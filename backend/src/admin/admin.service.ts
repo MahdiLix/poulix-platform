@@ -10,6 +10,7 @@ import type {
   UserAccountStatus,
 } from '../generated/prisma/client';
 import { DatabaseService } from '../database/database.service';
+import { AuditLogService } from '../audit-logging/audit-log.service';
 import type {
   AdminListQueryDto,
   AdminPaymentsQueryDto,
@@ -30,7 +31,10 @@ const PUBLIC_USER_SELECT = {
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly auditLogService: AuditLogService,
+  ) {}
 
   async getDashboard() {
     const now = new Date();
@@ -355,6 +359,16 @@ export class AdminService {
       });
 
       return user;
+    });
+
+    this.auditLogService.log({
+      event: 'admin.user_status',
+      action: action.toLowerCase(),
+      result: 'success',
+      userId: adminUserId,
+      resourceType: 'user',
+      resourceId: userId,
+      metadata: { status },
     });
 
     return updated;

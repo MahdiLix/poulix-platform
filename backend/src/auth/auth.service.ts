@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import validator from 'validator';
 import { JwtService } from '@nestjs/jwt';
+import { AuditLogService } from '../audit-logging/audit-log.service';
 import { DatabaseService } from '../database/database.service';
 import { SecurityService } from '../security/security.service';
 import { Prisma } from '../generated/prisma/client';
@@ -20,6 +21,7 @@ export class AuthService {
     private readonly db: DatabaseService,
     private readonly jwtService: JwtService,
     private readonly securityService: SecurityService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   private hashPassword(password: string): string {
@@ -108,6 +110,15 @@ export class AuthService {
         { emitNewDeviceEvent: false },
       );
 
+      this.auditLogService.log({
+        event: 'auth.register',
+        action: 'register',
+        result: 'success',
+        userId: user.id,
+        resourceType: 'user',
+        resourceId: user.id,
+      });
+
       return this.createAuthResponse({
         id: user.id,
         email: user.email,
@@ -144,14 +155,35 @@ export class AuthService {
       if (user) {
         await this.securityService.recordFailedLogin(user.id, ipAddress);
       }
+      this.auditLogService.log({
+        event: 'auth.login',
+        action: 'login',
+        result: 'failure',
+        userId: user?.id,
+        metadata: { reason: 'invalid_credentials' },
+      });
       throw new UnauthorizedException('Invalid credentials');
     }
 
     if (user.status === 'DISABLED') {
+      this.auditLogService.log({
+        event: 'auth.login',
+        action: 'login',
+        result: 'failure',
+        userId: user.id,
+        metadata: { reason: 'account_disabled' },
+      });
       throw new UnauthorizedException('Account disabled');
     }
 
     if (user.status === 'LOCKED') {
+      this.auditLogService.log({
+        event: 'auth.login',
+        action: 'login',
+        result: 'failure',
+        userId: user.id,
+        metadata: { reason: 'account_locked' },
+      });
       throw new UnauthorizedException('Account locked');
     }
 
@@ -160,6 +192,15 @@ export class AuthService {
       userAgent,
       ipAddress,
     );
+
+    this.auditLogService.log({
+      event: 'auth.login',
+      action: 'login',
+      result: 'success',
+      userId: user.id,
+      resourceType: 'session',
+      resourceId: sessionId,
+    });
 
     if (user.role === 'ADMIN') {
       await this.db.adminAuditLog.create({
@@ -187,6 +228,15 @@ export class AuthService {
       throw new UnauthorizedException('Session is not revocable');
     }
 
-    return this.securityService.revokeSession(userId, sessionId);
+    const result = await this.securityService.revokeSession(userId, sessionId);
+    this.auditLogService.log({
+      event: 'auth.logout',
+      action: 'logout',
+      result: result.success ? 'success' : 'failure',
+      userId,
+      resourceType: 'session',
+      resourceId: sessionId,
+    });
+    return result;
   }
 }

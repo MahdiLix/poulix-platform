@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { FinancialDestinationsService } from '../financial-destinations/financial-destinations.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AuditLogService } from '../audit-logging/audit-log.service';
 import { SecurityService } from '../security/security.service';
 import { SpendingLimitsService } from '../spending-limits/spending-limits.service';
 import type {
@@ -40,6 +41,7 @@ export class TransactionsService {
     private readonly spendingLimitsService: SpendingLimitsService,
     private readonly financialDestinationsService: FinancialDestinationsService,
     private readonly securityService: SecurityService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async withdraw(userId: string, amount: number, metadata?: WithdrawMetadata) {
@@ -144,11 +146,28 @@ export class TransactionsService {
         currency: updatedWallet.currency,
       });
 
+      this.auditLogService.log({
+        event: 'withdrawal.completed',
+        action: 'complete',
+        result: 'success',
+        userId,
+        resourceType: 'transaction',
+        metadata: { amount, currency: updatedWallet.currency },
+      });
+
       return updatedWallet;
     } catch (error) {
       if (error instanceof BadRequestException) {
         void this.securityService.recordFailedWithdrawal(userId, {
           reason: error.message,
+        });
+        this.auditLogService.log({
+          event: 'withdrawal.failed',
+          action: 'complete',
+          result: 'failure',
+          userId,
+          resourceType: 'transaction',
+          metadata: { amount, reason: error.message },
         });
       }
       throw error;
@@ -378,11 +397,29 @@ export class TransactionsService {
         );
       }
 
+      this.auditLogService.log({
+        event: 'transfer.completed',
+        action: 'complete',
+        result: 'success',
+        userId: senderUserId,
+        resourceType: 'transaction',
+        resourceId: result.transfer.outTransactionId,
+        metadata: { amount, currency: result.currency },
+      });
+
       return result;
     } catch (error) {
       if (error instanceof BadRequestException) {
         void this.securityService.recordFailedTransfer(senderUserId, {
           reason: error.message,
+        });
+        this.auditLogService.log({
+          event: 'transfer.failed',
+          action: 'complete',
+          result: 'failure',
+          userId: senderUserId,
+          resourceType: 'transaction',
+          metadata: { amount, reason: error.message },
         });
       }
       throw error;

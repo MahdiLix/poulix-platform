@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import type { FinancialDestinationType } from '../generated/prisma/client';
 import { DatabaseService } from '../database/database.service';
+import { AuditLogService } from '../audit-logging/audit-log.service';
 import {
   decryptValue,
   encryptValue,
@@ -16,6 +17,7 @@ import {
   normalizeCardNumber,
   normalizeShaba,
 } from '../common/financial-crypto';
+
 import type { CreateSavedDestinationDto } from './dto/create-saved-destination.dto';
 
 type RecordP2PInput = {
@@ -37,7 +39,10 @@ type RecordCardInput = {
 
 @Injectable()
 export class FinancialDestinationsService {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly auditLogService: AuditLogService,
+  ) {}
 
   async listRecent(userId: string, limit = 10) {
     const destinations = await this.db.financialDestination.findMany({
@@ -63,6 +68,16 @@ export class FinancialDestinationsService {
     const destination = await this.upsertDestination(userId, payload, {
       isSaved: true,
       label: dto.label.trim(),
+    });
+
+    this.auditLogService.log({
+      event: 'destination.added',
+      action: 'create',
+      result: 'success',
+      userId,
+      resourceType: 'financial_destination',
+      resourceId: destination.id,
+      metadata: { type: destination.type },
     });
 
     return this.serialize(destination);
@@ -95,6 +110,15 @@ export class FinancialDestinationsService {
     }
 
     await this.db.financialDestination.delete({ where: { id } });
+    this.auditLogService.log({
+      event: 'destination.removed',
+      action: 'delete',
+      result: 'success',
+      userId,
+      resourceType: 'financial_destination',
+      resourceId: id,
+      metadata: { type: existing.type },
+    });
     return { success: true };
   }
 

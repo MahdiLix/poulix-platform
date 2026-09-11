@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AuditLogService } from '../audit-logging/audit-log.service';
+import { getBrowserDepositCallbackUrl } from './zarinpal.config';
 import { ZarinpalService } from './zarinpal.service';
 
 function toJsonNumber(value: unknown): number | undefined {
@@ -22,9 +24,14 @@ export class PaymentsService {
     private readonly db: DatabaseService,
     private readonly zarinpal: ZarinpalService,
     private readonly notificationsService: NotificationsService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
-  async createDeposit(userId: string, amount: number) {
+  async createDeposit(
+    userId: string,
+    amount: number,
+    publicOrigin?: string,
+  ) {
     const wallet = await this.db.wallet.findUnique({
       where: { userId },
       select: { id: true },
@@ -47,6 +54,16 @@ export class PaymentsService {
       },
     });
 
+    this.auditLogService.log({
+      event: 'deposit.created',
+      action: 'create',
+      result: 'success',
+      userId,
+      resourceType: 'payment',
+      resourceId: payment.id,
+      metadata: { amount },
+    });
+
     const depositAmount = Number(payment.amount.toString());
 
     try {
@@ -55,6 +72,7 @@ export class PaymentsService {
         description: `Wallet deposit ${payment.id}`,
         callbackOrderId: payment.id,
         email: user?.email,
+        callbackUrl: getBrowserDepositCallbackUrl(publicOrigin),
       });
 
       await this.db.payment.update({
@@ -72,6 +90,16 @@ export class PaymentsService {
       await this.db.payment.update({
         where: { id: payment.id },
         data: { status: 'FAILED' },
+      });
+
+      this.auditLogService.log({
+        event: 'deposit.failed',
+        action: 'create',
+        result: 'failure',
+        userId,
+        resourceType: 'payment',
+        resourceId: payment.id,
+        metadata: { amount },
       });
 
       throw error;
@@ -139,6 +167,15 @@ export class PaymentsService {
       await this.db.payment.updateMany({
         where: { id: payment.id, status: 'PENDING' },
         data: { status: 'FAILED' },
+      });
+
+      this.auditLogService.log({
+        event: 'deposit.failed',
+        action: 'complete',
+        result: 'failure',
+        resourceType: 'payment',
+        resourceId: payment.id,
+        metadata: { amount },
       });
 
       throw new BadRequestException('Payment verification failed');
@@ -233,6 +270,18 @@ export class PaymentsService {
       } catch {
         // A verified deposit must still succeed if notification persistence fails.
       }
+
+      this.auditLogService.log({
+        event: 'deposit.completed',
+        action: 'complete',
+        result: 'success',
+        userId: result.userId,
+        resourceType: 'payment',
+        metadata: {
+          amount: Number(result.amount),
+          currency: result.currency ?? 'IRR',
+        },
+      });
     }
 
     return {

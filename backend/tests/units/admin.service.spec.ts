@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { AdminService } from '../../src/admin/admin.service';
+import type { AuditLogService } from '../../src/audit-logging/audit-log.service';
 import type { DatabaseService } from '../../src/database/database.service';
 
 function createService(overrides?: {
@@ -13,8 +14,9 @@ function createService(overrides?: {
     },
     $transaction: jest.fn(),
   } as unknown as DatabaseService;
+  const auditLogService = { log: jest.fn() } as unknown as AuditLogService;
 
-  return { service: new AdminService(db), db };
+  return { service: new AdminService(db, auditLogService), db };
 }
 
 describe('AdminService account status', () => {

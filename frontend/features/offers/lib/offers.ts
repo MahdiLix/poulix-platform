@@ -72,14 +72,20 @@ export function getHomepageOffer(): HomepageOffer {
 
 export function saveHomepageOffer(offer: HomepageOffer) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(OFFER_KEY, JSON.stringify(getNormalizedOffer(offer)));
+  window.localStorage.setItem(
+    OFFER_KEY,
+    JSON.stringify(getNormalizedOffer(offer)),
+  );
 }
 
 export function getNormalizedOffer(offer: HomepageOffer): HomepageOffer {
   return {
     title: offer.title.trim() || DEFAULT_HOMEPAGE_OFFER.title,
     description: offer.description.trim() || DEFAULT_HOMEPAGE_OFFER.description,
-    percent: Math.min(100, Math.max(1, Math.round(Number(offer.percent) || 20))),
+    percent: Math.min(
+      100,
+      Math.max(1, Math.round(Number(offer.percent) || 20)),
+    ),
     enabled: offer.enabled !== false,
   };
 }

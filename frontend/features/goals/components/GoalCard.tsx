@@ -51,20 +51,61 @@ const GOAL_COLORS = [
 
 function goalIcon(title: string, className: string): ReactNode {
   const lower = title.toLowerCase();
-  if (lower.includes("emergency") || lower.includes("shield") || lower.includes("safety")) return <Shield className={className} />;
-  if (lower.includes("laptop") || lower.includes("computer") || lower.includes("tech") || lower.includes("device")) return <Laptop className={className} />;
-  if (lower.includes("vacation") || lower.includes("travel") || lower.includes("trip") || lower.includes("holiday")) return <Plane className={className} />;
-  if (lower.includes("home") || lower.includes("house") || lower.includes("rent")) return <Home className={className} />;
-  if (lower.includes("car") || lower.includes("vehicle") || lower.includes("auto")) return <Car className={className} />;
-  if (lower.includes("gift") || lower.includes("present") || lower.includes("birthday")) return <Gift className={className} />;
-  if (lower.includes("health") || lower.includes("medical") || lower.includes("heart")) return <Heart className={className} />;
-  if (lower.includes("wallet") || lower.includes("fund")) return <Wallet className={className} />;
+  if (
+    lower.includes("emergency") ||
+    lower.includes("shield") ||
+    lower.includes("safety")
+  )
+    return <Shield className={className} />;
+  if (
+    lower.includes("laptop") ||
+    lower.includes("computer") ||
+    lower.includes("tech") ||
+    lower.includes("device")
+  )
+    return <Laptop className={className} />;
+  if (
+    lower.includes("vacation") ||
+    lower.includes("travel") ||
+    lower.includes("trip") ||
+    lower.includes("holiday")
+  )
+    return <Plane className={className} />;
+  if (
+    lower.includes("home") ||
+    lower.includes("house") ||
+    lower.includes("rent")
+  )
+    return <Home className={className} />;
+  if (
+    lower.includes("car") ||
+    lower.includes("vehicle") ||
+    lower.includes("auto")
+  )
+    return <Car className={className} />;
+  if (
+    lower.includes("gift") ||
+    lower.includes("present") ||
+    lower.includes("birthday")
+  )
+    return <Gift className={className} />;
+  if (
+    lower.includes("health") ||
+    lower.includes("medical") ||
+    lower.includes("heart")
+  )
+    return <Heart className={className} />;
+  if (lower.includes("wallet") || lower.includes("fund"))
+    return <Wallet className={className} />;
   return <Target className={className} />;
 }
 
 function latestContributionDate(goal: Goal): string | null {
   if (!goal.contributions || goal.contributions.length === 0) return null;
-  const latest = goal.contributions.reduce((max, c) => (c.createdAt > max.createdAt ? c : max), goal.contributions[0]);
+  const latest = goal.contributions.reduce(
+    (max, c) => (c.createdAt > max.createdAt ? c : max),
+    goal.contributions[0],
+  );
   return latest.createdAt;
 }
 
@@ -114,10 +155,7 @@ export function GoalCard({
         <p className="text-xs font-semibold" style={{ color: accentColor }}>
           {t.goals.savedInGoals} {formatIrr(saved)} / {formatIrr(target)}
         </p>
-        <ProgressBar
-          value={progress}
-          barClassName="bg-success"
-        />
+        <ProgressBar value={progress} barClassName="bg-success" />
         <div className="flex items-center justify-between text-[11px] font-medium text-muted">
           <span>{progress}%</span>
           <span>
@@ -151,19 +189,23 @@ export function GoalCard({
 
       <div className="mt-auto flex items-center gap-2">
         {goal.status === "ACTIVE" ? (
-        <Link href={`/goals/${goal.id}`} className="flex-1">
-          <Button size="sm" variant="outline" className="w-full gap-1">
-            <Plus className="h-3.5 w-3.5" />
-            {t.goals.contributeBtn}
-          </Button>
-        </Link>
+          <Link href={`/goals/${goal.id}`} className="flex-1">
+            <Button size="sm" variant="outline" className="w-full gap-1">
+              <Plus className="h-3.5 w-3.5" />
+              {t.goals.contributeBtn}
+            </Button>
+          </Link>
         ) : null}
         {goal.status === "ACTIVE" ? (
-        <Link href={`/goals/${goal.id}`} className="flex-1">
-          <Button size="sm" variant="outline" className="w-full text-danger hover:text-danger">
-            {t.goals.releaseBtn}
-          </Button>
-        </Link>
+          <Link href={`/goals/${goal.id}`} className="flex-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full text-danger hover:text-danger"
+            >
+              {t.goals.releaseBtn}
+            </Button>
+          </Link>
         ) : null}
         {goal.status === "ACTIVE" && onCancel ? (
           <button

@@ -40,7 +40,9 @@ function DetailRow({
         <Icon className="h-4 w-4" />
       </div>
       <p className="min-w-0 flex-1 text-xs text-muted">{label}</p>
-      <p className={`text-sm font-semibold ${valueClassName ?? "text-foreground"}`}>
+      <p
+        className={`text-sm font-semibold ${valueClassName ?? "text-foreground"}`}
+      >
         {value}
       </p>
     </div>
@@ -193,11 +195,7 @@ function SuccessContent() {
 export default function ReceiptSuccessPage() {
   const { t } = useLanguage();
   return (
-    <Suspense
-      fallback={
-        <PageSpinner label={t.common.loading} />
-      }
-    >
+    <Suspense fallback={<PageSpinner label={t.common.loading} />}>
       <SuccessContent />
     </Suspense>
   );

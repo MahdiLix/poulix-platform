@@ -1,14 +1,14 @@
 import type { AuthUser } from "@/shared/api";
 
-export type NamedUser = {
-  username?: string | null;
-  email?: string | null;
-} | null | undefined;
+export type NamedUser =
+  | {
+      username?: string | null;
+      email?: string | null;
+    }
+  | null
+  | undefined;
 
-export function getDisplayName(
-  user: NamedUser,
-  fallback = "Guest",
-): string {
+export function getDisplayName(user: NamedUser, fallback = "Guest"): string {
   const username = user?.username?.trim();
   if (username) return username;
 

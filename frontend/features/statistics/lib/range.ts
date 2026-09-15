@@ -15,7 +15,11 @@ export function filterByDayRange<T extends DatedRecord>(
   return records.filter((record) => {
     if (!record.createdAt) return false;
     const createdAt = new Date(record.createdAt);
-    return !Number.isNaN(createdAt.getTime()) && createdAt >= cutoff && createdAt <= now;
+    return (
+      !Number.isNaN(createdAt.getTime()) &&
+      createdAt >= cutoff &&
+      createdAt <= now
+    );
   });
 }
 
@@ -43,7 +47,10 @@ export function previousDayRange<T extends DatedRecord>(
   });
 }
 
-export function percentChange(current: number, previous: number): number | undefined {
+export function percentChange(
+  current: number,
+  previous: number,
+): number | undefined {
   if (previous <= 0) return current > 0 ? 100 : undefined;
   return Math.round(((current - previous) / previous) * 100);
 }

@@ -78,9 +78,7 @@ export default function WithdrawPage() {
               </Link>
             </div>
             {saved.length === 0 ? (
-              <p className="text-xs text-muted">
-                {t.destinations.emptySaved}
-              </p>
+              <p className="text-xs text-muted">{t.destinations.emptySaved}</p>
             ) : (
               <ul className="space-y-2">
                 {saved.slice(0, 4).map((item) => (

@@ -2,12 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/shared/cn";
 
 type BadgeVariant =
-  | "default"
-  | "success"
-  | "warning"
-  | "danger"
-  | "info"
-  | "muted";
+  "default" | "success" | "warning" | "danger" | "info" | "muted";
 
 type BadgeProps = {
   children: ReactNode;
@@ -24,7 +19,11 @@ const variants: Record<BadgeVariant, string> = {
   muted: "bg-surface-muted text-muted",
 };
 
-export function Badge({ children, variant = "default", className }: BadgeProps) {
+export function Badge({
+  children,
+  variant = "default",
+  className,
+}: BadgeProps) {
   return (
     <span
       className={cn(

@@ -62,9 +62,7 @@ export function FundingSourceSelect({
       label={fieldLabel}
       value={value}
       onChange={(next) => {
-        const source = sources.find(
-          (item) => (item.envelopeId ?? "") === next,
-        );
+        const source = sources.find((item) => (item.envelopeId ?? "") === next);
         if (source) onChange(source);
       }}
       options={sources.map((source) => ({

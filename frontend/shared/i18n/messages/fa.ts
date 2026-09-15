@@ -156,7 +156,7 @@ export const fa: TranslationDictionary = {
     adminNote: "حساب‌های مدیر پس از ورود به کنسول مدیریت هدایت می‌شوند.",
     proofZarinpal: "افزایش موجودی با زرین‌پال",
     proofTransfers: "انتقال آنی پولیکس",
-    proofLimits: "کنترل سقف های پرداخت"
+    proofLimits: "کنترل سقف های پرداخت",
   },
   deposit: {
     depositTitle: "افزایش موجودی کیف پول",
@@ -459,7 +459,8 @@ export const fa: TranslationDictionary = {
       },
       ACCOUNT_DISABLED: {
         title: "حساب غیرفعال شد",
-        message: "حساب شما غیرفعال شده است. در صورت نیاز با پشتیبانی تماس بگیرید.",
+        message:
+          "حساب شما غیرفعال شده است. در صورت نیاز با پشتیبانی تماس بگیرید.",
       },
       ACCOUNT_LOCKED: {
         title: "حساب قفل شد",
@@ -848,5 +849,23 @@ export const fa: TranslationDictionary = {
     shareReceiptText:
       "برداشت {amount} به {destinationLabel} {destination} با موفقیت انجام شد.",
     withdrewAmount: "مبلغ {amount} برداشت شد",
+    tooManyRequests: "تعداد درخواست‌ها بیش از حد مجاز است",
+    accountTemporarilyLocked: "حساب موقتاً قفل شده است",
+    rateLimitNearLimit: "⚠️ شما به محدودیت درخواست نزدیک شده‌اید.",
+    rateLimitBurstExceeded: "تعداد درخواست‌ها بیش از حد مجاز شده است.",
+    rateLimitBurstExceededDetail:
+      "برخی عملیات موقتاً متوقف شده‌اند. لطفاً تا پایان این محدودیت صبر کنید.",
+    rateLimitCooldownFinished:
+      "محدودیت درخواست پایان یافت و عملیات دوباره فعال شد.",
+    rateLimitActionWait: "لطفاً تا پایان محدودیت صبر کنید.",
+    rateLimitAttemptsRemaining: "{count} تلاش باقی مانده است.",
+    depositRateLimited: "عملیات افزایش موجودی موقتاً محدود شده است.",
+    withdrawRateLimited: "عملیات برداشت موقتاً محدود شده است.",
+    transferRateLimited: "عملیات انتقال موقتاً محدود شده است.",
+    scheduledRateLimited: "پرداخت‌های زمان‌بندی‌شده موقتاً محدود شده‌اند.",
+    destinationsRateLimited: "مقاصد ذخیره‌شده موقتاً محدود شده‌اند.",
+    securityLimitsRateLimited: "تغییر محدودیت امنیتی موقتاً محدود شده است.",
+    loginRateLimited: "ورود موقتاً محدود شده است.",
+    registerRateLimited: "ثبت‌نام موقتاً محدود شده است.",
   },
 };

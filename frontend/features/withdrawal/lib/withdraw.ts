@@ -152,7 +152,10 @@ function readRecentList(key: string): string[] {
 
 function writeRecentList(key: string, values: string[]) {
   if (!isBrowser()) return;
-  window.localStorage.setItem(key, JSON.stringify(values.slice(0, MAX_RECENTS)));
+  window.localStorage.setItem(
+    key,
+    JSON.stringify(values.slice(0, MAX_RECENTS)),
+  );
 }
 
 function rememberValue(key: string, value: string) {

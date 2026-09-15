@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/shared/theme/ThemeProvider";
 import { LanguageProvider } from "@/shared/i18n/LanguageProvider";
 import { UserProvider } from "@/shared/user/UserProvider";
 import { ToastProvider } from "@/shared/ui/Toast";
+import { RateLimitProvider } from "@/shared/rate-limit";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -62,7 +63,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeProvider>
           <LanguageProvider>
             <UserProvider>
-              <ToastProvider>{children}</ToastProvider>
+              <ToastProvider>
+                <RateLimitProvider>{children}</RateLimitProvider>
+              </ToastProvider>
             </UserProvider>
           </LanguageProvider>
         </ThemeProvider>

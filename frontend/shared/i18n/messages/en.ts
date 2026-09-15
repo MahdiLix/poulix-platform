@@ -252,8 +252,7 @@ export const en: TranslationDictionary = {
     description: "Set up recurring payments on a weekly or monthly schedule.",
     createTitle: "New Scheduled Payment",
     createHeading: "Schedule a Payment",
-    createSub:
-      "Set interval, destination, and first execution date.",
+    createSub: "Set interval, destination, and first execution date.",
     nextRuns: "Next runs",
     limitOk: "OK",
     limitOkHint: "This payment will not exceed your daily limit.",
@@ -300,7 +299,8 @@ export const en: TranslationDictionary = {
     createSub: "Set a target amount and save toward it.",
     goalPreview: "Goal preview",
     noContributionsHint: "No contributions yet",
-    contributeAfterCreate: "Contribute after creating this goal to see your progress here.",
+    contributeAfterCreate:
+      "Contribute after creating this goal to see your progress here.",
     detailTitle: "Goal Details",
     loading: "Loading goals...",
     signInRequired: "Sign in to manage saving goals",
@@ -853,5 +853,24 @@ export const en: TranslationDictionary = {
     shareReceiptText:
       "Withdrawal of {amount} to {destinationLabel} {destination} was successful.",
     withdrewAmount: "Withdrew {amount}",
+    tooManyRequests: "Too many requests",
+    accountTemporarilyLocked: "Account temporarily locked",
+    rateLimitNearLimit: "⚠️ You are approaching the request limit.",
+    rateLimitBurstExceeded: "Too many requests have been sent.",
+    rateLimitBurstExceededDetail:
+      "Some actions are paused temporarily. Please wait until this limit ends.",
+    rateLimitCooldownFinished:
+      "The request limit has ended and operations are available again.",
+    rateLimitActionWait: "Please wait until the limit ends.",
+    rateLimitAttemptsRemaining: "{count} attempts remaining.",
+    depositRateLimited: "Top up is temporarily limited.",
+    withdrawRateLimited: "Withdrawal is temporarily limited.",
+    transferRateLimited: "Transfer is temporarily limited.",
+    scheduledRateLimited: "Scheduled payments are temporarily limited.",
+    destinationsRateLimited: "Saved destinations are temporarily limited.",
+    securityLimitsRateLimited:
+      "Security limit changes are temporarily limited.",
+    loginRateLimited: "Login is temporarily limited.",
+    registerRateLimited: "Registration is temporarily limited.",
   },
 };

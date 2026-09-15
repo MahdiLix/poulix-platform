@@ -55,11 +55,16 @@ function writeLanguageCookie(lang: Language) {
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(DEFAULT_LANGUAGE);
-  const [isLanguageReady, setIsLanguageReady] = useState(false);
+  const [language, setLanguageState] = useState<Language>(() =>
+    typeof window === "undefined" ? DEFAULT_LANGUAGE : readLanguageCookie(),
+  );
+  const [isLanguageReady, setIsLanguageReady] = useState(
+    () => typeof window !== "undefined",
+  );
 
   useEffect(() => {
-    setLanguageState(readLanguageCookie());
+    const fromCookie = readLanguageCookie();
+    setLanguageState(fromCookie);
     setIsLanguageReady(true);
   }, []);
 

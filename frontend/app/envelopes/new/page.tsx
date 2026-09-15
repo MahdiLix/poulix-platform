@@ -11,10 +11,7 @@ export default function NewEnvelopePage() {
 
   return (
     <AppShell showBottomNav={false}>
-      <HeaderBar
-        title={t.envelopes.createTitle}
-        backHref="/envelopes"
-      />
+      <HeaderBar title={t.envelopes.createTitle} backHref="/envelopes" />
 
       <div className="mx-auto flex w-full flex-1 flex-col space-y-6 p-4 lg:max-w-xl lg:p-6">
         <div className="pt-2 text-center">

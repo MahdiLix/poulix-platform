@@ -32,7 +32,10 @@ export default function NotFoundPage() {
           {t.common.pageNotFoundSub}
         </p>
         <Link href="/" className="mt-9">
-          <Button size="lg" className="w-auto gap-2 px-8 shadow-lg shadow-primary/20">
+          <Button
+            size="lg"
+            className="w-auto gap-2 px-8 shadow-lg shadow-primary/20"
+          >
             <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
             {t.common.backToApp}
           </Button>

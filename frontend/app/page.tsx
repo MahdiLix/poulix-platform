@@ -30,6 +30,7 @@ import { DashboardMetricCard } from "@/shared/ui/DashboardMetricCard";
 import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { useUser } from "@/shared/user/UserProvider";
+import { useRateLimitAction, withRemainingLabel } from "@/shared/rate-limit";
 import { formatDisplayDateTime, formatMonthDay } from "@/shared/i18n/dates";
 import { cn } from "@/shared/cn";
 import { DepositModal } from "@/features/deposit/components/DepositModal";
@@ -75,6 +76,92 @@ const EXPENSE_TYPES = new Set([
   "GOAL_CONTRIBUTE",
   "ENVELOPE_ALLOCATE",
 ]);
+
+function HomeMoveMoneyButtons({
+  onTopUp,
+  topUpLabel,
+  sendLabel,
+  withdrawLabel,
+}: {
+  onTopUp: () => void;
+  topUpLabel: string;
+  sendLabel: string;
+  withdrawLabel: string;
+}) {
+  const depositLimit = useRateLimitAction("deposit");
+  const transferLimit = useRateLimitAction("transfer");
+  const withdrawLimit = useRateLimitAction("withdraw");
+
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <Button
+        size="sm"
+        className="border-0 bg-gradient-to-r from-primary to-secondary px-5 text-white shadow-[0_8px_24px_rgba(18,214,161,0.18)] hover:opacity-90"
+        disabled={depositLimit.blocked}
+        onClick={() => {
+          if (!depositLimit.blocked) onTopUp();
+        }}
+      >
+        <Plus className="me-1.5 h-3.5 w-3.5" />
+        {withRemainingLabel(topUpLabel, depositLimit.remainingSeconds)}
+      </Button>
+      <Link
+        href="/send"
+        onClick={(event) => {
+          if (transferLimit.blocked) event.preventDefault();
+        }}
+      >
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-white/30 bg-transparent text-white hover:bg-white/10"
+          disabled={transferLimit.blocked}
+        >
+          <Send className="me-1.5 h-3.5 w-3.5" />
+          {withRemainingLabel(sendLabel, transferLimit.remainingSeconds)}
+        </Button>
+      </Link>
+      <Link
+        href="/transfer"
+        onClick={(event) => {
+          if (withdrawLimit.blocked) event.preventDefault();
+        }}
+      >
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-white/30 bg-transparent text-white hover:bg-white/10"
+          disabled={withdrawLimit.blocked}
+        >
+          {withRemainingLabel(withdrawLabel, withdrawLimit.remainingSeconds)}
+        </Button>
+      </Link>
+    </div>
+  );
+}
+
+function HomeOfferTopUpButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  const { blocked } = useRateLimitAction("deposit");
+  return (
+    <Button
+      size="sm"
+      variant="secondary"
+      className="mt-3 w-auto border-0 bg-white px-4 text-primary shadow-lg hover:bg-white/90"
+      disabled={blocked}
+      onClick={() => {
+        if (!blocked) onClick();
+      }}
+    >
+      {label}
+    </Button>
+  );
+}
 
 export default function HomePage() {
   const router = useRouter();
@@ -415,35 +502,12 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              <Button
-                size="sm"
-                className="border-0 bg-gradient-to-r from-primary to-secondary px-5 text-white shadow-[0_8px_24px_rgba(18,214,161,0.18)] hover:opacity-90"
-                onClick={() => openTopUp()}
-              >
-                <Plus className="me-1.5 h-3.5 w-3.5" />
-                {t.home.topUp}
-              </Button>
-              <Link href="/send">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-white/30 bg-transparent text-white hover:bg-white/10"
-                >
-                  <Send className="me-1.5 h-3.5 w-3.5" />
-                  {t.home.send}
-                </Button>
-              </Link>
-              <Link href="/transfer">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-white/30 bg-transparent text-white hover:bg-white/10"
-                >
-                  {t.withdrawal.withdrawTitle}
-                </Button>
-              </Link>
-            </div>
+            <HomeMoveMoneyButtons
+              onTopUp={() => openTopUp()}
+              topUpLabel={t.home.topUp}
+              sendLabel={t.home.send}
+              withdrawLabel={t.withdrawal.withdrawTitle}
+            />
           </div>
         </Card>
 
@@ -461,14 +525,10 @@ export default function HomePage() {
               <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-white/75 sm:text-sm">
                 {displayOffer.description}
               </p>
-              <Button
-                size="sm"
-                variant="secondary"
-                className="mt-3 w-auto border-0 bg-white px-4 text-primary shadow-lg hover:bg-white/90"
+              <HomeOfferTopUpButton
+                label={t.home.topUpNow}
                 onClick={() => openTopUp(true)}
-              >
-                {t.home.topUpNow}
-              </Button>
+              />
             </div>
             <WalletIllustration className="relative z-[1] h-full min-h-44 w-full sm:min-h-40" />
           </section>

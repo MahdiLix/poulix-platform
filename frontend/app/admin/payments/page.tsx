@@ -25,7 +25,9 @@ import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import { Pagination } from "@/shared/ui/Pagination";
 import type { AdminPayment } from "@/features/admin/lib/admin";
 
-function statusBadgeVariant(status: string): "success" | "warning" | "danger" | "muted" {
+function statusBadgeVariant(
+  status: string,
+): "success" | "warning" | "danger" | "muted" {
   if (status === "PAID") return "success";
   if (status === "PENDING") return "warning";
   if (status === "FAILED") return "danger";
@@ -79,7 +81,11 @@ export default function AdminPaymentsPage() {
   return (
     <AdminShell title={t.admin.paymentsTitle} subtitle={t.admin.subtitle}>
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Total Payments" value={String(total)} icon={CreditCard} />
+        <StatCard
+          label="Total Payments"
+          value={String(total)}
+          icon={CreditCard}
+        />
         <StatCard
           label="Successful"
           value={String(paid)}

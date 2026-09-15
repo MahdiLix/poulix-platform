@@ -12,6 +12,7 @@ import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 import { WalletBalance } from "@/features/wallet/components/WalletBalance";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
+import { useRateLimitAction, withRemainingLabel } from "@/shared/rate-limit";
 import { flashToast } from "@/shared/ui/Toast";
 import {
   normalizeAccountNumber,
@@ -45,6 +46,7 @@ export function WithdrawForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useLanguage();
+  const { blocked, remainingSeconds } = useRateLimitAction("withdraw");
   const {
     status,
     balance,
@@ -95,15 +97,12 @@ export function WithdrawForm() {
           (item) => item.type === "BANK_ACCOUNT" || item.type === "SHABA",
         );
         const revealed = await Promise.all(
-          candidates.slice(0, 8).map((item) =>
-            api.getDestinationValue(item.id).catch(() => null),
-          ),
+          candidates
+            .slice(0, 8)
+            .map((item) => api.getDestinationValue(item.id).catch(() => null)),
         );
-        const { accounts, shabas } =
-          collectWithdrawDestinationValues(revealed);
-        setRecentAccounts((current) =>
-          [...new Set([...current, ...accounts])],
-        );
+        const { accounts, shabas } = collectWithdrawDestinationValues(revealed);
+        setRecentAccounts((current) => [...new Set([...current, ...accounts])]);
         setRecentShabas((current) => [...new Set([...current, ...shabas])]);
         if (destinationId) {
           const selected = await api
@@ -349,9 +348,11 @@ export function WithdrawForm() {
             setError("");
           }}
         />
-        {(fundingSource.envelopeId
-          ? fundingSource.balance !== null
-          : status === "ready" && balance !== null) ? (
+        {(
+          fundingSource.envelopeId
+            ? fundingSource.balance !== null
+            : status === "ready" && balance !== null
+        ) ? (
           <button
             type="button"
             onClick={() =>
@@ -393,17 +394,20 @@ export function WithdrawForm() {
         onChange={(e) => setReason(e.target.value)}
       />
 
-      {error && (
+      {error || blocked ? (
         <div className="rounded-xl bg-danger-soft p-3 text-center text-xs font-semibold text-danger">
-          {error}
+          {blocked ? t.messages.withdrawRateLimited : error}
         </div>
-      )}
+      ) : null}
 
-      <Button type="submit" disabled={loading || status === "unauthenticated"}>
+      <Button
+        type="submit"
+        disabled={loading || status === "unauthenticated" || blocked}
+      >
         {loading ? (
           <Spinner size="sm" label={t.withdrawal.processing} />
         ) : (
-          t.withdrawal.withdrawBtn
+          withRemainingLabel(t.withdrawal.withdrawBtn, remainingSeconds)
         )}
       </Button>
 

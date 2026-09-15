@@ -129,7 +129,9 @@ export function AppDatePicker({
                   isValidDate ? "font-semibold text-foreground" : "text-muted",
                 )}
               >
-                {isValidDate ? formatDisplayDate(value!, language) : placeholder}
+                {isValidDate
+                  ? formatDisplayDate(value!, language)
+                  : placeholder}
               </span>
             </span>
             {allowClear && isValidDate && !disabled ? (

@@ -15,7 +15,10 @@ import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import { formatIrr } from "@/features/wallet/lib/wallet";
 import { EnvelopeCard } from "@/features/envelopes/components/EnvelopeCard";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
-import type { Envelope, EnvelopeMovement } from "@/features/envelopes/lib/envelopes";
+import type {
+  Envelope,
+  EnvelopeMovement,
+} from "@/features/envelopes/lib/envelopes";
 import { parseEnvelopeAmount } from "@/features/envelopes/lib/envelopes";
 
 const ENVELOPE_COLORS = [
@@ -99,18 +102,22 @@ export default function EnvelopesPage() {
     }));
   }, [envelopes, totalAllocated]);
 
-  const lastAllocations: (EnvelopeMovement & { envelopeName: string })[] = useMemo(() => {
-    const items = envelopes
-      .flatMap((envelope) =>
-        (envelope.movements || []).map((movement) => ({
-          ...movement,
-          envelopeName: envelope.name,
-        })),
-      )
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 4);
-    return items;
-  }, [envelopes]);
+  const lastAllocations: (EnvelopeMovement & { envelopeName: string })[] =
+    useMemo(() => {
+      const items = envelopes
+        .flatMap((envelope) =>
+          (envelope.movements || []).map((movement) => ({
+            ...movement,
+            envelopeName: envelope.name,
+          })),
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )
+        .slice(0, 4);
+      return items;
+    }, [envelopes]);
 
   return (
     <AppShell showBottomNav={false}>
@@ -136,7 +143,9 @@ export default function EnvelopesPage() {
                 {t.envelopes.availableBalance}
               </p>
               <p className="mt-1 text-lg font-bold text-success">
-                {status === "ready" ? formatIrr(availableBalance, currency) : "—"}
+                {status === "ready"
+                  ? formatIrr(availableBalance, currency)
+                  : "—"}
               </p>
               {status === "error" && walletError ? (
                 <p className="mt-1 text-[10px] font-medium text-danger">
@@ -171,18 +180,23 @@ export default function EnvelopesPage() {
                     className="h-full"
                     style={{
                       width: `${segment.percent * 100}%`,
-                      backgroundColor: ENVELOPE_COLORS[i % ENVELOPE_COLORS.length],
+                      backgroundColor:
+                        ENVELOPE_COLORS[i % ENVELOPE_COLORS.length],
                     }}
                   />
                 ))}
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
                 {segments.map((segment, i) => (
-                  <div key={segment.envelope.id} className="flex items-center gap-1.5">
+                  <div
+                    key={segment.envelope.id}
+                    className="flex items-center gap-1.5"
+                  >
                     <span
                       className="h-2.5 w-2.5 rounded-full"
                       style={{
-                        backgroundColor: ENVELOPE_COLORS[i % ENVELOPE_COLORS.length],
+                        backgroundColor:
+                          ENVELOPE_COLORS[i % ENVELOPE_COLORS.length],
                       }}
                     />
                     <span className="font-medium text-foreground">
@@ -233,8 +247,13 @@ export default function EnvelopesPage() {
         {pageStatus === "ready" && lastAllocations.length > 0 ? (
           <Card className="space-y-3 p-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-foreground">Last allocations</h3>
-              <Link href="/history" className="text-xs font-semibold text-primary hover:underline">
+              <h3 className="text-sm font-bold text-foreground">
+                Last allocations
+              </h3>
+              <Link
+                href="/history"
+                className="text-xs font-semibold text-primary hover:underline"
+              >
                 {t.home.seeMore}
               </Link>
             </div>
@@ -250,7 +269,10 @@ export default function EnvelopesPage() {
                     </div>
                     <div>
                       <p className="font-bold text-foreground">
-                        {movement.type === "ALLOCATE" ? "Allocated to" : "Released from"} {movement.envelopeName}
+                        {movement.type === "ALLOCATE"
+                          ? "Allocated to"
+                          : "Released from"}{" "}
+                        {movement.envelopeName}
                       </p>
                       {movement.type === "ALLOCATE" ? (
                         <p className="text-muted">Budget allocation</p>

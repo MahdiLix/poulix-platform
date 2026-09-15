@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Download, ListChecks, XCircle } from "lucide-react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Download,
+  ListChecks,
+  XCircle,
+} from "lucide-react";
 import { AdminShell } from "@/features/admin/components/AdminShell";
 import { Button, ButtonLink } from "@/shared/ui/Button";
 import { PageSpinner } from "@/shared/ui/Spinner";
@@ -27,7 +33,12 @@ import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import { Pagination } from "@/shared/ui/Pagination";
 import type { AdminTransaction } from "@/features/admin/lib/admin";
 
-const INCOME_TYPES = new Set(["DEPOSIT", "TRANSFER_IN", "GOAL_RELEASE", "ENVELOPE_RELEASE"]);
+const INCOME_TYPES = new Set([
+  "DEPOSIT",
+  "TRANSFER_IN",
+  "GOAL_RELEASE",
+  "ENVELOPE_RELEASE",
+]);
 
 export default function AdminTransactionsPage() {
   const { t, language } = useLanguage();
@@ -125,13 +136,34 @@ export default function AdminTransactionsPage() {
             options={[
               { value: "", label: t.admin.allTypes },
               { value: "DEPOSIT", label: transactionTypeLabel("DEPOSIT", t) },
-              { value: "WITHDRAWAL", label: transactionTypeLabel("WITHDRAWAL", t) },
-              { value: "TRANSFER_OUT", label: transactionTypeLabel("TRANSFER_OUT", t) },
-              { value: "TRANSFER_IN", label: transactionTypeLabel("TRANSFER_IN", t) },
-              { value: "GOAL_CONTRIBUTE", label: transactionTypeLabel("GOAL_CONTRIBUTE", t) },
-              { value: "GOAL_RELEASE", label: transactionTypeLabel("GOAL_RELEASE", t) },
-              { value: "ENVELOPE_ALLOCATE", label: transactionTypeLabel("ENVELOPE_ALLOCATE", t) },
-              { value: "ENVELOPE_RELEASE", label: transactionTypeLabel("ENVELOPE_RELEASE", t) },
+              {
+                value: "WITHDRAWAL",
+                label: transactionTypeLabel("WITHDRAWAL", t),
+              },
+              {
+                value: "TRANSFER_OUT",
+                label: transactionTypeLabel("TRANSFER_OUT", t),
+              },
+              {
+                value: "TRANSFER_IN",
+                label: transactionTypeLabel("TRANSFER_IN", t),
+              },
+              {
+                value: "GOAL_CONTRIBUTE",
+                label: transactionTypeLabel("GOAL_CONTRIBUTE", t),
+              },
+              {
+                value: "GOAL_RELEASE",
+                label: transactionTypeLabel("GOAL_RELEASE", t),
+              },
+              {
+                value: "ENVELOPE_ALLOCATE",
+                label: transactionTypeLabel("ENVELOPE_ALLOCATE", t),
+              },
+              {
+                value: "ENVELOPE_RELEASE",
+                label: transactionTypeLabel("ENVELOPE_RELEASE", t),
+              },
             ]}
           />
           <DatePicker

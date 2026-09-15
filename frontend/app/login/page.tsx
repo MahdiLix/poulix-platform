@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import {
   Eye,
@@ -19,9 +19,10 @@ import { ThemeToggle } from "@/shared/theme/ThemeToggle";
 import { LanguageToggle } from "@/shared/theme/LanguageToggle";
 import { BrandLogo } from "@/shared/brand/BrandLogo";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
-import { localizeError } from "@/shared/i18n/localizeError";
+import { localizeError, formatMessage } from "@/shared/i18n/localizeError";
 import { flashToast } from "@/shared/ui/Toast";
-import { getStoredToken } from "@/shared/api";
+import { getStoredToken, ApiRequestError } from "@/shared/api";
+import { useRateLimitAction, withRemainingLabel } from "@/shared/rate-limit";
 import {
   loginAndStoreSession,
   validateIdentifier,
@@ -30,6 +31,13 @@ import {
 
 export default function LoginPage() {
   const { t } = useLanguage();
+  const {
+    blocked,
+    remainingSeconds,
+    remainingAttempts,
+    attemptLimit,
+    lockedOut,
+  } = useRateLimitAction("login");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{
@@ -39,6 +47,15 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const wasBlocked = useRef(false);
+
+  useEffect(() => {
+    if (wasBlocked.current && !blocked) {
+      setError("");
+      setLoading(false);
+    }
+    wasBlocked.current = blocked;
+  }, [blocked]);
 
   useEffect(() => {
     if (getStoredToken()) {
@@ -48,11 +65,26 @@ export default function LoginPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (blocked) {
+      setError(
+        lockedOut
+          ? t.messages.accountTemporarilyLocked
+          : t.messages.loginRateLimited,
+      );
+      return;
+    }
+
+    const form = e.currentTarget as HTMLFormElement;
+    const data = new FormData(form);
+    const nextIdentifier = String(data.get("identifier") ?? identifier);
+    const nextPassword = String(data.get("password") ?? password);
+    setIdentifier(nextIdentifier);
+    setPassword(nextPassword);
     setError("");
 
     const nextErrors = {
-      identifier: validateIdentifier(identifier, t.messages),
-      password: validatePassword(password, t.messages),
+      identifier: validateIdentifier(nextIdentifier, t.messages),
+      password: validatePassword(nextPassword, t.messages),
     };
     setFieldErrors(nextErrors);
 
@@ -63,7 +95,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await loginAndStoreSession(
-        { identifier, password },
+        { identifier: nextIdentifier, password: nextPassword },
         t.messages,
       );
       flashToast({
@@ -72,10 +104,36 @@ export default function LoginPage() {
       });
       window.location.assign("/");
     } catch (err: unknown) {
-      setError(localizeError(err, t.messages, "loginFailed"));
+      const status =
+        err instanceof ApiRequestError
+          ? err.status
+          : typeof err === "object" && err && "status" in err
+            ? Number((err as { status: unknown }).status)
+            : undefined;
+      if (status === 429) {
+        setError(t.messages.loginRateLimited);
+      } else {
+        setError(localizeError(err, t.messages, "loginFailed"));
+      }
       setLoading(false);
     }
   }
+
+  const quotaHint =
+    !blocked &&
+    remainingAttempts != null &&
+    remainingAttempts > 0 &&
+    attemptLimit != null &&
+    remainingAttempts < attemptLimit
+      ? formatMessage(t.messages.rateLimitAttemptsRemaining, {
+          count: remainingAttempts,
+        })
+      : "";
+  const banner = blocked
+    ? lockedOut
+      ? t.messages.accountTemporarilyLocked
+      : t.messages.loginRateLimited
+    : [error, quotaHint].filter(Boolean).join(" ");
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas lg:flex-row">
@@ -83,8 +141,12 @@ export default function LoginPage() {
         <div className="flex items-center gap-3">
           <BrandLogo size={40} priority />
           <div>
-            <p className="text-base font-bold tracking-tight">{t.common.appName}</p>
-            <p className="text-[11px] text-sidebar-muted">{t.home.financialWallet}</p>
+            <p className="text-base font-bold tracking-tight">
+              {t.common.appName}
+            </p>
+            <p className="text-[11px] text-sidebar-muted">
+              {t.home.financialWallet}
+            </p>
           </div>
         </div>
         <div className="space-y-4">
@@ -177,17 +239,17 @@ export default function LoginPage() {
                   }
                 />
 
-                {error ? (
+                {banner ? (
                   <div className="rounded-xl bg-danger-soft p-3 text-xs font-medium text-danger">
-                    {error}
+                    {banner}
                   </div>
                 ) : null}
 
-                <Button type="submit" disabled={loading}>
+                <Button type="submit" disabled={loading || blocked}>
                   {loading ? (
                     <Spinner size="sm" label={t.auth.signingIn} />
                   ) : (
-                    t.auth.signInBtn
+                    withRemainingLabel(t.auth.signInBtn, remainingSeconds)
                   )}
                 </Button>
               </form>

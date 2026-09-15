@@ -57,6 +57,25 @@ import {
 } from "@/shared/user/session";
 import { parseAmount } from "@/features/wallet/lib/wallet";
 import { API_BASE_URL } from "@/shared/config";
+import {
+  actionFromEndpoint,
+  limitersForAction,
+  nearestRateLimit,
+  parseRateLimitHeaders,
+  parseRateLimitName,
+  parseRetryAfter,
+} from "@/shared/rate-limit/parseHeaders";
+import {
+  getActionCooldownRemaining,
+  getGlobalCooldownRemaining,
+  getLockoutCooldownRemaining,
+  notifyRateLimit,
+  recordActionQuota,
+  resolveExceededAction,
+  shouldWarnOnce,
+  clearAuthCooldowns,
+} from "@/shared/rate-limit/store";
+import { isAuthRateLimitAction } from "@/shared/rate-limit/types";
 
 export type AuthUser = {
   id: string;
@@ -124,6 +143,10 @@ const LEGACY_TOKEN_STORAGE_KEY = "poulix_access_token";
 function isAuthSessionEndpoint(endpoint: string) {
   const path = endpoint.split("?")[0].replace(/^\/api/, "");
   return path === "/auth/login" || path === "/auth/register";
+}
+
+function isMutatingMethod(method: string) {
+  return !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
 }
 
 function formatEndpoint(endpoint: string): string {
@@ -222,7 +245,108 @@ export function isAuthenticated(): boolean {
   return Boolean(getStoredToken());
 }
 
+export class ApiRequestError extends Error {
+  status: number;
+  retryAfter?: number;
+
+  constructor(message: string, status: number, retryAfter?: number) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+    this.retryAfter = retryAfter;
+  }
+}
+
+function observeRateLimit(
+  response: Response,
+  endpoint: string,
+  method: string,
+) {
+  const action = actionFromEndpoint(endpoint, method);
+  const name = parseRateLimitName(response.headers) || "";
+  const retryAfter = parseRetryAfter(response.headers);
+  const infos = parseRateLimitHeaders(response.headers);
+  const quota =
+    (action &&
+      infos.find((info) => info.name === action && info.remaining === 0)) ||
+    (action === "deposit" &&
+      infos.find((info) => info.name === "payments" && info.remaining === 0)) ||
+    (action && infos.find((info) => info.name === action)) ||
+    (name && infos.find((info) => info.name === name)) ||
+    infos[0];
+
+  if (action && quota) {
+    recordActionQuota(action, {
+      remaining: quota.remaining,
+      limit: quota.limit,
+    });
+  }
+
+  if (response.status === 429) {
+    const resolved = resolveExceededAction(name, action);
+    notifyRateLimit({
+      type: "exceeded",
+      action: resolved,
+      name: name || "default",
+      retryAfter: retryAfter ?? quota?.reset ?? 1,
+    });
+    return;
+  }
+
+  const allowWarning =
+    action &&
+    (response.ok
+      ? isMutatingMethod(method)
+      : isAuthRateLimitAction(action) && response.status === 401);
+
+  if (!allowWarning) {
+    return;
+  }
+
+  const nearest = nearestRateLimit(limitersForAction(infos, action));
+  if (
+    nearest &&
+    shouldWarnOnce(nearest.name, nearest.remaining, nearest.limit)
+  ) {
+    notifyRateLimit({
+      type: "warning",
+      name: nearest.name,
+      remaining: nearest.remaining,
+      limit: nearest.limit,
+    });
+  }
+}
+
+function cooldownError(retryAfter: number) {
+  return new ApiRequestError("Too many requests", 429, retryAfter);
+}
+
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
+  const method = (options.method || "GET").toUpperCase();
+  const action = actionFromEndpoint(endpoint, method);
+  if (action === "login") {
+    const lockoutRemaining = getLockoutCooldownRemaining();
+    if (lockoutRemaining > 0) {
+      throw new ApiRequestError(
+        "Account temporarily locked",
+        401,
+        lockoutRemaining,
+      );
+    }
+  }
+  if (action && !isAuthRateLimitAction(action) && isMutatingMethod(method)) {
+    const globalRemaining = getGlobalCooldownRemaining();
+    if (globalRemaining > 0) {
+      throw cooldownError(globalRemaining);
+    }
+  }
+  if (action) {
+    const actionRemaining = getActionCooldownRemaining(action);
+    if (actionRemaining > 0) {
+      throw cooldownError(actionRemaining);
+    }
+  }
+
   const token = getStoredToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -242,6 +366,12 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     headers,
   });
 
+  observeRateLimit(response, endpoint, method);
+
+  if (response.ok && isAuthSessionEndpoint(endpoint)) {
+    clearAuthCooldowns();
+  }
+
   // Failed login/register is 401 and must not wipe an existing session.
   if (response.status === 401 && attachToken) {
     removeStoredToken();
@@ -258,17 +388,49 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     : await response.text().catch(() => null);
 
   if (!response.ok) {
+    const payload =
+      data && typeof data === "object"
+        ? (data as {
+            error?: unknown;
+            message?: unknown;
+            retryAfterSeconds?: unknown;
+          })
+        : null;
     const errorMsg =
-      (data && typeof data === "object" && "message" in data
-        ? (data as { message?: unknown }).message
-        : null) ||
+      (payload && "message" in payload ? payload.message : null) ||
       response.statusText ||
       "An error occurred";
-    throw new Error(Array.isArray(errorMsg) ? errorMsg.join(", ") : String(errorMsg));
+    const retryAfter =
+      parseRetryAfter(response.headers) ??
+      (typeof payload?.retryAfterSeconds === "number"
+        ? payload.retryAfterSeconds
+        : undefined);
+    const errorCode = typeof payload?.error === "string" ? payload.error : "";
+
+    if (
+      action === "login" &&
+      response.status === 401 &&
+      retryAfter &&
+      (errorCode === "ACCOUNT_LOCKED" ||
+        errorMsg === "Account temporarily locked")
+    ) {
+      notifyRateLimit({
+        type: "exceeded",
+        action: "login",
+        name: "lockout",
+        retryAfter,
+      });
+    }
+
+    throw new ApiRequestError(
+      Array.isArray(errorMsg) ? errorMsg.join(", ") : String(errorMsg),
+      response.status,
+      retryAfter,
+    );
   }
 
   if (typeof data === "string") {
-    throw new Error("An error occurred");
+    throw new ApiRequestError("An error occurred", response.status);
   }
 
   return data;
@@ -441,9 +603,8 @@ export const api = {
     }),
 
   getNotifications: async (): Promise<Notification[]> => {
-    const data = (await fetchWithAuth(
-      "/notifications?page=1&pageSize=20",
-    )) as Notification[] | PaginatedResponse<Notification>;
+    const data = (await fetchWithAuth("/notifications?page=1&pageSize=20")) as
+      Notification[] | PaginatedResponse<Notification>;
     return normalizePage(data, 1, 20).items;
   },
 
@@ -549,13 +710,14 @@ export const api = {
     fetchWithAuth("/security/touch", { method: "POST" }),
 
   getTransactions: async (): Promise<UserTransaction[]> => {
-    const data = (await fetchWithAuth(
-      "/transactions?page=1&pageSize=100",
-    )) as UserTransaction[] | PaginatedResponse<UserTransaction>;
+    const data = (await fetchWithAuth("/transactions?page=1&pageSize=100")) as
+      UserTransaction[] | PaginatedResponse<UserTransaction>;
     return normalizePage(data, 1, 100).items;
   },
 
-  getTransactionsPage: async <T extends UserTransaction = UserTransaction>(params: {
+  getTransactionsPage: async <
+    T extends UserTransaction = UserTransaction,
+  >(params: {
     page?: number;
     pageSize?: number;
     type?: string;

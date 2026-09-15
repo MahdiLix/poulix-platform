@@ -44,14 +44,54 @@ const ENVELOPE_COLORS = [
 
 function envelopeIcon(name: string, className: string): ReactNode {
   const lower = name.toLowerCase();
-  if (lower.includes("rent") || lower.includes("home") || lower.includes("house")) return <Home className={className} />;
-  if (lower.includes("grocer") || lower.includes("food") || lower.includes("dining")) return <ShoppingCart className={className} />;
-  if (lower.includes("transport") || lower.includes("bus") || lower.includes("commute")) return <Bus className={className} />;
-  if (lower.includes("car") || lower.includes("vehicle") || lower.includes("auto")) return <Car className={className} />;
-  if (lower.includes("entertain") || lower.includes("fun") || lower.includes("game")) return <Gamepad2 className={className} />;
-  if (lower.includes("dining") || lower.includes("restaurant") || lower.includes("eat")) return <Utensils className={className} />;
-  if (lower.includes("tech") || lower.includes("laptop") || lower.includes("computer")) return <Monitor className={className} />;
-  if (lower.includes("wallet") || lower.includes("general") || lower.includes("fund")) return <Wallet className={className} />;
+  if (
+    lower.includes("rent") ||
+    lower.includes("home") ||
+    lower.includes("house")
+  )
+    return <Home className={className} />;
+  if (
+    lower.includes("grocer") ||
+    lower.includes("food") ||
+    lower.includes("dining")
+  )
+    return <ShoppingCart className={className} />;
+  if (
+    lower.includes("transport") ||
+    lower.includes("bus") ||
+    lower.includes("commute")
+  )
+    return <Bus className={className} />;
+  if (
+    lower.includes("car") ||
+    lower.includes("vehicle") ||
+    lower.includes("auto")
+  )
+    return <Car className={className} />;
+  if (
+    lower.includes("entertain") ||
+    lower.includes("fun") ||
+    lower.includes("game")
+  )
+    return <Gamepad2 className={className} />;
+  if (
+    lower.includes("dining") ||
+    lower.includes("restaurant") ||
+    lower.includes("eat")
+  )
+    return <Utensils className={className} />;
+  if (
+    lower.includes("tech") ||
+    lower.includes("laptop") ||
+    lower.includes("computer")
+  )
+    return <Monitor className={className} />;
+  if (
+    lower.includes("wallet") ||
+    lower.includes("general") ||
+    lower.includes("fund")
+  )
+    return <Wallet className={className} />;
   return <Wallet className={className} />;
 }
 
@@ -99,19 +139,27 @@ export function EnvelopeCard({
 
       <div className="mt-auto flex items-center gap-2">
         {envelope.status === "ACTIVE" ? (
-        <Link href={`/envelopes/${envelope.id}`} className="flex-1">
-          <Button size="sm" variant="outline" className="w-full gap-1 text-success hover:text-success">
-            <Plus className="h-3.5 w-3.5" />
-            {t.envelopes.allocateBtn}
-          </Button>
-        </Link>
+          <Link href={`/envelopes/${envelope.id}`} className="flex-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full gap-1 text-success hover:text-success"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t.envelopes.allocateBtn}
+            </Button>
+          </Link>
         ) : null}
         {envelope.status === "ACTIVE" ? (
-        <Link href={`/envelopes/${envelope.id}`} className="flex-1">
-          <Button size="sm" variant="outline" className="w-full text-danger hover:text-danger">
-            {t.envelopes.releaseBtn}
-          </Button>
-        </Link>
+          <Link href={`/envelopes/${envelope.id}`} className="flex-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full text-danger hover:text-danger"
+            >
+              {t.envelopes.releaseBtn}
+            </Button>
+          </Link>
         ) : null}
         {envelope.status === "ACTIVE" && onCancel ? (
           <button
@@ -125,7 +173,11 @@ export function EnvelopeCard({
           </button>
         ) : null}
         <Link href={`/envelopes/${envelope.id}`}>
-          <Button size="sm" variant="ghost" className="px-2 text-success hover:text-success">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="px-2 text-success hover:text-success"
+          >
             <Eye className="h-4 w-4" />
           </Button>
         </Link>

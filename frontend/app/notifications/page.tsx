@@ -201,7 +201,9 @@ export default function NotificationsPage() {
               onClick={() => void markAllAsRead()}
             >
               <CheckCheck className="h-4 w-4" />
-              <span className="hidden sm:inline">{t.notifications.markAllRead}</span>
+              <span className="hidden sm:inline">
+                {t.notifications.markAllRead}
+              </span>
             </Button>
           ) : null
         }
@@ -234,108 +236,110 @@ export default function NotificationsPage() {
 
         {pageStatus === "ready" ? (
           <>
-          <Card className="overflow-hidden p-0">
-            <div className="flex flex-wrap gap-2 border-b border-border px-4 py-3">
-              {FILTERS.map((item) => {
-                const active = filter === item;
-                return (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setFilter(item)}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition",
-                      active
-                        ? "bg-primary text-primary-foreground"
-                        : "border border-border bg-surface text-muted hover:border-primary/30 hover:text-foreground",
-                    )}
-                  >
-                    {item !== "ALL" && !active ? (
-                      <span
-                        className={cn(
-                          "h-1.5 w-1.5 rounded-full",
-                          filterDotClass(item),
-                        )}
-                      />
-                    ) : null}
-                    {item === "ALL"
-                      ? t.notifications.filterAll
-                      : t.notifications.categories[item]}
-                  </button>
-                );
-              })}
-            </div>
-
-            {filtered.length === 0 ? (
-              <div className="space-y-1 px-5 py-10 text-center">
-                <p className="text-sm font-bold text-foreground">
-                  {t.notifications.emptyTitle}
-                </p>
-                <p className="text-xs text-muted">{t.notifications.emptySub}</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border">
-                {filtered.map((notification) => {
-                  const content = notificationContent(notification, t);
-                  const category = notificationDisplayCategory(notification);
-                  const Icon = notificationIcon(notification);
+            <Card className="overflow-hidden p-0">
+              <div className="flex flex-wrap gap-2 border-b border-border px-4 py-3">
+                {FILTERS.map((item) => {
+                  const active = filter === item;
                   return (
                     <button
-                      key={notification.id}
+                      key={item}
                       type="button"
-                      onClick={() => void markAsRead(notification)}
-                      className="flex w-full items-center gap-4 px-5 py-4 text-start transition hover:bg-surface-muted"
-                    >
-                      <div
-                        className={cn(
-                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]",
-                          iconTileClass(category),
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-foreground">
-                          {content.title}
-                        </p>
-                        <p className="mt-0.5 text-xs text-muted">
-                          {content.message}
-                        </p>
-                      </div>
-                      <span
-                        className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold sm:inline ${notificationCategoryClass(
-                          category,
-                        )}`}
-                      >
-                        {t.notifications.categories[category]}
-                      </span>
-                      <time className="hidden shrink-0 text-[11px] font-medium text-muted md:block">
-                        {formatDisplayDateTime(
-                          notification.createdAt,
-                          language,
-                        )}
-                      </time>
-                      {!notification.isRead ? (
-                        <span className="flex shrink-0 items-center gap-1">
-                          <span className="h-2 w-2 rounded-full bg-primary" />
-                          <span className="hidden text-[10px] font-bold uppercase tracking-wide text-primary lg:inline">
-                            {t.notifications.unread}
-                          </span>
-                        </span>
-                      ) : (
-                        <span className="h-2 w-2 shrink-0" />
+                      onClick={() => setFilter(item)}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                        active
+                          ? "bg-primary text-primary-foreground"
+                          : "border border-border bg-surface text-muted hover:border-primary/30 hover:text-foreground",
                       )}
+                    >
+                      {item !== "ALL" && !active ? (
+                        <span
+                          className={cn(
+                            "h-1.5 w-1.5 rounded-full",
+                            filterDotClass(item),
+                          )}
+                        />
+                      ) : null}
+                      {item === "ALL"
+                        ? t.notifications.filterAll
+                        : t.notifications.categories[item]}
                     </button>
                   );
                 })}
               </div>
-            )}
-          </Card>
-          <Pagination
-            page={page}
-            totalPages={Math.max(1, Math.ceil(total / PAGE_SIZE))}
-            onPageChange={setPage}
-          />
+
+              {filtered.length === 0 ? (
+                <div className="space-y-1 px-5 py-10 text-center">
+                  <p className="text-sm font-bold text-foreground">
+                    {t.notifications.emptyTitle}
+                  </p>
+                  <p className="text-xs text-muted">
+                    {t.notifications.emptySub}
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {filtered.map((notification) => {
+                    const content = notificationContent(notification, t);
+                    const category = notificationDisplayCategory(notification);
+                    const Icon = notificationIcon(notification);
+                    return (
+                      <button
+                        key={notification.id}
+                        type="button"
+                        onClick={() => void markAsRead(notification)}
+                        className="flex w-full items-center gap-4 px-5 py-4 text-start transition hover:bg-surface-muted"
+                      >
+                        <div
+                          className={cn(
+                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]",
+                            iconTileClass(category),
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-foreground">
+                            {content.title}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted">
+                            {content.message}
+                          </p>
+                        </div>
+                        <span
+                          className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold sm:inline ${notificationCategoryClass(
+                            category,
+                          )}`}
+                        >
+                          {t.notifications.categories[category]}
+                        </span>
+                        <time className="hidden shrink-0 text-[11px] font-medium text-muted md:block">
+                          {formatDisplayDateTime(
+                            notification.createdAt,
+                            language,
+                          )}
+                        </time>
+                        {!notification.isRead ? (
+                          <span className="flex shrink-0 items-center gap-1">
+                            <span className="h-2 w-2 rounded-full bg-primary" />
+                            <span className="hidden text-[10px] font-bold uppercase tracking-wide text-primary lg:inline">
+                              {t.notifications.unread}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="h-2 w-2 shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+            <Pagination
+              page={page}
+              totalPages={Math.max(1, Math.ceil(total / PAGE_SIZE))}
+              onPageChange={setPage}
+            />
           </>
         ) : null}
       </div>

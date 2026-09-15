@@ -41,7 +41,10 @@ export function DonutChart({
       : [{ name: "Empty", value: 1, fill: "var(--surface-muted)" }];
 
   return (
-    <div className={cn("relative mx-auto", className)} style={{ width: size, height: size }}>
+    <div
+      className={cn("relative mx-auto", className)}
+      style={{ width: size, height: size }}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -66,10 +69,14 @@ export function DonutChart({
       {(centerLabel || centerValue) && (
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
           {centerValue ? (
-            <p className="text-lg font-bold leading-tight text-foreground">{centerValue}</p>
+            <p className="text-lg font-bold leading-tight text-foreground">
+              {centerValue}
+            </p>
           ) : null}
           {centerLabel ? (
-            <p className="mt-0.5 text-[11px] font-medium text-muted">{centerLabel}</p>
+            <p className="mt-0.5 text-[11px] font-medium text-muted">
+              {centerLabel}
+            </p>
           ) : null}
         </div>
       )}

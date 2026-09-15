@@ -44,7 +44,16 @@ export function PasswordStrength({ password }: { password: string }) {
         ))}
       </div>
       <div className="flex items-center justify-between text-xs">
-        <span className={cn("font-semibold", score <= 1 ? "text-danger" : score === 2 ? "text-warning" : "text-success")}>
+        <span
+          className={cn(
+            "font-semibold",
+            score <= 1
+              ? "text-danger"
+              : score === 2
+                ? "text-warning"
+                : "text-success",
+          )}
+        >
           {strengthLabel(score)}
         </span>
         <span className="text-muted">

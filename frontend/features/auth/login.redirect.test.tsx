@@ -30,9 +30,8 @@ vi.mock("@/shared/ui/Toast", () => ({
 }));
 
 vi.mock("@/shared/api", async () => {
-  const actual = await vi.importActual<typeof import("@/shared/api")>(
-    "@/shared/api",
-  );
+  const actual =
+    await vi.importActual<typeof import("@/shared/api")>("@/shared/api");
   return {
     ...actual,
     getStoredToken: () => null,

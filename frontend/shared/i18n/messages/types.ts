@@ -114,6 +114,22 @@ export type FlatMessages = {
   shareReceiptTitle: string;
   shareReceiptText: string;
   withdrewAmount: string;
+  tooManyRequests: string;
+  accountTemporarilyLocked: string;
+  rateLimitNearLimit: string;
+  rateLimitBurstExceeded: string;
+  rateLimitBurstExceededDetail: string;
+  rateLimitCooldownFinished: string;
+  rateLimitActionWait: string;
+  rateLimitAttemptsRemaining: string;
+  depositRateLimited: string;
+  withdrawRateLimited: string;
+  transferRateLimited: string;
+  scheduledRateLimited: string;
+  destinationsRateLimited: string;
+  securityLimitsRateLimited: string;
+  loginRateLimited: string;
+  registerRateLimited: string;
 };
 
 export type AppMessages = FlatMessages & MessageCategories;

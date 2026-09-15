@@ -8,11 +8,6 @@ vi.mock("next/image", () => ({
 }));
 
 vi.mock("next/link", () => ({
-  default: ({
-    children,
-    href,
-  }: {
-    children: React.ReactNode;
-    href: string;
-  }) => createElement("a", { href }, children),
+  default: ({ children, href }: { children: React.ReactNode; href: string }) =>
+    createElement("a", { href }, children),
 }));

@@ -52,8 +52,7 @@ export function GlobalSearch({
       if (!(event.metaKey || event.ctrlKey)) {
         return;
       }
-      const isK =
-        event.code === "KeyK" || event.key.toLowerCase() === "k";
+      const isK = event.code === "KeyK" || event.key.toLowerCase() === "k";
       if (!isK) {
         return;
       }

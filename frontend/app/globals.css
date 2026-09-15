@@ -237,24 +237,14 @@ body {
 }
 
 .fintech-card.bg-ink-hero {
-  background: linear-gradient(
-    110deg,
-    #071a36 0%,
-    #0c3a7c 58%,
-    #1468e8 135%
-  );
+  background: linear-gradient(110deg, #071a36 0%, #0c3a7c 58%, #1468e8 135%);
   background-repeat: no-repeat;
   background-size: 100% 100%;
 }
 
 /* Keep the Available Balance ink gradient in dark mode (do not let .dark .fintech-card win). */
 .dark .fintech-card.bg-ink-hero {
-  background: linear-gradient(
-    110deg,
-    #071a36 0%,
-    #0c3a7c 58%,
-    #1468e8 135%
-  );
+  background: linear-gradient(110deg, #071a36 0%, #0c3a7c 58%, #1468e8 135%);
   background-repeat: no-repeat;
   background-size: 100% 100%;
 }
@@ -264,12 +254,7 @@ body {
 .dark[dir="rtl"] .fintech-card.bg-ink-hero,
 html[dir="rtl"] .fintech-card.bg-ink-hero,
 html.dark[dir="rtl"] .fintech-card.bg-ink-hero {
-  background: linear-gradient(
-    110deg,
-    #071a36 0%,
-    #0c3a7c 58%,
-    #1468e8 135%
-  );
+  background: linear-gradient(110deg, #071a36 0%, #0c3a7c 58%, #1468e8 135%);
   background-repeat: no-repeat;
   background-size: 100% 100%;
 }
@@ -280,9 +265,6 @@ html[dir="rtl"] .fintech-card.bg-ink-hero > [data-ink-hero-glow] {
   inset-inline-end: auto;
   right: 0;
 }
-
-
- 
 
 .dashboard-canvas {
   background:

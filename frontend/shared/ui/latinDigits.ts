@@ -20,9 +20,8 @@ export function localizeDigits(
   return toLatinDigits(String(value));
 }
 
-export function isNumericInput(
-  type?: string,
-  inputMode?: string,
-): boolean {
-  return type === "number" || inputMode === "numeric" || inputMode === "decimal";
+export function isNumericInput(type?: string, inputMode?: string): boolean {
+  return (
+    type === "number" || inputMode === "numeric" || inputMode === "decimal"
+  );
 }

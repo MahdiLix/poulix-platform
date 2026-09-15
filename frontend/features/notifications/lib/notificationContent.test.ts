@@ -43,7 +43,9 @@ describe("notificationContent", () => {
       fa,
     );
 
-    expect(english.title).not.toBe(en.notifications.types.SECURITY_WARNING.title);
+    expect(english.title).not.toBe(
+      en.notifications.types.SECURITY_WARNING.title,
+    );
     expect(persian.title).not.toBe("هشدار امنیتی");
     expect(persian.title).toBe("ورود از دستگاه جدید");
   });

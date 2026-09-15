@@ -30,9 +30,7 @@ function DailyLimitCard({ limits }: { limits: SpendingLimitSummary[] }) {
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
           {t.send.amountLabel}
         </p>
-        <p className="mt-2 text-sm text-muted">
-          {t.destinations.emptySaved}
-        </p>
+        <p className="mt-2 text-sm text-muted">{t.destinations.emptySaved}</p>
       </Card>
     );
   }

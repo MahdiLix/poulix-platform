@@ -66,8 +66,9 @@ export function AreaChart({
 
   const chartData = useMemo(() => {
     const labels =
-      normalizedSeries.find((item) => item.data.length > 0)?.data.map((d) => d.label) ??
-      [];
+      normalizedSeries
+        .find((item) => item.data.length > 0)
+        ?.data.map((d) => d.label) ?? [];
     return labels.map((label, index) => {
       const row: Record<string, string | number> = { label };
       normalizedSeries.forEach((item, seriesIndex) => {
@@ -145,7 +146,9 @@ export function AreaChart({
               iconType="circle"
               iconSize={8}
               formatter={(value) => (
-                <span className="text-xs font-semibold text-muted">{value}</span>
+                <span className="text-xs font-semibold text-muted">
+                  {value}
+                </span>
               )}
             />
           ) : null}

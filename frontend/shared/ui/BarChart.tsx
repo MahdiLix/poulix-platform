@@ -48,7 +48,10 @@ export function BarChart({
   if (data.length === 0) {
     return (
       <div
-        className={cn("flex items-center justify-center text-xs text-muted", className)}
+        className={cn(
+          "flex items-center justify-center text-xs text-muted",
+          className,
+        )}
         style={{ height }}
       >
         —

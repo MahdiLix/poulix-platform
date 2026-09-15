@@ -1,13 +1,73 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { api, getStoredToken } from "@/shared/api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ApiRequestError, api, getStoredToken } from "@/shared/api";
 import { parseAmount } from "@/features/wallet/lib/wallet";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
+import {
+  RATE_LIMIT_EVENT,
+  type RateLimitEventDetail,
+} from "@/shared/rate-limit/types";
 
 export type WalletBalanceStatus =
   "idle" | "loading" | "ready" | "error" | "unauthenticated";
+
+const LAST_BALANCE_KEY = "poulix_wallet_last_balance";
+
+type SavedBalance = { balance: number; currency: string };
+
+function readSavedBalance(): SavedBalance | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(LAST_BALANCE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SavedBalance;
+    if (
+      typeof parsed.balance !== "number" ||
+      !Number.isFinite(parsed.balance)
+    ) {
+      return null;
+    }
+    return {
+      balance: Math.trunc(parsed.balance),
+      currency: typeof parsed.currency === "string" ? parsed.currency : "IRR",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeSavedBalance(balance: number, currency: string) {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(
+    LAST_BALANCE_KEY,
+    JSON.stringify({ balance, currency }),
+  );
+}
+
+function clearSavedBalance() {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(LAST_BALANCE_KEY);
+}
+
+function isRateLimitError(err: unknown): boolean {
+  if (err instanceof ApiRequestError && err.status === 429) {
+    return true;
+  }
+  if (err && typeof err === "object" && "status" in err) {
+    return (err as { status?: unknown }).status === 429;
+  }
+  const message = err instanceof Error ? err.message : String(err ?? "");
+  return /too many requests/i.test(message);
+}
+
+function retryAfterSeconds(err: unknown): number {
+  if (err instanceof ApiRequestError && err.retryAfter) {
+    return Math.max(1, err.retryAfter);
+  }
+  return 1;
+}
 
 export function useWalletBalance() {
   const { t } = useLanguage();
@@ -15,16 +75,26 @@ export function useWalletBalance() {
   const [balance, setBalance] = useState<number | null>(null);
   const [currency, setCurrency] = useState("IRR");
   const [error, setError] = useState<string | null>(null);
+  const retryTimer = useRef<number>(0);
+  const refreshRef = useRef<() => Promise<void>>(async () => {});
 
   const refresh = useCallback(async () => {
     if (!getStoredToken()) {
+      clearSavedBalance();
       setStatus("unauthenticated");
       setBalance(null);
       setError(null);
       return;
     }
 
-    setStatus("loading");
+    const saved = readSavedBalance();
+    if (saved) {
+      setBalance((current) => current ?? saved.balance);
+      setCurrency(saved.currency);
+    }
+    setStatus((current) =>
+      current === "ready" || saved ? "ready" : "loading",
+    );
     setError(null);
 
     try {
@@ -36,11 +106,40 @@ export function useWalletBalance() {
         throw new Error(t.messages.balanceResponseInvalid);
       }
 
-      setBalance(parseAmount(data.balance));
-      setCurrency(typeof data.currency === "string" ? data.currency : "IRR");
+      const nextBalance = parseAmount(data.balance);
+      const nextCurrency =
+        typeof data.currency === "string" ? data.currency : "IRR";
+      writeSavedBalance(nextBalance, nextCurrency);
+      setBalance(nextBalance);
+      setCurrency(nextCurrency);
       setStatus("ready");
-    } catch (err) {
+      if (typeof window !== "undefined") {
+        window.clearTimeout(retryTimer.current);
+      }
+    } catch (err: unknown) {
+      if (isRateLimitError(err)) {
+        if (saved) {
+          setBalance((current) => current ?? saved.balance);
+          setCurrency(saved.currency);
+        }
+        setError(null);
+        setStatus((current) =>
+          current === "unauthenticated" ? current : "ready",
+        );
+        if (typeof window !== "undefined") {
+          window.clearTimeout(retryTimer.current);
+          retryTimer.current = window.setTimeout(
+            () => {
+              void refreshRef.current();
+            },
+            retryAfterSeconds(err) * 1000,
+          );
+        }
+        return;
+      }
+
       if (!getStoredToken()) {
+        clearSavedBalance();
         setStatus("unauthenticated");
         setBalance(null);
         setError(null);
@@ -53,8 +152,25 @@ export function useWalletBalance() {
     }
   }, [t.messages]);
 
+  refreshRef.current = refresh;
+
   useEffect(() => {
     void refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    function onRateLimit(event: Event) {
+      const detail = (event as CustomEvent<RateLimitEventDetail>).detail;
+      if (detail?.type !== "expired") return;
+      if (detail.action === "login" || detail.action === "register") return;
+      void refresh();
+    }
+
+    window.addEventListener(RATE_LIMIT_EVENT, onRateLimit);
+    return () => {
+      window.removeEventListener(RATE_LIMIT_EVENT, onRateLimit);
+      window.clearTimeout(retryTimer.current);
+    };
   }, [refresh]);
 
   return { status, balance, currency, error, refresh };

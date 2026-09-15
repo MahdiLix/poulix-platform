@@ -33,6 +33,7 @@ import {
 } from "@/features/wallet/lib/transactionMeta";
 import { SendRightRail } from "@/features/p2p-transfer/components/SendRightRail";
 import { flashToast } from "@/shared/ui/Toast";
+import { useRateLimitAction, withRemainingLabel } from "@/shared/rate-limit";
 import type { SpendingLimitSummary } from "@/features/spending-limits/lib/spendingLimits";
 import type { FinancialDestination } from "@/features/financial-destinations/lib/destinations";
 
@@ -59,6 +60,7 @@ function ConfirmRow({
 function ConfirmContent() {
   const router = useRouter();
   const { t } = useLanguage();
+  const { blocked, remainingSeconds } = useRateLimitAction("transfer");
   const { user } = useUser();
   const { balance, currency } = useWalletBalance();
   const [payload, setPayload] = useState<SendConfirmPayload | null>(null);
@@ -222,19 +224,21 @@ function ConfirmContent() {
             {t.send.cannotBeUndone}
           </div>
 
-          {error ? (
+          {error || blocked ? (
             <div className="rounded-xl bg-danger-soft p-3 text-center text-xs font-semibold text-danger">
-              {error}
+              {blocked ? t.messages.transferRateLimited : error}
             </div>
           ) : null}
 
           <div className="space-y-3">
             <Button
               className="w-full"
-              disabled={loading}
+              disabled={loading || blocked}
               onClick={() => void handleConfirm()}
             >
-              {loading ? t.send.sending : t.send.confirmAndSend}
+              {loading
+                ? t.send.sending
+                : withRemainingLabel(t.send.confirmAndSend, remainingSeconds)}
             </Button>
             <Link href="/send" className="block">
               <Button variant="secondary" className="w-full">
@@ -258,11 +262,7 @@ export default function SendConfirmPage() {
   const { t } = useLanguage();
 
   return (
-    <Suspense
-      fallback={
-        <PageSpinner label={t.common.loading} />
-      }
-    >
+    <Suspense fallback={<PageSpinner label={t.common.loading} />}>
       <ConfirmContent />
     </Suspense>
   );

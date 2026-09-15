@@ -12,6 +12,7 @@ import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { flashToast } from "@/shared/ui/Toast";
+import { useRateLimitAction, withRemainingLabel } from "@/shared/rate-limit";
 import {
   TRANSACTION_CATEGORIES,
   type TransactionCategory,
@@ -40,6 +41,7 @@ import { formatDisplayDate } from "@/shared/i18n/dates";
 export function ScheduledPaymentForm() {
   const router = useRouter();
   const { t, language } = useLanguage();
+  const { blocked, remainingSeconds } = useRateLimitAction("scheduled");
   const { balance, currency } = useWalletBalance();
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
@@ -157,116 +159,124 @@ export function ScheduledPaymentForm() {
     <div className="grid gap-4 lg:grid-cols-3">
       <Card className="p-6 lg:col-span-2">
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
-      {recentRecipients.length > 0 ? (
-        <RecentDestinationChips
-          destinations={recentRecipients}
-          onSelect={(destination) => {
-            setRecipient(destination.recipientUsername ?? destination.label);
-            setFieldError(null);
-          }}
-        />
-      ) : null}
+          {recentRecipients.length > 0 ? (
+            <RecentDestinationChips
+              destinations={recentRecipients}
+              onSelect={(destination) => {
+                setRecipient(
+                  destination.recipientUsername ?? destination.label,
+                );
+                setFieldError(null);
+              }}
+            />
+          ) : null}
 
-      <TextField
-        label={t.send.recipient}
-        autoComplete="off"
-        placeholder={t.send.recipientPlaceholder}
-        value={recipient}
-        error={fieldError}
-        onChange={(e) => {
-          setRecipient(e.target.value);
-          setFieldError(null);
-          setError("");
-        }}
-      />
+          <TextField
+            label={t.send.recipient}
+            autoComplete="off"
+            placeholder={t.send.recipientPlaceholder}
+            value={recipient}
+            error={fieldError}
+            onChange={(e) => {
+              setRecipient(e.target.value);
+              setFieldError(null);
+              setError("");
+            }}
+          />
 
-      <FundingSourceSelect
-        value={fundingSource.envelopeId ?? ""}
-        onChange={setFundingSource}
-        walletBalance={balance}
-        currency={currency}
-      />
+          <FundingSourceSelect
+            value={fundingSource.envelopeId ?? ""}
+            onChange={setFundingSource}
+            walletBalance={balance}
+            currency={currency}
+          />
 
-      <AmountField
-        label={t.send.amountIrr}
-        placeholder="500,000"
-        value={amount}
-        onChange={(e) => {
-          setAmount(e.target.value);
-          setError("");
-        }}
-      />
+          <AmountField
+            label={t.send.amountIrr}
+            placeholder="500,000"
+            value={amount}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              setError("");
+            }}
+          />
 
-      <div>
-        <p className="mb-1.5 text-xs font-semibold text-foreground">
-          {t.scheduled.frequencyLabel}
-        </p>
-        <div className="grid grid-cols-3 gap-1 rounded-[10px] border border-border bg-surface-muted p-1">
-          {SCHEDULED_FREQUENCIES.map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setFrequency(value)}
-              className={cn(
-                "h-9 rounded-[8px] text-xs font-semibold transition",
-                frequency === value
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted hover:text-foreground",
-              )}
-            >
-              {t.scheduled.frequencies[value]}
-            </button>
-          ))}
-        </div>
-      </div>
+          <div>
+            <p className="mb-1.5 text-xs font-semibold text-foreground">
+              {t.scheduled.frequencyLabel}
+            </p>
+            <div className="grid grid-cols-3 gap-1 rounded-[10px] border border-border bg-surface-muted p-1">
+              {SCHEDULED_FREQUENCIES.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setFrequency(value)}
+                  className={cn(
+                    "h-9 rounded-[8px] text-xs font-semibold transition",
+                    frequency === value
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted hover:text-foreground",
+                  )}
+                >
+                  {t.scheduled.frequencies[value]}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      <DatePicker
-        label={t.scheduled.startDate}
-        value={startDate}
-        onChange={(val) => {
-          setStartDate(val);
-          setError("");
-        }}
-        allowClear={false}
-      />
+          <DatePicker
+            label={t.scheduled.startDate}
+            value={startDate}
+            onChange={(val) => {
+              setStartDate(val);
+              setError("");
+            }}
+            allowClear={false}
+          />
 
-      {frequency !== "ONCE" ? (
-        <DatePicker
-          label={t.scheduled.endDateOptional}
-          value={endDate}
-          onChange={(val) => setEndDate(val)}
-        />
-      ) : null}
+          {frequency !== "ONCE" ? (
+            <DatePicker
+              label={t.scheduled.endDateOptional}
+              value={endDate}
+              onChange={(val) => setEndDate(val)}
+            />
+          ) : null}
 
-      <Select
-        label={t.withdrawal.paymentCategoryOptional}
-        value={category}
-        onChange={(val) => setCategory(val)}
-        placeholder={t.withdrawal.paymentCategoryOptional}
-        options={[
-          { value: "", label: t.withdrawal.paymentCategoryOptional },
-          ...TRANSACTION_CATEGORIES.map((cat) => ({
-            value: cat,
-            label: t.history.categories[cat as TransactionCategory],
-          })),
-        ]}
-      />
+          <Select
+            label={t.withdrawal.paymentCategoryOptional}
+            value={category}
+            onChange={(val) => setCategory(val)}
+            placeholder={t.withdrawal.paymentCategoryOptional}
+            options={[
+              { value: "", label: t.withdrawal.paymentCategoryOptional },
+              ...TRANSACTION_CATEGORIES.map((cat) => ({
+                value: cat,
+                label: t.history.categories[cat as TransactionCategory],
+              })),
+            ]}
+          />
 
-      <TextField
-        label={t.withdrawal.paymentReason}
-        placeholder={t.withdrawal.paymentReasonPlaceholder}
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-      />
+          <TextField
+            label={t.withdrawal.paymentReason}
+            placeholder={t.withdrawal.paymentReasonPlaceholder}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
 
-      {error ? (
-        <div className="rounded-xl bg-danger-soft p-3 text-center text-xs font-semibold text-danger">
-          {error}
-        </div>
-      ) : null}
+          {error || blocked ? (
+            <div className="rounded-xl bg-danger-soft p-3 text-center text-xs font-semibold text-danger">
+              {blocked ? t.messages.scheduledRateLimited : error}
+            </div>
+          ) : null}
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? t.scheduled.creating : t.scheduled.createBtn}
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={loading || blocked}
+          >
+            {loading
+              ? t.scheduled.creating
+              : withRemainingLabel(t.scheduled.createBtn, remainingSeconds)}
           </Button>
         </form>
       </Card>

@@ -46,9 +46,8 @@ describe("homepage offers", () => {
   });
 
   it("localizes default English offer copy for Farsi", async () => {
-    const { localizeOfferCopy, DEFAULT_HOMEPAGE_OFFER } = await import(
-      "@/features/offers/lib/offers"
-    );
+    const { localizeOfferCopy, DEFAULT_HOMEPAGE_OFFER } =
+      await import("@/features/offers/lib/offers");
     const localized = localizeOfferCopy(DEFAULT_HOMEPAGE_OFFER, {
       specialOffer: "پیشنهاد ویژه افزایش موجودی امروز",
       specialOfferDesc:

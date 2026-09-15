@@ -28,7 +28,10 @@ export function transactionTypeLabel(
   if (TYPES.has(type as TransactionType)) {
     return t.transaction.types[type as TransactionType];
   }
-  return type.replaceAll("_", " ").toLocaleLowerCase().replace(/^\p{L}/u, (letter) => letter.toLocaleUpperCase());
+  return type
+    .replaceAll("_", " ")
+    .toLocaleLowerCase()
+    .replace(/^\p{L}/u, (letter) => letter.toLocaleUpperCase());
 }
 
 export function transactionReasonLabel(

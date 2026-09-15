@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -15,6 +23,7 @@ import {
 } from "lucide-react";
 import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
+import { getGlobalCooldownRemaining } from "@/shared/rate-limit/store";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import {
   notificationCategoryClass,
@@ -39,8 +48,11 @@ export function NotificationBell({
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loadingList, setLoadingList] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
 
   const refreshUnread = useCallback(async () => {
+    if (getGlobalCooldownRemaining() > 0) return;
     const token = getStoredToken();
     if (!token) {
       setIsSignedIn(false);
@@ -91,12 +103,10 @@ export function NotificationBell({
     if (!isOpen) return;
 
     function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
+      const target = event.target as Node;
+      if (containerRef.current?.contains(target)) return;
+      if (panelRef.current?.contains(target)) return;
+      setIsOpen(false);
     }
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -110,6 +120,35 @@ export function NotificationBell({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return undefined;
+
+    function placePanel() {
+      const anchor = containerRef.current;
+      if (!anchor) return;
+      const rect = anchor.getBoundingClientRect();
+      const isRtl = document.documentElement.dir === "rtl";
+      const gap = 8;
+      const edge = 12;
+      setPanelStyle({
+        position: "fixed",
+        top: rect.bottom + gap,
+        zIndex: 70,
+        ...(isRtl
+          ? { left: Math.max(edge, rect.left) }
+          : { right: Math.max(edge, window.innerWidth - rect.right) }),
+      });
+    }
+
+    placePanel();
+    window.addEventListener("resize", placePanel);
+    window.addEventListener("scroll", placePanel, true);
+    return () => {
+      window.removeEventListener("resize", placePanel);
+      window.removeEventListener("scroll", placePanel, true);
     };
   }, [isOpen]);
 
@@ -188,117 +227,126 @@ export function NotificationBell({
         ) : null}
       </button>
 
-      {isOpen ? (
-        <div className="fixed inset-x-4 top-20 z-50 mx-auto max-w-sm rounded-3xl border border-border bg-surface p-4 text-foreground shadow-2xl animate-in fade-in slide-in-from-top-3 duration-200 sm:absolute sm:inset-x-auto sm:top-12 sm:end-0 sm:w-96">
-          <div className="flex items-center justify-between border-b border-border pb-3">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm">{t.notifications.title}</span>
-              {unreadCount > 0 ? (
-                <span className="rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-extrabold text-primary">
-                  {unreadCount}
-                </span>
-              ) : null}
-            </div>
-            <div className="flex items-center gap-1">
-              {unreadCount > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => void handleMarkAllRead()}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-muted hover:bg-surface-muted hover:text-foreground transition cursor-pointer"
-                  title={t.notifications.markAllRead}
-                >
-                  <CheckCheck className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">
-                    {t.notifications.markAllRead}
-                  </span>
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="rounded-full p-1 text-muted hover:bg-surface-muted hover:text-foreground transition cursor-pointer"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="max-h-80 overflow-y-auto divide-y divide-border/50 py-2">
-            {loadingList ? (
-              <div className="py-8 text-center text-xs text-muted">
-                {t.notifications.loading}
-              </div>
-            ) : notifications.length === 0 ? (
-              <div className="py-8 text-center space-y-1">
-                <Bell className="mx-auto h-8 w-8 text-muted/40" />
-                <p className="text-xs font-semibold text-foreground">
-                  {t.notifications.emptyTitle}
-                </p>
-                <p className="text-[11px] text-muted">
-                  {t.notifications.emptySub}
-                </p>
-              </div>
-            ) : (
-              notifications.map((item) => {
-                const content = notificationContent(item, t);
-                const category = notificationDisplayCategory(item);
-                return (
-                  <div
-                    key={item.id}
-                    onClick={(e) => void handleMarkRead(item, e)}
-                    className={`flex items-start gap-3 p-2.5 rounded-2xl transition cursor-pointer hover:bg-surface-muted ${
-                      item.isRead
-                        ? "opacity-75"
-                        : "bg-primary-soft/20 font-medium"
-                    }`}
-                  >
-                    <div className="mt-0.5">
-                      {getCategoryIcon(category)}
-                    </div>
-                    <div className="flex-1 min-w-0 space-y-0.5">
-                      <div className="flex items-center justify-between gap-1">
-                        <p className="text-xs font-bold text-foreground truncate">
-                          {content.title}
-                        </p>
-                        {!item.isRead ? (
-                          <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
-                        ) : null}
-                      </div>
-                      <p className="text-[11px] text-muted line-clamp-2 leading-relaxed">
-                        {content.message}
-                      </p>
-                      <div className="flex items-center justify-between pt-1">
-                        <span
-                          className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${notificationCategoryClass(
-                            category,
-                          )}`}
-                        >
-                          {t.notifications.categories[category]}
-                        </span>
-                        <span className="text-[10px] text-muted font-mono">
-                          {formatDisplayDateTime(item.createdAt, language)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          <div className="border-t border-border pt-2 text-center">
-            <Link
-              href="/notifications"
-              onClick={() => setIsOpen(false)}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+      {isOpen
+        ? createPortal(
+            <div
+              ref={panelRef}
+              style={panelStyle}
+              className="w-[min(17.5rem,calc(100vw-1.5rem))] max-h-[min(20rem,55dvh)] overflow-hidden rounded-2xl border border-border bg-surface p-3 text-foreground shadow-xl sm:w-72 lg:w-80"
             >
-              <span>{t.notifications.title}</span>
-              <ExternalLink className="h-3 w-3" />
-            </Link>
-          </div>
-        </div>
-      ) : null}
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm">
+                    {t.notifications.title}
+                  </span>
+                  {unreadCount > 0 ? (
+                    <span className="rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-extrabold text-primary">
+                      {unreadCount}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-1">
+                  {unreadCount > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleMarkAllRead()}
+                      className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-muted hover:bg-surface-muted hover:text-foreground transition cursor-pointer"
+                      title={t.notifications.markAllRead}
+                    >
+                      <CheckCheck className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">
+                        {t.notifications.markAllRead}
+                      </span>
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    className="rounded-full p-1 text-muted hover:bg-surface-muted hover:text-foreground transition cursor-pointer"
+                    aria-label="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="max-h-[min(14rem,40dvh)] overflow-y-auto divide-y divide-border/50 py-2 sm:max-h-64">
+                {loadingList ? (
+                  <div className="py-8 text-center text-xs text-muted">
+                    {t.notifications.loading}
+                  </div>
+                ) : notifications.length === 0 ? (
+                  <div className="py-8 text-center space-y-1">
+                    <Bell className="mx-auto h-8 w-8 text-muted/40" />
+                    <p className="text-xs font-semibold text-foreground">
+                      {t.notifications.emptyTitle}
+                    </p>
+                    <p className="text-[11px] text-muted">
+                      {t.notifications.emptySub}
+                    </p>
+                  </div>
+                ) : (
+                  notifications.map((item) => {
+                    const content = notificationContent(item, t);
+                    const category = notificationDisplayCategory(item);
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={(e) => void handleMarkRead(item, e)}
+                        className={`flex items-start gap-3 p-2.5 rounded-2xl transition cursor-pointer hover:bg-surface-muted ${
+                          item.isRead
+                            ? "opacity-75"
+                            : "bg-primary-soft/20 font-medium"
+                        }`}
+                      >
+                        <div className="mt-0.5">
+                          {getCategoryIcon(category)}
+                        </div>
+                        <div className="flex-1 min-w-0 space-y-0.5">
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="text-xs font-bold text-foreground truncate">
+                              {content.title}
+                            </p>
+                            {!item.isRead ? (
+                              <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                            ) : null}
+                          </div>
+                          <p className="text-[11px] text-muted line-clamp-2 leading-relaxed">
+                            {content.message}
+                          </p>
+                          <div className="flex items-center justify-between pt-1">
+                            <span
+                              className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${notificationCategoryClass(
+                                category,
+                              )}`}
+                            >
+                              {t.notifications.categories[category]}
+                            </span>
+                            <span className="text-[10px] text-muted font-mono">
+                              {formatDisplayDateTime(item.createdAt, language)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="border-t border-border pt-2 text-center">
+                <Link
+                  href="/notifications"
+                  onClick={() => setIsOpen(false)}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+                >
+                  <span>{t.notifications.title}</span>
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

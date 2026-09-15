@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { flashToast } from "@/shared/ui/Toast";
-import { getStoredToken } from "@/shared/api";
+import { ApiRequestError } from "@/shared/api";
 import { isolateText } from "@/shared/user/displayName";
 import {
   BarChart3,
@@ -24,6 +24,7 @@ import { LanguageToggle } from "@/shared/theme/LanguageToggle";
 import { BrandLogo } from "@/shared/brand/BrandLogo";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { formatMessage, localizeError } from "@/shared/i18n/localizeError";
+import { useRateLimitAction, withRemainingLabel } from "@/shared/rate-limit";
 import {
   registerAndStoreSession,
   isValidEmailAddress,
@@ -35,6 +36,8 @@ import { PasswordStrength } from "@/features/auth/components/PasswordStrength";
 
 export default function RegisterPage() {
   const { t } = useLanguage();
+  const { blocked, remainingSeconds, remainingAttempts, attemptLimit } =
+    useRateLimitAction("register");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,14 +52,25 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const wasBlocked = useRef(false);
 
-  const usernameIsValid =
-    username.trim().length >= 3 && !fieldErrors.username;
-  const emailIsValid =
-    isValidEmailAddress(email) && !fieldErrors.email;
+  useEffect(() => {
+    if (wasBlocked.current && !blocked) {
+      setError("");
+      setLoading(false);
+    }
+    wasBlocked.current = blocked;
+  }, [blocked]);
+
+  const usernameIsValid = username.trim().length >= 3 && !fieldErrors.username;
+  const emailIsValid = isValidEmailAddress(email) && !fieldErrors.email;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (blocked) {
+      setError(t.messages.registerRateLimited);
+      return;
+    }
     setError("");
 
     const nextErrors = {
@@ -91,10 +105,33 @@ export default function RegisterPage() {
       });
       window.location.assign("/");
     } catch (err: unknown) {
-      setError(localizeError(err, t.messages, "registrationFailed"));
+      const status =
+        err instanceof ApiRequestError
+          ? err.status
+          : typeof err === "object" && err && "status" in err
+            ? Number((err as { status: unknown }).status)
+            : undefined;
+      if (status === 429) {
+        setError(t.messages.registerRateLimited);
+      } else {
+        setError(localizeError(err, t.messages, "registrationFailed"));
+      }
       setLoading(false);
     }
   }
+
+  const quotaHint =
+    !blocked &&
+    remainingAttempts != null &&
+    attemptLimit != null &&
+    remainingAttempts < attemptLimit
+      ? formatMessage(t.messages.rateLimitAttemptsRemaining, {
+          count: remainingAttempts,
+        })
+      : "";
+  const banner = blocked
+    ? t.messages.registerRateLimited
+    : [error, quotaHint].filter(Boolean).join(" ");
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas lg:flex-row">
@@ -102,8 +139,12 @@ export default function RegisterPage() {
         <div className="flex items-center gap-3">
           <BrandLogo size={40} priority />
           <div>
-            <p className="text-base font-bold tracking-tight">{t.common.appName}</p>
-            <p className="text-[11px] text-sidebar-muted">{t.home.financialWallet}</p>
+            <p className="text-base font-bold tracking-tight">
+              {t.common.appName}
+            </p>
+            <p className="text-[11px] text-sidebar-muted">
+              {t.home.financialWallet}
+            </p>
           </div>
         </div>
         <div className="space-y-4">
@@ -158,9 +199,9 @@ export default function RegisterPage() {
                 <p className="text-sm text-muted">{t.auth.registerSub}</p>
               </div>
 
-              {error ? (
+              {banner ? (
                 <div className="rounded-xl bg-danger-soft p-3 text-xs font-medium text-danger">
-                  {error}
+                  {banner}
                 </div>
               ) : null}
 
@@ -259,8 +300,13 @@ export default function RegisterPage() {
                   }
                 />
 
-                <Button type="submit" disabled={loading}>
-                  {loading ? t.auth.creatingAccount : t.auth.createAccountBtn}
+                <Button type="submit" disabled={loading || blocked}>
+                  {loading
+                    ? t.auth.creatingAccount
+                    : withRemainingLabel(
+                        t.auth.createAccountBtn,
+                        remainingSeconds,
+                      )}
                 </Button>
               </form>
 
@@ -276,11 +322,17 @@ export default function RegisterPage() {
 
               <p className="text-center text-[11px] leading-relaxed text-muted">
                 By creating an account, you agree to our{" "}
-                <Link href="#" className="font-semibold text-primary hover:underline">
+                <Link
+                  href="#"
+                  className="font-semibold text-primary hover:underline"
+                >
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link href="#" className="font-semibold text-primary hover:underline">
+                <Link
+                  href="#"
+                  className="font-semibold text-primary hover:underline"
+                >
                   Privacy Policy
                 </Link>
                 .

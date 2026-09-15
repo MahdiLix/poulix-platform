@@ -37,7 +37,11 @@ export function WalletBalance({
   const strong =
     variant === "hero" ? "text-primary-foreground" : "text-foreground";
 
-  if (status === "idle" || status === "loading") {
+  if (
+    variant !== "hero" &&
+    (status === "idle" || status === "loading") &&
+    balance === null
+  ) {
     return (
       <div className="space-y-1 text-center">
         {variant !== "panel" && (
@@ -83,7 +87,7 @@ export function WalletBalance({
     );
   }
 
-  if (status === "error") {
+  if (status === "error" && variant !== "hero") {
     return (
       <div className="space-y-3 text-center">
         {variant !== "panel" && (
@@ -118,7 +122,9 @@ export function WalletBalance({
     <div
       className={cn(
         "space-y-1",
-        variant === "panel" || variant === "hero" ? "text-start" : "text-center",
+        variant === "panel" || variant === "hero"
+          ? "text-start"
+          : "text-center",
       )}
     >
       {displayLabel ? (

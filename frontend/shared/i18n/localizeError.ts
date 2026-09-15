@@ -16,7 +16,7 @@ const SERVER_MESSAGE_KEYS: Record<string, MessageKey> = {
   "Payment cannot be settled": "paymentCannotBeSettled",
   "Failed to reach ZarinPal": "failedToReachZarinpal",
   "Invalid response from ZarinPal": "invalidZarinpalResponse",
-  "Unauthorized": "unauthorized",
+  Unauthorized: "unauthorized",
   "An error occurred": "genericError",
   "Username is required": "usernameRequired",
   "Username must be at least 3 characters": "usernameTooShort",
@@ -75,6 +75,10 @@ const SERVER_MESSAGE_KEYS: Record<string, MessageKey> = {
   "Admin access required": "adminAccessRequired",
   "Account disabled": "accountDisabled",
   "Account locked": "accountLocked",
+  "Account temporarily locked": "accountTemporarilyLocked",
+  "Too many requests": "tooManyRequests",
+  "Too Many Requests": "tooManyRequests",
+  "ThrottlerException: Too Many Requests": "tooManyRequests",
   "Cannot change your own account status": "cannotChangeOwnAccount",
   "Cannot disable the last admin": "cannotDisableLastAdmin",
   "Too many failed financial attempts": "spendingLimitExceeded",
@@ -112,6 +116,16 @@ export function localizeError(
 ): string {
   const text =
     raw instanceof Error ? raw.message : typeof raw === "string" ? raw : "";
+
+  if (
+    (raw &&
+      typeof raw === "object" &&
+      "status" in raw &&
+      (raw as { status?: unknown }).status === 429) ||
+    /too many requests/i.test(text)
+  ) {
+    return messages.tooManyRequests;
+  }
 
   const trimmed = text.trim();
   if (!trimmed) {

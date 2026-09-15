@@ -248,7 +248,9 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between gap-4 px-5 py-4">
                   <div>
                     <p className="text-sm font-semibold text-foreground">
-                      {language === "fa" ? "حالت تیره / روشن" : "Dark / Light Mode"}
+                      {language === "fa"
+                        ? "حالت تیره / روشن"
+                        : "Dark / Light Mode"}
                     </p>
                     <p className="text-xs text-muted">
                       {language === "fa" ? "ظاهر برنامه" : "Appearance"}
@@ -311,7 +313,9 @@ export default function ProfilePage() {
                             <h4 className="text-sm font-bold text-foreground">
                               {item.title}
                             </h4>
-                            <p className="text-xs text-muted">{item.description}</p>
+                            <p className="text-xs text-muted">
+                              {item.description}
+                            </p>
                           </div>
                         </div>
                         <ChevronRight className="h-5 w-5 text-muted transition-colors group-hover:text-primary rtl:rotate-180" />
@@ -331,7 +335,9 @@ export default function ProfilePage() {
                           <h4 className="text-sm font-bold text-primary">
                             {t.admin.title}
                           </h4>
-                          <p className="text-xs text-muted">{t.admin.subtitle}</p>
+                          <p className="text-xs text-muted">
+                            {t.admin.subtitle}
+                          </p>
                         </div>
                       </div>
                       <ChevronRight className="h-5 w-5 text-primary rtl:rotate-180" />

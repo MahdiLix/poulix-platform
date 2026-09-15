@@ -40,7 +40,8 @@ export function ChartTooltip({
               <span
                 className="h-2 w-2 shrink-0 rounded-full"
                 style={{
-                  backgroundColor: item.color || item.payload?.fill || "var(--primary)",
+                  backgroundColor:
+                    item.color || item.payload?.fill || "var(--primary)",
                 }}
               />
               {item.name ? (

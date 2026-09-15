@@ -6,12 +6,7 @@ import { formatMessage } from "@/shared/i18n/localizeError";
 type Messages = TranslationDictionary["messages"];
 
 export const DEPOSIT_PRESETS = [
-  10_000,
-  50_000,
-  100_000,
-  500_000,
-  1_000_000,
-  5_000_000,
+  10_000, 50_000, 100_000, 500_000, 1_000_000, 5_000_000,
 ];
 
 export function validateDepositAmount(

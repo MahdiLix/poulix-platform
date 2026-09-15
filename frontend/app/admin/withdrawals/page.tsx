@@ -63,7 +63,11 @@ export default function AdminWithdrawalsPage() {
   return (
     <AdminShell title={t.admin.withdrawalsTitle} subtitle={t.admin.subtitle}>
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Total Withdrawals" value={String(total)} icon={Wallet} />
+        <StatCard
+          label="Total Withdrawals"
+          value={String(total)}
+          icon={Wallet}
+        />
         <StatCard
           label="Successful"
           value={String(items.length)}

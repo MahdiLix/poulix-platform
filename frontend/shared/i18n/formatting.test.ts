@@ -35,9 +35,9 @@ describe("localized formatting", () => {
   });
 
   it("hides unknown raw errors behind the generic fallback", () => {
-    expect(localizeError(new Error("internal database detail"), en.messages)).toBe(
-      en.messages.genericError,
-    );
+    expect(
+      localizeError(new Error("internal database detail"), en.messages),
+    ).toBe(en.messages.genericError);
   });
 
   it("localizes transaction types and generated reasons", () => {

@@ -113,8 +113,8 @@ export default function HistoryPage() {
 
   const filteredTransactions = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const pillMatches =
-      PILL_OPTIONS.find((p) => p.value === pillFilter)?.matches ?? [pillFilter];
+    const pillMatches = PILL_OPTIONS.find((p) => p.value === pillFilter)
+      ?.matches ?? [pillFilter];
 
     return transactions.filter((tx) => {
       if (typeFilter !== "ALL" && tx.type !== typeFilter) {
@@ -142,10 +142,7 @@ export default function HistoryPage() {
 
   const paginatedTransactions = filteredTransactions;
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(total / ROWS_PER_PAGE),
-  );
+  const totalPages = Math.max(1, Math.ceil(total / ROWS_PER_PAGE));
   useEffect(() => {
     const timer = window.setTimeout(() => void loadHistory(), 250);
     return () => window.clearTimeout(timer);
@@ -504,10 +501,7 @@ export default function HistoryPage() {
                             ) : null}
                             <div className="mt-2 flex flex-wrap items-center gap-2">
                               {row.categoryBadge}
-                              <Badge
-                                variant="success"
-                                className="text-[10px]"
-                              >
+                              <Badge variant="success" className="text-[10px]">
                                 {t.withdrawal.completed}
                               </Badge>
                             </div>
@@ -537,8 +531,7 @@ export default function HistoryPage() {
 
             <div className="flex flex-col items-center gap-3 border-t border-border pt-4">
               <span className="text-xs text-muted">
-                Showing {paginatedTransactions.length} of{" "}
-                {total}
+                Showing {paginatedTransactions.length} of {total}
               </span>
               <Pagination
                 page={page}
@@ -671,7 +664,10 @@ function buildTxRow(
   const categoryBadge = categoryLabel ? (
     <Badge
       variant="default"
-      className={cn("rounded-full text-[10px]", categoryBadgeClass(tx.category))}
+      className={cn(
+        "rounded-full text-[10px]",
+        categoryBadgeClass(tx.category),
+      )}
     >
       {categoryLabel}
     </Badge>
@@ -717,4 +713,3 @@ function categoryBadgeClass(category?: string | null): string {
       return "bg-surface-muted text-muted";
   }
 }
-

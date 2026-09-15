@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { TextField } from "@/shared/ui/TextField";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
-import { localizeError } from "@/shared/i18n/localizeError";
+import { localizeError, formatMessage } from "@/shared/i18n/localizeError";
+import { ApiRequestError } from "@/shared/api";
+import { useRateLimitAction, withRemainingLabel } from "@/shared/rate-limit";
 import {
   loginAndStoreSession,
   registerAndStoreSession,
@@ -24,17 +26,40 @@ interface AuthModalProps {
 
 export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const { t } = useLanguage();
+  const loginLimit = useRateLimitAction("login");
+  const registerLimit = useRateLimitAction("register");
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const wasBlocked = useRef(false);
+  const blocked = isLogin ? loginLimit.blocked : registerLimit.blocked;
+
+  useEffect(() => {
+    if (wasBlocked.current && !blocked) {
+      setError("");
+      setLoading(false);
+    }
+    wasBlocked.current = blocked;
+  }, [blocked]);
 
   if (!isOpen) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const limit = isLogin ? loginLimit : registerLimit;
+    if (limit.blocked) {
+      setError(
+        isLogin
+          ? limit.lockedOut
+            ? t.messages.accountTemporarilyLocked
+            : t.messages.loginRateLimited
+          : t.messages.registerRateLimited,
+      );
+      return;
+    }
     setError("");
 
     if (isLogin) {
@@ -78,11 +103,43 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      setError(localizeError(err, t.messages, "authenticationFailed"));
+      const status =
+        err instanceof ApiRequestError
+          ? err.status
+          : typeof err === "object" && err && "status" in err
+            ? Number((err as { status: unknown }).status)
+            : undefined;
+      if (status === 429) {
+        setError(
+          isLogin
+            ? t.messages.loginRateLimited
+            : t.messages.registerRateLimited,
+        );
+      } else {
+        setError(localizeError(err, t.messages, "authenticationFailed"));
+      }
     } finally {
       setLoading(false);
     }
   }
+
+  const activeLimit = isLogin ? loginLimit : registerLimit;
+  const quotaHint =
+    !activeLimit.blocked &&
+    activeLimit.remainingAttempts != null &&
+    activeLimit.attemptLimit != null &&
+    activeLimit.remainingAttempts < activeLimit.attemptLimit
+      ? formatMessage(t.messages.rateLimitAttemptsRemaining, {
+          count: activeLimit.remainingAttempts,
+        })
+      : "";
+  const banner = activeLimit.blocked
+    ? isLogin
+      ? activeLimit.lockedOut
+        ? t.messages.accountTemporarilyLocked
+        : t.messages.loginRateLimited
+      : t.messages.registerRateLimited
+    : [error, quotaHint].filter(Boolean).join(" ");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
@@ -100,9 +157,9 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           </button>
         </div>
 
-        {error ? (
+        {banner ? (
           <div className="rounded-xl bg-danger-soft p-3 text-xs font-medium text-danger">
-            {error}
+            {banner}
           </div>
         ) : null}
 
@@ -110,6 +167,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           {!isLogin ? (
             <TextField
               label={t.auth.username}
+              name="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="sara"
@@ -119,6 +177,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
           <TextField
             label={isLogin ? t.auth.usernameOrEmail : t.auth.email}
+            name={isLogin ? "identifier" : "email"}
             type={isLogin ? "text" : "email"}
             value={isLogin ? username || email : email}
             onChange={(e) => {
@@ -135,6 +194,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
           <TextField
             label={t.auth.password}
+            name="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -142,12 +202,20 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
             disabled={loading}
           />
 
-          <Button type="submit" disabled={loading}>
+          <Button
+            type="submit"
+            disabled={
+              loading || (isLogin ? loginLimit.blocked : registerLimit.blocked)
+            }
+          >
             {loading
               ? t.common.loading
-              : isLogin
-                ? t.auth.signInBtn
-                : t.auth.createAccountBtn}
+              : withRemainingLabel(
+                  isLogin ? t.auth.signInBtn : t.auth.createAccountBtn,
+                  isLogin
+                    ? loginLimit.remainingSeconds
+                    : registerLimit.remainingSeconds,
+                )}
           </Button>
         </form>
 

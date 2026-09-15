@@ -23,9 +23,7 @@ export function LanguageToggle({
     <div
       className={cn(
         "inline-flex items-center rounded-full p-0.5",
-        isSidebar
-          ? "bg-white/10"
-          : "border border-border bg-surface-muted/80",
+        isSidebar ? "bg-white/10" : "border border-border bg-surface-muted/80",
         className,
       )}
       role="group"
@@ -41,7 +39,9 @@ export function LanguageToggle({
             aria-pressed={active}
             className={cn(
               "inline-flex cursor-pointer items-center justify-center rounded-full font-semibold tracking-wide transition active:scale-95",
-              isCompact ? "h-6 min-w-7 px-1.5 text-[10px]" : "h-7 min-w-8 px-2 text-[11px]",
+              isCompact
+                ? "h-6 min-w-7 px-1.5 text-[10px]"
+                : "h-7 min-w-8 px-2 text-[11px]",
               active
                 ? isSidebar
                   ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"

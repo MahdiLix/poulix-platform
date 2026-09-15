@@ -12,6 +12,7 @@ import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
+import { useRateLimitAction, withRemainingLabel } from "@/shared/rate-limit";
 import {
   DEPOSIT_PRESETS,
   startZarinpalDeposit,
@@ -43,6 +44,7 @@ function formatPreset(amount: number): string {
 export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
   const router = useRouter();
   const { t, language } = useLanguage();
+  const { blocked, remainingSeconds } = useRateLimitAction("deposit");
   const { balance, status: balanceStatus, currency } = useWalletBalance();
   const [amount, setAmount] = useState(initialAmount);
   const [loading, setLoading] = useState(false);
@@ -78,6 +80,11 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
       return;
     }
 
+    if (blocked) {
+      setError(t.messages.depositRateLimited);
+      return;
+    }
+
     const numericAmount = parseAmount(amount);
     setLoading(true);
 
@@ -101,14 +108,17 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
     : null;
 
   function balanceLabel(): string {
-    if (balanceStatus === "loading" || balanceStatus === "idle") {
-      return t.common.loadingBalance;
-    }
-    if (balanceStatus === "unauthenticated" || balance === null) {
+    if (balanceStatus === "unauthenticated") {
       return t.common.signInToViewBalance;
     }
     if (balanceStatus === "error") {
       return t.common.couldNotLoadBalance;
+    }
+    if (
+      (balanceStatus === "loading" || balanceStatus === "idle") &&
+      balance === null
+    ) {
+      return t.common.loadingBalance;
     }
     return formatIrr(currentBalance, currency, language);
   }
@@ -121,16 +131,22 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
   }
 
   return (
-    <form id="zarinpal-deposit-form" onSubmit={handleDeposit} className="space-y-6">
-      {error && (
+    <form
+      id="zarinpal-deposit-form"
+      onSubmit={handleDeposit}
+      className="space-y-6"
+    >
+      {error || blocked ? (
         <div className="rounded-xl bg-danger-soft p-3 text-center text-xs font-semibold text-danger">
-          {error}
+          {blocked ? t.messages.depositRateLimited : error}
         </div>
-      )}
+      ) : null}
 
       {displayActiveOffer ? (
         <div className="rounded-xl border border-warning/40 bg-warning-soft p-3 text-xs">
-          <p className="font-bold text-foreground">{displayActiveOffer.title}</p>
+          <p className="font-bold text-foreground">
+            {displayActiveOffer.title}
+          </p>
           <p className="mt-1 text-muted">{displayActiveOffer.description}</p>
           {bonus > 0 ? (
             <p className="mt-2 font-semibold text-secondary">
@@ -216,19 +232,22 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
         </div>
       </div>
 
-      <Button type="submit" disabled={loading} size="lg" className="h-12 text-base">
+      <Button
+        type="submit"
+        disabled={loading || blocked}
+        size="lg"
+        className="h-12 text-base"
+      >
         {loading ? (
           <Spinner size="sm" label={t.deposit.redirecting} />
         ) : (
-          t.deposit.payWithZarinpal
+          withRemainingLabel(t.deposit.payWithZarinpal, remainingSeconds)
         )}
       </Button>
 
       <div className="flex items-center justify-center gap-2 text-xs text-muted">
         <Lock className="h-3.5 w-3.5 shrink-0" />
-        <span className="text-center">
-          {t.deposit.gatewayNote}
-        </span>
+        <span className="text-center">{t.deposit.gatewayNote}</span>
       </div>
     </form>
   );

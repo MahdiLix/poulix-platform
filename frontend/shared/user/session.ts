@@ -4,14 +4,22 @@ export const DEFAULT_TOKEN_MAX_AGE_SECONDS = 900;
 
 const PUBLIC_AUTH_PATHS = ["/login", "/register", "/deposit/callback"];
 
-export function decodeJwtPayload(token: string): { exp?: number } | null {
+export function decodeJwtPayload(token: string): {
+  exp?: number;
+  sub?: string;
+  email?: string;
+} | null {
   try {
     const payloadSegment = token.split(".")[1];
     if (!payloadSegment) return null;
 
     const normalized = payloadSegment.replace(/-/g, "+").replace(/_/g, "/");
     const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
-    return JSON.parse(atob(padded)) as { exp?: number };
+    return JSON.parse(atob(padded)) as {
+      exp?: number;
+      sub?: string;
+      email?: string;
+    };
   } catch {
     return null;
   }

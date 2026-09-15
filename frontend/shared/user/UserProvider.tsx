@@ -13,6 +13,7 @@ import {
   api,
   getStoredToken,
   removeStoredToken,
+  ApiRequestError,
 } from "@/shared/api";
 import type { AuthUser } from "@/shared/api";
 import { getUserInitials } from "@/shared/user/displayName";
@@ -20,6 +21,7 @@ import {
   SESSION_EXPIRED_EVENT,
   SESSION_SYNC_STORAGE_KEY,
   broadcastSessionLogout,
+  decodeJwtPayload,
   getTokenExpiryMs,
   isPublicAuthPath,
   isTokenExpired,
@@ -35,6 +37,12 @@ type UserContextType = {
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
+
+function userFromAccessToken(token: string): AuthUser | null {
+  const payload = decodeJwtPayload(token);
+  if (!payload?.sub || !payload.email) return null;
+  return { id: payload.sub, email: payload.email };
+}
 
 function redirectToLogin() {
   if (typeof window === "undefined") return;
@@ -114,12 +122,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
 
     scheduleExpiry(token);
-    setStatus("loading");
+    const optimistic = userFromAccessToken(token);
+    if (optimistic) {
+      setUser((current) => current ?? optimistic);
+    }
+    if (!optimistic) {
+      setStatus("loading");
+    }
     try {
       const data = (await api.getMe()) as AuthUser;
       setUser(data);
       setStatus("ready");
-    } catch {
+    } catch (err) {
       if (!getStoredToken()) {
         setUser(null);
         setStatus("unauthenticated");
@@ -129,6 +143,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
         ) {
           redirectToLogin();
         }
+        return;
+      }
+      if (err instanceof ApiRequestError && err.status === 429) {
+        if (optimistic) {
+          setStatus("ready");
+        }
+        return;
+      }
+      if (optimistic) {
+        setStatus("ready");
         return;
       }
       setUser(null);

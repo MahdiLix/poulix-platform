@@ -56,7 +56,11 @@ export default function AdminAuditPage() {
   return (
     <AdminShell title={t.admin.auditTitle} subtitle={t.admin.subtitle}>
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Total Events" value={String(total)} icon={ScrollText} />
+        <StatCard
+          label="Total Events"
+          value={String(total)}
+          icon={ScrollText}
+        />
         <StatCard
           label="Successful"
           value={String(items.filter((i) => i.success).length)}
@@ -72,7 +76,11 @@ export default function AdminAuditPage() {
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex-1">
-          <SearchInput placeholder={t.admin.search} readOnly className="cursor-default" />
+          <SearchInput
+            placeholder={t.admin.search}
+            readOnly
+            className="cursor-default"
+          />
         </div>
         <Button variant="outline" size="sm" className="w-auto">
           <Download className="me-1.5 h-3.5 w-3.5" />

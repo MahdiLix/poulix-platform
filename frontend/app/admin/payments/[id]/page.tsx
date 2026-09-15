@@ -16,7 +16,9 @@ import { transactionTypeLabel } from "@/features/wallet/lib/transactionDisplay";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import type { AdminPaymentDetail } from "@/features/admin/lib/admin";
 
-function statusVariant(status: string): "success" | "warning" | "danger" | "muted" {
+function statusVariant(
+  status: string,
+): "success" | "warning" | "danger" | "muted" {
   if (status === "PAID") return "success";
   if (status === "PENDING") return "warning";
   if (status === "FAILED") return "danger";
@@ -71,7 +73,9 @@ export default function AdminPaymentDetailPage() {
                     {item.user.username} · {item.user.email}
                   </p>
                   <div className="mt-2">
-                    <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
+                    <Badge variant={statusVariant(item.status)}>
+                      {item.status}
+                    </Badge>
                   </div>
                 </div>
               </div>
@@ -175,7 +179,9 @@ function DetailRow({
   return (
     <div>
       <p className="text-[11px] font-semibold text-muted">{label}</p>
-      <p className={`mt-1 text-sm text-foreground ${mono ? "break-all font-mono text-xs" : ""}`}>
+      <p
+        className={`mt-1 text-sm text-foreground ${mono ? "break-all font-mono text-xs" : ""}`}
+      >
         {value}
       </p>
     </div>

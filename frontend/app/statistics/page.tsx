@@ -12,7 +12,11 @@ import { BarChart } from "@/shared/ui/BarChart";
 import { cn } from "@/shared/cn";
 import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
-import { getCalendarYearMonth, getLastMonths, formatMonthDay } from "@/shared/i18n/dates";
+import {
+  getCalendarYearMonth,
+  getLastMonths,
+  formatMonthDay,
+} from "@/shared/i18n/dates";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 import { parseGoalAmount, type Goal } from "@/features/goals/lib/goals";
@@ -357,7 +361,10 @@ export default function StatisticsPage() {
                     color: "var(--chart-expense)",
                   },
                 ]}
-                centerValue={formatIrr(incomeTotal - expenseTotal, currency).replace(" IRR", "")}
+                centerValue={formatIrr(
+                  incomeTotal - expenseTotal,
+                  currency,
+                ).replace(" IRR", "")}
                 centerLabel={t.statistics.netBalance}
                 formatValue={(value) => formatIrr(value, currency)}
               />
@@ -463,7 +470,10 @@ export default function StatisticsPage() {
                   color: "var(--accent-teal)",
                 },
               ]}
-              centerValue={formatIrr(balance ?? 0, currency).replace(" IRR", "")}
+              centerValue={formatIrr(balance ?? 0, currency).replace(
+                " IRR",
+                "",
+              )}
               centerLabel={t.common.totalBalance}
             />
           </Card>
@@ -484,7 +494,9 @@ export default function StatisticsPage() {
             />
           </Card>
           <Card className="space-y-4 p-5">
-            <h3 className="text-sm font-bold">{t.statistics.virtualEnvelopes}</h3>
+            <h3 className="text-sm font-bold">
+              {t.statistics.virtualEnvelopes}
+            </h3>
             <BarChart
               data={
                 envelopes.length

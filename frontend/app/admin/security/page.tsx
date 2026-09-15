@@ -47,7 +47,10 @@ function eventBadgeVariant(
   return "success";
 }
 
-function countBy(items: AdminSecurityEvent[], matcher: (type: string) => boolean) {
+function countBy(
+  items: AdminSecurityEvent[],
+  matcher: (type: string) => boolean,
+) {
   return items.filter((item) => matcher(item.type)).length;
 }
 
@@ -99,10 +102,18 @@ export default function AdminSecurityPage() {
   }, []);
 
   const insightSource = insightItems.length > 0 ? insightItems : items;
-  const failedLogins = countBy(insightSource, (type) => type.includes("FAILED_LOGIN"));
-  const limitExceeded = countBy(insightSource, (type) => type.includes("LIMIT_EXCEEDED"));
-  const newDevice = countBy(insightSource, (type) => type.includes("NEW_DEVICE"));
-  const suspicious = countBy(insightSource, (type) => type.includes("SUSPICIOUS"));
+  const failedLogins = countBy(insightSource, (type) =>
+    type.includes("FAILED_LOGIN"),
+  );
+  const limitExceeded = countBy(insightSource, (type) =>
+    type.includes("LIMIT_EXCEEDED"),
+  );
+  const newDevice = countBy(insightSource, (type) =>
+    type.includes("NEW_DEVICE"),
+  );
+  const suspicious = countBy(insightSource, (type) =>
+    type.includes("SUSPICIOUS"),
+  );
 
   const eventTypeCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -314,7 +325,10 @@ export default function AdminSecurityPage() {
               <p className="text-xs text-muted">{t.admin.empty}</p>
             ) : (
               eventTypeCounts.map(([type, value]) => (
-                <div key={type} className="flex items-center justify-between gap-3">
+                <div
+                  key={type}
+                  className="flex items-center justify-between gap-3"
+                >
                   <span className="text-xs font-semibold text-foreground">
                     {eventLabel(type)}
                   </span>

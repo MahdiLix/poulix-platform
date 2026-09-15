@@ -1,7 +1,4 @@
-import {
-  forwardRef,
-  type InputHTMLAttributes,
-} from "react";
+import { forwardRef, type InputHTMLAttributes } from "react";
 import { Search } from "lucide-react";
 import { cn } from "@/shared/cn";
 
@@ -11,16 +8,10 @@ type SearchInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
 
 export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
   function SearchInput(
-    {
-      className,
-      shortcut,
-      placeholder = "Search anything...",
-      ...props
-    },
+    { className, shortcut, placeholder = "Search anything...", ...props },
     ref,
   ) {
     return (
-      
       <div className={cn("relative", className)}>
         <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
         <input

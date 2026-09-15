@@ -117,9 +117,7 @@ export default function AdminUsersPage() {
             {error}
           </div>
         ) : null}
-        {loading ? (
-          <PageSpinner label={t.common.loading} />
-        ) : null}
+        {loading ? <PageSpinner label={t.common.loading} /> : null}
 
         {!loading && items.length === 0 ? (
           <div className="rounded-2xl border border-border p-8 text-center text-sm text-muted">
@@ -142,7 +140,9 @@ export default function AdminUsersPage() {
                   <TableCell className="font-mono text-xs text-muted">
                     #{user.id.slice(0, 6)}
                   </TableCell>
-                  <TableCell className="font-semibold">{user.username}</TableCell>
+                  <TableCell className="font-semibold">
+                    {user.username}
+                  </TableCell>
                   <TableCell className="text-muted">{user.email}</TableCell>
                   <TableCell>
                     {user.role === "ADMIN" ? (

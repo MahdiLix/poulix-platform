@@ -99,7 +99,9 @@ export function UserStatusActions({
         ))}
       </div>
       {error ? (
-        <p className="max-w-[220px] text-[11px] font-medium text-danger">{error}</p>
+        <p className="max-w-[220px] text-[11px] font-medium text-danger">
+          {error}
+        </p>
       ) : null}
     </div>
   );

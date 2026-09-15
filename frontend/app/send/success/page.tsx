@@ -42,7 +42,9 @@ function DetailRow({
         <Icon className="h-4 w-4" />
       </div>
       <p className="min-w-0 flex-1 text-xs text-muted">{label}</p>
-      <p className={`text-sm font-semibold ${valueClassName ?? "text-foreground"}`}>
+      <p
+        className={`text-sm font-semibold ${valueClassName ?? "text-foreground"}`}
+      >
         {value}
       </p>
     </div>
@@ -108,42 +110,42 @@ function SuccessContent() {
           </div>
 
           <div>
+            <DetailRow
+              icon={Wallet}
+              label={t.send.transferAmount}
+              value={formatIrr(parseAmount(amount), queryCurrency)}
+            />
+            <DetailRow
+              icon={Wallet}
+              label={t.send.remainingBalance}
+              value={formatIrr(remaining, remainingCurrency)}
+            />
+            <DetailRow
+              icon={Calendar}
+              label={t.send.dateTime}
+              value={formattedDate}
+            />
+            <DetailRow
+              icon={CheckCircle2}
+              label={t.send.statusLabel}
+              value={t.send.completed}
+              valueClassName="text-primary"
+            />
+            {reason ? (
               <DetailRow
-                icon={Wallet}
-                label={t.send.transferAmount}
-                value={formatIrr(parseAmount(amount), queryCurrency)}
+                icon={MessageSquare}
+                label={t.send.reasonLabel}
+                value={reason}
               />
+            ) : null}
+            {categoryLabel ? (
               <DetailRow
-                icon={Wallet}
-                label={t.send.remainingBalance}
-                value={formatIrr(remaining, remainingCurrency)}
+                icon={Tag}
+                label={t.send.categoryLabel}
+                value={categoryLabel}
               />
-              <DetailRow
-                icon={Calendar}
-                label={t.send.dateTime}
-                value={formattedDate}
-              />
-              <DetailRow
-                icon={CheckCircle2}
-                label={t.send.statusLabel}
-                value={t.send.completed}
-                valueClassName="text-primary"
-              />
-              {reason ? (
-                <DetailRow
-                  icon={MessageSquare}
-                  label={t.send.reasonLabel}
-                  value={reason}
-                />
-              ) : null}
-              {categoryLabel ? (
-                <DetailRow
-                  icon={Tag}
-                  label={t.send.categoryLabel}
-                  value={categoryLabel}
-                />
-              ) : null}
-            </div>
+            ) : null}
+          </div>
 
           <div className="space-y-3">
             <Link href="/" className="block">
@@ -165,11 +167,7 @@ export default function SendSuccessPage() {
   const { t } = useLanguage();
 
   return (
-    <Suspense
-      fallback={
-        <PageSpinner label={t.common.loading} />
-      }
-    >
+    <Suspense fallback={<PageSpinner label={t.common.loading} />}>
       <SuccessContent />
     </Suspense>
   );

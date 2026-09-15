@@ -13,6 +13,7 @@ import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
+import { useRateLimitAction } from "@/shared/rate-limit";
 import {
   TRANSACTION_CATEGORIES,
   type TransactionCategory,
@@ -34,6 +35,7 @@ export function SendForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useLanguage();
+  const { blocked } = useRateLimitAction("transfer");
   const {
     status,
     balance,
@@ -176,9 +178,6 @@ export function SendForm() {
     }
   }
 
-  const balanceDisplay =
-    status === "ready" && balance !== null ? formatIrr(balance, currency) : null;
-
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
       <div className="flex items-start gap-4">
@@ -212,11 +211,11 @@ export function SendForm() {
           </button>
         </div>
         <div className="min-h-[2.5rem]">
-          {status === "loading" || status === "idle" ? (
-            <p className="amount text-2xl font-bold tracking-tight text-foreground">
-              {t.common.loadingBalance}
+          {status === "unauthenticated" ? (
+            <p className="text-sm font-semibold text-foreground">
+              {t.common.signInToViewBalance}
             </p>
-          ) : status === "error" ? (
+          ) : status === "error" && balance === null ? (
             <div className="flex items-center gap-2">
               <p className="text-xs font-medium text-danger">
                 {balanceError || t.common.couldNotLoadBalance}
@@ -229,13 +228,14 @@ export function SendForm() {
                 {t.common.retry}
               </button>
             </div>
-          ) : status === "unauthenticated" ? (
-            <p className="text-sm font-semibold text-foreground">
-              {t.common.signInToViewBalance}
+          ) : (status === "loading" || status === "idle") &&
+            balance === null ? (
+            <p className="amount text-2xl font-bold tracking-tight text-foreground">
+              {t.common.loadingBalance}
             </p>
           ) : balanceVisible ? (
             <p className="amount text-2xl font-bold tracking-tight text-foreground">
-              {balanceDisplay}
+              {formatIrr(balance ?? 0, currency)}
             </p>
           ) : (
             <p className="amount text-2xl font-bold tracking-widest text-foreground">
@@ -356,7 +356,11 @@ export function SendForm() {
         </div>
       ) : null}
 
-      <Button type="submit" className="h-12 w-full text-base" disabled={loading}>
+      <Button
+        type="submit"
+        className="h-12 w-full text-base"
+        disabled={loading || blocked}
+      >
         {loading ? t.send.lookingUpRecipient : t.send.continueBtn}
       </Button>
     </form>

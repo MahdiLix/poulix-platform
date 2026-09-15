@@ -13,6 +13,7 @@ import { api, getStoredToken } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import { localizeError } from "@/shared/i18n/localizeError";
+import { useRateLimitAction, withRemainingLabel } from "@/shared/rate-limit";
 import type {
   CreateSavedDestinationPayload,
   DestinationValueResponse,
@@ -46,6 +47,7 @@ function destinationBadgeClass(type: FinancialDestinationType) {
 
 export default function DestinationsPage() {
   const { t, language } = useLanguage();
+  const { blocked, remainingSeconds } = useRateLimitAction("destinations");
   const [saved, setSaved] = useState<FinancialDestination[]>([]);
   const [recent, setRecent] = useState<FinancialDestination[]>([]);
   const [revealed, setRevealed] = useState<
@@ -84,7 +86,9 @@ export default function DestinationsPage() {
       const all = [...savedData, ...recentData];
       const values = await Promise.all(
         all.slice(0, 16).map(async (item) => {
-          const value = await api.getDestinationValue(item.id).catch(() => null);
+          const value = await api
+            .getDestinationValue(item.id)
+            .catch(() => null);
           return [item.id, value] as const;
         }),
       );
@@ -149,7 +153,6 @@ export default function DestinationsPage() {
       />
 
       <div className="flex flex-1 flex-col space-y-4 p-4 lg:mx-auto lg:max-w-6xl lg:p-6">
-
         {pageStatus === "unauthenticated" ? (
           <Card className="p-6 text-center">
             <p className="text-sm font-semibold">
@@ -201,7 +204,8 @@ export default function DestinationsPage() {
                             </span>
                           </div>
                           <p className="font-mono text-xs text-muted">
-                            {revealedLabel(revealed[item.id]) ?? item.maskedValue}
+                            {revealedLabel(revealed[item.id]) ??
+                              item.maskedValue}
                           </p>
                           <p className="text-[10px] text-muted">
                             {t.destinations.useCount}: {item.useCount} ·{" "}
@@ -218,7 +222,11 @@ export default function DestinationsPage() {
                               : `/transfer?destinationId=${encodeURIComponent(item.id)}`
                           }
                         >
-                          <Button size="sm" variant="secondary" className="w-auto">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="w-auto"
+                          >
                             {item.type === "P2P_USER"
                               ? t.home.send
                               : t.home.withdraw}
@@ -240,95 +248,104 @@ export default function DestinationsPage() {
             </Card>
 
             <div className="space-y-4">
-            <Card className="space-y-3 p-5">
-              <h3 className="text-sm font-bold">
-                {t.destinations.recentTitle}
-              </h3>
-              {recent.length === 0 ? (
-                <p className="text-xs text-muted">
-                  {t.destinations.emptyRecent}
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {recent.slice(0, 8).map((item) => (
-                    <li
-                      key={item.id}
-                      className="rounded-xl bg-surface-muted p-3 text-xs"
-                    >
-                      <p className="font-semibold">{item.label}</p>
-                      <p className="font-mono text-muted">
-                        {revealedLabel(revealed[item.id]) ?? item.maskedValue}
-                      </p>
-                      <p className="mt-1 text-[10px] text-muted">
-                        {t.destinations.types[item.type]} · {t.destinations.useCount}: {item.useCount}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
+              <Card className="space-y-3 p-5">
+                <h3 className="text-sm font-bold">
+                  {t.destinations.recentTitle}
+                </h3>
+                {recent.length === 0 ? (
+                  <p className="text-xs text-muted">
+                    {t.destinations.emptyRecent}
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {recent.slice(0, 8).map((item) => (
+                      <li
+                        key={item.id}
+                        className="rounded-xl bg-surface-muted p-3 text-xs"
+                      >
+                        <p className="font-semibold">{item.label}</p>
+                        <p className="font-mono text-muted">
+                          {revealedLabel(revealed[item.id]) ?? item.maskedValue}
+                        </p>
+                        <p className="mt-1 text-[10px] text-muted">
+                          {t.destinations.types[item.type]} ·{" "}
+                          {t.destinations.useCount}: {item.useCount}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
 
-            <Card className="space-y-3 p-5">
-              <h3 className="text-sm font-bold flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                {t.destinations.addSaved}
-              </h3>
-              <form
-                onSubmit={(e) => void handleCreate(e)}
-                className="space-y-3"
-              >
-                <TextField
-                  label={t.destinations.friendlyName}
-                  value={label}
-                  onChange={(e) => setLabel(e.target.value)}
-                />
-                <Select
-                  label={t.destinations.destinationType}
-                  value={type}
-                  onChange={(val) => setType(val as FinancialDestinationType)}
-                  options={[
-                    {
-                      value: "BANK_ACCOUNT",
-                      label: t.destinations.types.BANK_ACCOUNT,
-                    },
-                    { value: "SHABA", label: t.destinations.types.SHABA },
-                    { value: "CARD", label: t.destinations.types.CARD },
-                    { value: "P2P_USER", label: t.destinations.types.P2P_USER },
-                  ]}
-                />
-                {type === "BANK_ACCOUNT" ? (
+              <Card className="space-y-3 p-5">
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  {t.destinations.addSaved}
+                </h3>
+                <form
+                  onSubmit={(e) => void handleCreate(e)}
+                  className="space-y-3"
+                >
                   <TextField
-                    label={t.destinations.accountNumber}
-                    value={accountNumber}
-                    onChange={(e) => setAccountNumber(e.target.value)}
+                    label={t.destinations.friendlyName}
+                    value={label}
+                    onChange={(e) => setLabel(e.target.value)}
                   />
-                ) : null}
-                {type === "SHABA" ? (
-                  <TextField
-                    label={t.destinations.shabaNumber}
-                    value={shabaNumber}
-                    onChange={(e) => setShabaNumber(e.target.value)}
+                  <Select
+                    label={t.destinations.destinationType}
+                    value={type}
+                    onChange={(val) => setType(val as FinancialDestinationType)}
+                    options={[
+                      {
+                        value: "BANK_ACCOUNT",
+                        label: t.destinations.types.BANK_ACCOUNT,
+                      },
+                      { value: "SHABA", label: t.destinations.types.SHABA },
+                      { value: "CARD", label: t.destinations.types.CARD },
+                      {
+                        value: "P2P_USER",
+                        label: t.destinations.types.P2P_USER,
+                      },
+                    ]}
                   />
-                ) : null}
-                {type === "CARD" ? (
-                  <TextField
-                    label={t.destinations.cardNumber}
-                    value={cardNumber}
-                    onChange={(e) => setCardNumber(e.target.value)}
-                  />
-                ) : null}
-                {type === "P2P_USER" ? (
-                  <TextField
-                    label={t.send.recipient}
-                    value={recipient}
-                    onChange={(e) => setRecipient(e.target.value)}
-                  />
-                ) : null}
-                <Button type="submit" disabled={creating}>
-                  {creating ? t.destinations.saving : t.destinations.saveBtn}
-                </Button>
-              </form>
-            </Card>
+                  {type === "BANK_ACCOUNT" ? (
+                    <TextField
+                      label={t.destinations.accountNumber}
+                      value={accountNumber}
+                      onChange={(e) => setAccountNumber(e.target.value)}
+                    />
+                  ) : null}
+                  {type === "SHABA" ? (
+                    <TextField
+                      label={t.destinations.shabaNumber}
+                      value={shabaNumber}
+                      onChange={(e) => setShabaNumber(e.target.value)}
+                    />
+                  ) : null}
+                  {type === "CARD" ? (
+                    <TextField
+                      label={t.destinations.cardNumber}
+                      value={cardNumber}
+                      onChange={(e) => setCardNumber(e.target.value)}
+                    />
+                  ) : null}
+                  {type === "P2P_USER" ? (
+                    <TextField
+                      label={t.send.recipient}
+                      value={recipient}
+                      onChange={(e) => setRecipient(e.target.value)}
+                    />
+                  ) : null}
+                  <Button type="submit" disabled={creating || blocked}>
+                    {creating
+                      ? t.destinations.saving
+                      : withRemainingLabel(
+                          t.destinations.saveBtn,
+                          remainingSeconds,
+                        )}
+                  </Button>
+                </form>
+              </Card>
             </div>
           </div>
         ) : null}

@@ -39,7 +39,10 @@ export function ProfileMenu({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const isAdmin = user?.role === "ADMIN";
-  const displayName = getDisplayName(user, t.common.guestUser);
+  const displayName = getDisplayName(
+    user,
+    status === "loading" ? "" : t.common.guestUser,
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -125,110 +128,110 @@ export function ProfileMenu({
       {open
         ? createPortal(
             <>
-          <div
-            className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-[1px]"
-            aria-hidden
-            onClick={() => setOpen(false)}
-          />
-          <div
-            ref={panelRef}
-            id={panelId}
-            role="dialog"
-            aria-label={t.nav.profile}
-            className={cn(
-              "fixed top-0 z-50 flex h-dvh w-[min(18rem,88vw)] flex-col border-border bg-surface shadow-xl animate-in",
-              // English: open from the right. Persian: open from the left.
-              language === "fa"
-                ? "left-0 border-r"
-                : "right-0 border-l",
-            )}
-          >
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-foreground">
-                  {displayName}
-                </p>
-                <p className="truncate text-[11px] text-muted">{user?.email}</p>
-              </div>
-              <button
-                type="button"
+              <div
+                className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-[1px]"
+                aria-hidden
                 onClick={() => setOpen(false)}
-                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-muted transition hover:bg-surface-muted hover:text-foreground"
-                aria-label={t.common.close}
+              />
+              <div
+                ref={panelRef}
+                id={panelId}
+                role="dialog"
+                aria-label={t.nav.profile}
+                className={cn(
+                  "fixed top-0 z-50 flex h-dvh w-[min(18rem,88vw)] flex-col border-border bg-surface shadow-xl animate-in",
+                  // English: open from the right. Persian: open from the left.
+                  language === "fa" ? "left-0 border-r" : "right-0 border-l",
+                )}
               >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
-              <div className="space-y-2 rounded-[12px] border border-border bg-surface-muted/50 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-semibold text-foreground">
-                    {t.common.appearance}
-                  </span>
-                  <ThemeToggle variant="compact" />
+                <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {displayName}
+                    </p>
+                    <p className="truncate text-[11px] text-muted">
+                      {user?.email}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-muted transition hover:bg-surface-muted hover:text-foreground"
+                    aria-label={t.common.close}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-semibold text-foreground">
-                    {t.common.language}
-                  </span>
-                  <LanguageToggle variant="compact" />
-                </div>
-              </div>
 
-              {isAdmin ? (
-                <>
+                <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
+                  <div className="space-y-2 rounded-[12px] border border-border bg-surface-muted/50 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-semibold text-foreground">
+                        {t.common.appearance}
+                      </span>
+                      <ThemeToggle variant="compact" />
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-semibold text-foreground">
+                        {t.common.language}
+                      </span>
+                      <LanguageToggle variant="compact" />
+                    </div>
+                  </div>
+
+                  {isAdmin ? (
+                    <>
+                      <Link
+                        href="/admin"
+                        onClick={() => setOpen(false)}
+                        className="flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-primary-soft hover:text-primary"
+                      >
+                        <LayoutDashboard className="h-4 w-4 text-primary" />
+                        {t.admin.openAdmin}
+                      </Link>
+                      <Link
+                        href="/"
+                        onClick={() => setOpen(false)}
+                        className="flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-primary-soft hover:text-primary"
+                      >
+                        <ArrowLeft className="h-4 w-4 text-primary rtl:rotate-180" />
+                        {t.admin.backToApp}
+                      </Link>
+                    </>
+                  ) : null}
+
                   <Link
-                    href="/admin"
+                    href="/profile"
                     onClick={() => setOpen(false)}
                     className="flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-primary-soft hover:text-primary"
                   >
-                    <LayoutDashboard className="h-4 w-4 text-primary" />
-                    {t.admin.openAdmin}
+                    <User className="h-4 w-4 text-primary" />
+                    {t.nav.profile}
                   </Link>
+
                   <Link
-                    href="/"
+                    href="/security"
                     onClick={() => setOpen(false)}
                     className="flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-primary-soft hover:text-primary"
                   >
-                    <ArrowLeft className="h-4 w-4 text-primary rtl:rotate-180" />
-                    {t.admin.backToApp}
+                    <Shield className="h-4 w-4 text-primary" />
+                    {t.security.title}
                   </Link>
-                </>
-              ) : null}
-
-              <Link
-                href="/profile"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-primary-soft hover:text-primary"
-              >
-                <User className="h-4 w-4 text-primary" />
-                {t.nav.profile}
-              </Link>
-
-              <Link
-                href="/security"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-primary-soft hover:text-primary"
-              >
-                <Shield className="h-4 w-4 text-primary" />
-                {t.security.title}
-              </Link>
-            </div>
-            <div className="shrink-0 border-t border-border p-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  signOut();
-                }}
-                className="flex w-full cursor-pointer items-center gap-3 rounded-[10px] bg-danger-soft px-3 py-2.5 text-sm font-semibold text-danger transition hover:bg-danger hover:text-white active:scale-[0.98]"
-              >
-                <LogOut className="h-4 w-4" />
-                {t.common.logOut}
-              </button>
-            </div>
-          </div>
+                </div>
+                <div className="shrink-0 border-t border-border p-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      signOut();
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-3 rounded-[10px] bg-danger-soft px-3 py-2.5 text-sm font-semibold text-danger transition hover:bg-danger hover:text-white active:scale-[0.98]"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    {t.common.logOut}
+                  </button>
+                </div>
+              </div>
             </>,
             document.body,
           )

@@ -16,17 +16,17 @@ volumes:
 services:
   postgres:
     env_file:
-      - .env.docker
+      - ${DOCKER_ENV_FILE:-.env.docker}
 
   backend:
     env_file:
-      - .env.docker
+      - ${DOCKER_ENV_FILE:-.env.docker}
     environment:
       APP_ENV: development
 
   frontend:
     env_file:
-      - .env.docker
+      - ${DOCKER_ENV_FILE:-.env.docker}
     environment:
       APP_ENV: development
 
@@ -42,7 +42,7 @@ services:
 
   backend-test:
     env_file:
-      - .env.docker
+      - ${DOCKER_ENV_FILE:-.env.docker}
     environment:
       NODE_ENV: test
       APP_ENV: test
@@ -51,7 +51,7 @@ services:
 
   backend-test-rate-limit:
     env_file:
-      - .env.docker
+      - ${DOCKER_ENV_FILE:-.env.docker}
     environment:
       NODE_ENV: test
       APP_ENV: test

@@ -16,11 +16,11 @@ volumes:
 services:
   postgres:
     env_file:
-      - .env.production
+      - ${PRODUCTION_ENV_FILE:-.env.production}
 
   backend:
     env_file:
-      - .env.production
+      - ${PRODUCTION_ENV_FILE:-.env.production}
     environment:
       NODE_ENV: production
       APP_ENV: production
@@ -31,7 +31,7 @@ services:
 
   frontend:
     env_file:
-      - .env.production
+      - ${PRODUCTION_ENV_FILE:-.env.production}
     environment:
       NODE_ENV: production
       APP_ENV: production

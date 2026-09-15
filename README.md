@@ -40,8 +40,10 @@ Do not start the shared Compose file alone. Do not use `.env.docker` on the VPS 
 
 | File | Purpose |
 | --- | --- |
+| `.env.example` → `.env` | Empty variable list. Fill with your own values. Do not commit secrets. |
 | `.env.docker.example` → `.env.docker` | Local Docker. Origin `http://localhost`. Sandbox ZarinPal. |
 | `.env.production.example` → `.env.production` | Production Docker on the VPS. Origin `https://poulix.ir`. Live ZarinPal. |
+| `.env.docker.ci.example` → `.env.docker.ci` | GitHub Actions tests only. CI/test-safe values. Paste into secret `ENV_DOCKER_CI`. |
 
 Do not commit filled env files. `POSTGRES_PASSWORD` must match the password inside `DATABASE_URL`. `DATABASE_URL` must use hostname `postgres` (the Compose service), never `localhost`.
 
@@ -110,6 +112,36 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.
 ```
 
 Rebuild after backend, frontend, Dockerfile, or Compose build-arg changes. Recreate containers (`up -d`) after runtime env changes. Bind-mounted Nginx conf can be reloaded with `docker compose ... exec nginx nginx -s reload`.
+
+## CI/CD
+
+GitHub Actions in `.github/workflows/ci-cd.yml` uses the same Docker Compose files as local and production.
+
+| Job | When | What it does |
+| --- | --- | --- |
+| Test | Pull requests, pushes to `main` / `development`, and manual runs | Repeats the existing Docker development tests (`backend-test`, `backend-test-rate-limit`, `frontend-test`) with `.env.docker.ci` |
+| Deploy to VPS | Push to `main` (or a manual run on `main`) after tests succeed | SSHs to the VPS, checks out that commit, and runs the production `up -d --build` command |
+
+Failed tests stop later stages. Pull requests never deploy. CI does not contact the VPS or `https://poulix.ir`. Production images are built on the VPS during deploy, using the VPS `.env.production`.
+
+CI writes `.env.docker.ci` from repository secret `ENV_DOCKER_CI` (CI/test-safe values only). That file is gitignored. Local developer templates remain `.env.docker.example` and `.env.production.example`. Do not copy VPS `.env.production` into GitHub.
+
+| Secret | Purpose |
+| --- | --- |
+| `ENV_DOCKER_CI` | Full contents of `.env.docker.ci` for the existing Docker tests |
+
+Create a GitHub Environment named `production` (used for optional approval rules) and set these secrets on that environment or on the repository:
+
+| Secret | Purpose |
+| --- | --- |
+| `SSH_HOST` | VPS hostname or IP |
+| `SSH_USER` | SSH user |
+| `SSH_PRIVATE_KEY` | Private key whose public key is in the VPS `authorized_keys` |
+| `SSH_KNOWN_HOSTS` | Host key line(s) from `ssh-keyscan -t ed25519,rsa <host>` |
+| `DEPLOY_PATH` | Absolute path to the existing git clone on the VPS |
+| `SSH_PORT` | Optional. Defaults to `22` |
+
+The VPS clone must already exist, with Docker Compose and `.env.production` configured as above. The deploy user needs permission to `git fetch` this repository (a deploy key if the repo is private).
 
 ## Tests
 

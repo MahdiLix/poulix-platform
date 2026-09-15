@@ -1,0 +1,186 @@
+ 
+# CI runs the existing Docker-based development tests using .env.docker.ci.
+# It does not connect to the VPS or poulix.ir.
+#
+# CD runs only on main and only after CI succeeds.
+# It connects to the VPS over SSH and deploys the exact commit that triggered the workflow.
+#
+# Required CI repository secret:
+#   ENV_DOCKER_CI
+#   Full contents of .env.docker.ci using CI/test-safe values.
+#
+# Required production environment secrets:
+#   SSH_HOST
+#   SSH_USER
+#   SSH_PRIVATE_KEY
+#   SSH_KNOWN_HOSTS
+#   DEPLOY_PATH
+#   SSH_PORT (optional, defaults to 22)
+
+name: CI/CD
+
+on:
+  pull_request:
+
+  push:
+    branches:
+      - main
+      - development
+
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      DOCKER_ENV_FILE: .env.docker.ci
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Write CI environment file
+        env:
+          ENV_DOCKER_CI: ${{ secrets.ENV_DOCKER_CI }}
+        run: |
+          set -euo pipefail
+
+          test -n "$ENV_DOCKER_CI"
+
+          printf '%s\n' "$ENV_DOCKER_CI" > "$DOCKER_ENV_FILE"
+          chmod 600 "$DOCKER_ENV_FILE"
+
+      - name: Validate Docker Compose configuration
+        run: |
+          set -euo pipefail
+
+          docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.dev.yml \
+            --env-file "$DOCKER_ENV_FILE" \
+            config
+
+      - name: Backend tests
+        run: |
+          docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.dev.yml \
+            --env-file "$DOCKER_ENV_FILE" \
+            --profile test \
+            run --rm --build backend-test
+
+      - name: Backend rate-limit tests
+        run: |
+          docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.dev.yml \
+            --env-file "$DOCKER_ENV_FILE" \
+            --profile test \
+            run --rm --build backend-test-rate-limit
+
+      - name: Frontend tests
+        run: |
+          docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.dev.yml \
+            --env-file "$DOCKER_ENV_FILE" \
+            --profile test \
+            run --rm --build frontend-test
+
+      - name: Stop CI containers
+        if: always()
+        run: |
+          docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.dev.yml \
+            --env-file "$DOCKER_ENV_FILE" \
+            --profile test \
+            down -v --remove-orphans
+
+  deploy:
+    name: Deploy to VPS
+
+    needs:
+      - ci
+
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    environment: production
+
+    steps:
+      - name: Deploy over SSH
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_PORT: ${{ secrets.SSH_PORT || 22 }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_SHA: ${{ github.sha }}
+
+        run: |
+          set -euo pipefail
+
+          test -n "$SSH_HOST"
+          test -n "$SSH_USER"
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$SSH_KNOWN_HOSTS"
+          test -n "$DEPLOY_PATH"
+
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+
+          rm -f "$HOME/.ssh/id_ed25519"
+          rm -f "$HOME/.ssh/known_hosts"
+
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 644 "$HOME/.ssh/known_hosts"
+
+          ssh \
+            -p "$SSH_PORT" \
+            -i "$HOME/.ssh/id_ed25519" \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            "$SSH_USER@$SSH_HOST" \
+            "bash -s -- $(printf '%q' "$DEPLOY_PATH") $(printf '%q' "$DEPLOY_SHA")" <<'EOF'
+          set -euo pipefail
+
+          DEPLOY_PATH="$1"
+          DEPLOY_SHA="$2"
+
+          cd "$DEPLOY_PATH"
+
+          git fetch --prune origin main
+          git checkout --force -B main "$DEPLOY_SHA"
+
+          test -f deploy.env
+
+          docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.prod.yml \
+            --env-file deploy.env \
+            up -d --build --remove-orphans
+
+          docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.prod.yml \
+            --env-file deploy.env \
+            ps
+          EOF
+ 

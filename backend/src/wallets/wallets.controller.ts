@@ -9,7 +9,6 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { SkipThrottle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { CurrentUser, JwtAuthGuard, type AuthenticatedUser } from '../common';
 import { PaymentsService } from '../payments/payments.service';
@@ -60,7 +59,6 @@ export class WalletsController {
   }
 
   @Get('deposit/callback')
-  @SkipThrottle()
   async handleDepositCallback(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,

@@ -27,11 +27,7 @@ export class PaymentsService {
     private readonly auditLogService: AuditLogService,
   ) {}
 
-  async createDeposit(
-    userId: string,
-    amount: number,
-    publicOrigin?: string,
-  ) {
+  async createDeposit(userId: string, amount: number, publicOrigin?: string) {
     const wallet = await this.db.wallet.findUnique({
       where: { userId },
       select: { id: true },

@@ -1,0 +1,19 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "..",
+  "testMatch": ["<rootDir>/tests/rate-limit/**/*.spec.ts"],
+  "transform": {
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": "<rootDir>/tests/tsconfig.json"
+      }
+    ]
+  },
+  "testEnvironment": "node",
+  "setupFiles": ["<rootDir>/tests/rate-limit/setup.ts"],
+  "moduleNameMapper": {
+    "^(\\.{1,2}/.*)\\.js$": "$1"
+  },
+  "forceExit": true
+}

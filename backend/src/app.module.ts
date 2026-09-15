@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { DatabaseModule } from './database/database.module';
 import { RequestLoggingModule } from './request-logging/request-logging.module';
 import { AuditLoggingModule } from './audit-logging/audit-logging.module';
+import { RateLimitModule } from './rate-limit';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { WalletsModule } from './wallets/wallets.module';
@@ -19,19 +18,7 @@ import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
-    ThrottlerModule.forRoot({
-      throttlers: [
-        process.env.NODE_ENV === 'test'
-          ? {
-              ttl: 60_000,
-              limit: 10_000,
-            }
-          : {
-              ttl: 10_000,
-              limit: 60,
-            },
-      ],
-    }),
+    RateLimitModule,
     RequestLoggingModule,
     AuditLoggingModule,
     DatabaseModule,
@@ -47,12 +34,6 @@ import { AdminModule } from './admin/admin.module';
     SpendingLimitsModule,
     SecurityModule,
     AdminModule,
-  ],
-  providers: [
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
   ],
 })
 export class AppModule {}

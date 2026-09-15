@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { RateLimitModule } from '../rate-limit';
 import { SecurityModule } from '../security/security.module';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
@@ -12,6 +13,7 @@ import { JwtStrategy } from './jwt.strategy';
   imports: [
     PassportModule,
     SecurityModule,
+    RateLimitModule,
     JwtModule.register({
       secret: getJwtSecret(),
       signOptions: {

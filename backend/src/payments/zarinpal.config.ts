@@ -16,9 +16,7 @@ type RequestLike = {
   headers?: Record<string, string | string[] | undefined>;
 };
 
-function headerFirst(
-  value: string | string[] | undefined,
-): string | undefined {
+function headerFirst(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) {
     return value[0]?.split(',')[0]?.trim();
   }
@@ -27,7 +25,9 @@ function headerFirst(
 
 function hostnameOf(value: string): string | null {
   try {
-    const url = value.includes('://') ? new URL(value) : new URL(`http://${value}`);
+    const url = value.includes('://')
+      ? new URL(value)
+      : new URL(`http://${value}`);
     return url.hostname.toLowerCase();
   } catch {
     return null;

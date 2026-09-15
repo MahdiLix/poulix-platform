@@ -8,6 +8,10 @@ import validator from 'validator';
 import { JwtService } from '@nestjs/jwt';
 import { AuditLogService } from '../audit-logging/audit-log.service';
 import { DatabaseService } from '../database/database.service';
+import {
+  LoginLockoutService,
+  AccountTemporarilyLockedException,
+} from '../rate-limit';
 import { SecurityService } from '../security/security.service';
 import { Prisma } from '../generated/prisma/client';
 import { LoginDto } from './dto/login.dto';
@@ -22,6 +26,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly securityService: SecurityService,
     private readonly auditLogService: AuditLogService,
+    private readonly loginLockoutService: LoginLockoutService,
   ) {}
 
   private hashPassword(password: string): string {
@@ -151,9 +156,40 @@ export class AuthService {
       },
     });
 
+    if (user) {
+      try {
+        await this.loginLockoutService.assertNotLocked(user.id);
+      } catch (error) {
+        if (error instanceof AccountTemporarilyLockedException) {
+          this.auditLogService.log({
+            event: 'auth.login',
+            action: 'login',
+            result: 'failure',
+            userId: user.id,
+            metadata: { reason: 'account_temporarily_locked' },
+          });
+        }
+        throw error;
+      }
+    }
+
     if (!user || !this.verifyPassword(dto.password, user.passwordHash)) {
       if (user) {
+        await this.loginLockoutService.recordFailure(user.id);
         await this.securityService.recordFailedLogin(user.id, ipAddress);
+        const retryAfter = await this.loginLockoutService.getRetryAfterSeconds(
+          user.id,
+        );
+        if (retryAfter != null) {
+          this.auditLogService.log({
+            event: 'auth.login',
+            action: 'login',
+            result: 'failure',
+            userId: user.id,
+            metadata: { reason: 'account_temporarily_locked' },
+          });
+          throw new AccountTemporarilyLockedException(retryAfter);
+        }
       }
       this.auditLogService.log({
         event: 'auth.login',
@@ -186,6 +222,8 @@ export class AuthService {
       });
       throw new UnauthorizedException('Account locked');
     }
+
+    await this.loginLockoutService.recordSuccess(user.id);
 
     const sessionId = await this.securityService.recordSuccessfulLogin(
       user.id,

@@ -12,6 +12,7 @@
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest --config tests/jest.config.json --runInBand --verbose",
+    "test:rate-limit": "jest --config tests/jest.rate-limit.config.json --runInBand --verbose",
     "test:watch": "jest --config tests/jest.config.json --runInBand --watch",
     "test:cov": "jest --config tests/jest.config.json --runInBand --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand"
@@ -36,6 +37,7 @@
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
     "pino-roll": "^4.0.0",
+    "redis": "^4.7.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "validator": "^13.15.35"

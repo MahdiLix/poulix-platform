@@ -1,4 +1,8 @@
-import { BACKEND_LISTEN_PORT, getAppEnv, getFrontendUrl } from '../../src/config';
+import {
+  BACKEND_LISTEN_PORT,
+  getAppEnv,
+  getFrontendUrl,
+} from '../../src/config';
 import { getDatabaseUrl } from '../../src/config/database.config';
 
 describe('app config', () => {

@@ -1,6 +1,9 @@
 # Local Docker environment (http://localhost through Nginx).
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker up --build
 #
+# Optional Rate Limit test mode (TEST_RATE_LIMITS, not production):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.rate-limit.yml --env-file .env.docker up --build
+#
 # Isolated from production: project name poulix-dev and volume poulix_dev_postgres.
 # PostgreSQL, backend, and frontend are not published on the host.
 
@@ -43,3 +46,14 @@ services:
     environment:
       NODE_ENV: test
       APP_ENV: test
+      RATE_LIMIT_ENABLED: "false"
+      REDIS_URL: ""
+
+  backend-test-rate-limit:
+    env_file:
+      - .env.docker
+    environment:
+      NODE_ENV: test
+      APP_ENV: test
+      RATE_LIMIT_ENABLED: "true"
+      REDIS_URL: ""

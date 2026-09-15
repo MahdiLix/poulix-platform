@@ -24,6 +24,10 @@ services:
     environment:
       NODE_ENV: production
       APP_ENV: production
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
 
   frontend:
     env_file:

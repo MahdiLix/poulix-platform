@@ -14,8 +14,8 @@ Browser
 Nginx          ← only public ports
    ├── frontend:3000
    └── backend:3001
-             ↓
-        postgres:5432
+             ├── postgres:5432
+             └── redis:6379   ← rate-limit counters / lockout only
 ```
 
 | | Local | Production |
@@ -54,8 +54,11 @@ cp .env.docker.example .env.docker
 Set local secrets. Keep `FRONTEND_URL=http://localhost`, `ZARINPAL_CALLBACK_URL=http://localhost/deposit/callback`, and `ZARINPAL_BASE_URL=https://sandbox.zarinpal.com`.
 
 ```bash
-# start
+# start (Rate Limiting OFF)
 docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker up --build
+
+# start with Rate Limit test mode (burst 5/10s, login 3/60s in the overlay, lockout 3/60s, …)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.rate-limit.yml --env-file .env.docker up --build -d
 
 # stop
 docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker down
@@ -116,11 +119,16 @@ Run tests through Docker. Unit and integration tests live in the existing backen
 # backend (unit + integration)
 docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker --profile test run --rm --build backend-test
 
+# backend rate-limit / login security suite (separate from the normal suite)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker --profile test run --rm --build backend-test-rate-limit
+
 # frontend
 docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker --profile test run --rm --build frontend-test
 ```
 
 There is no separate e2e suite.
+
+The optional `docker-compose.rate-limit.yml` overlay only affects the running local **backend** service. It does not change `backend-test` (Rate Limiting stays OFF) or `backend-test-rate-limit` (already ON with `TEST_RATE_LIMITS`, including login 3/10s). The overlay uses the same small burst/payment windows, with login/register/lockout stretched to 60s so they can be tried by hand.
 
 Do not run the test profile with the production Compose files.
 

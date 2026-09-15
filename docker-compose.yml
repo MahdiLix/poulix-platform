@@ -1,5 +1,6 @@
 # Shared Compose services. Do not start this file alone.
 # Local:      docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker up --build
+# Local RL:   docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.rate-limit.yml --env-file .env.docker up --build
 # Production: docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production up -d --build
 #
 # Frontend (3000), backend (3001), and PostgreSQL stay on the Compose network.
@@ -13,6 +14,32 @@ volumes:
   postgres_data:
 
 services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - poulix
+    expose:
+      - "6379"
+    # Temporary rate-limit counters only: no disk persistence, tiny memory cap.
+    command:
+      [
+        "redis-server",
+        "--save",
+        "",
+        "--appendonly",
+        "no",
+        "--maxmemory",
+        "32mb",
+        "--maxmemory-policy",
+        "allkeys-lru",
+      ]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -78,6 +105,7 @@ services:
     environment:
       NODE_ENV: test
       APP_ENV: test
+      RATE_LIMIT_ENABLED: "false"
     depends_on:
       postgres:
         condition: service_healthy
@@ -89,3 +117,19 @@ services:
       target: test
     networks:
       - poulix
+
+  backend-test-rate-limit:
+    profiles: ["test"]
+    build:
+      context: ./backend
+      target: test
+    networks:
+      - poulix
+    environment:
+      NODE_ENV: test
+      APP_ENV: test
+      RATE_LIMIT_ENABLED: "true"
+    command: ["npm", "run", "test:rate-limit"]
+    depends_on:
+      postgres:
+        condition: service_healthy

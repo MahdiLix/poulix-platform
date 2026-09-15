@@ -1,0 +1,18 @@
+# Optional overlay: Rate Limit test mode for the local Docker app.
+# Default local command (without this file) keeps Rate Limiting OFF.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.rate-limit.yml --env-file .env.docker up --build -d
+#
+# Enables Rate Limiting with the dedicated test counts. Login/register/lockout
+# use 60s windows in development so they can be tried in the browser; automated
+# tests keep TEST_RATE_LIMITS (login 3/10s). APP_ENV stays development.
+
+services:
+  backend:
+    environment:
+      RATE_LIMIT_ENABLED: "true"
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+

@@ -1,12 +1,12 @@
 # never commit
 .env
 .env.*
+.env.docker.ci
+
 !.env.example
 !.env.docker.example
 !.env.production.example
 !.env.docker.ci.example
-.env.docker.ci
- 
 
 # OS / editor
 .DS_Store

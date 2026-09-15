@@ -169,18 +169,18 @@ jobs:
           git fetch --prune origin main
           git checkout --force -B main "$DEPLOY_SHA"
 
-          test -f deploy.env
+          test -f .env.production
 
           docker compose \
             -f docker-compose.yml \
             -f docker-compose.prod.yml \
-            --env-file deploy.env \
+            --env-file .env.production \
             up -d --build --remove-orphans
 
           docker compose \
             -f docker-compose.yml \
             -f docker-compose.prod.yml \
-            --env-file deploy.env \
+            --env-file .env.production \
             ps
           EOF
  

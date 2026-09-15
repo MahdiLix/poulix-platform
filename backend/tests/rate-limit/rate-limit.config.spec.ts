@@ -50,56 +50,56 @@ describe('rate-limit config', () => {
 
   it('keeps independent production windows', () => {
     expect(PRODUCTION_RATE_LIMITS.burst).toEqual({
-      limit: 30,
+      limit: 15,
       ttlMs: 10_000,
     });
     expect(PRODUCTION_RATE_LIMITS.short).toEqual({
-      limit: 150,
+      limit: 60,
       ttlMs: 60_000,
     });
     expect(PRODUCTION_RATE_LIMITS.user).toEqual({
-      limit: 800,
+      limit: 300,
       ttlMs: 5 * 60_000,
     });
     expect(PRODUCTION_RATE_LIMITS.login).toEqual({
-      limit: 8,
+      limit: 5,
       ttlMs: 60_000,
     });
     expect(PRODUCTION_RATE_LIMITS.register).toEqual({
-      limit: 3,
+      limit: 2,
       ttlMs: 5 * 60_000,
     });
     expect(PRODUCTION_RATE_LIMITS.deposit).toEqual({
-      limit: 5,
+      limit: 3,
       ttlMs: 60_000,
     });
     expect(PRODUCTION_RATE_LIMITS.withdraw).toEqual({
-      limit: 5,
+      limit: 3,
       ttlMs: 60_000,
     });
     expect(PRODUCTION_RATE_LIMITS.transfer).toEqual({
-      limit: 10,
-      ttlMs: 60_000,
-    });
-    expect(PRODUCTION_RATE_LIMITS.payments).toEqual({
       limit: 5,
       ttlMs: 60_000,
     });
+    expect(PRODUCTION_RATE_LIMITS.payments).toEqual({
+      limit: 3,
+      ttlMs: 60_000,
+    });
     expect(PRODUCTION_RATE_LIMITS.destinations).toEqual({
-      limit: 10,
+      limit: 5,
       ttlMs: 60_000,
     });
     expect(PRODUCTION_RATE_LIMITS.scheduled).toEqual({
-      limit: 10,
+      limit: 5,
       ttlMs: 60_000,
     });
     expect(PRODUCTION_RATE_LIMITS.securityLimits).toEqual({
-      limit: 10,
+      limit: 5,
       ttlMs: 60_000,
     });
     expect(PRODUCTION_RATE_LIMITS.accountLockout).toEqual({
       maxFailedAttempts: 5,
-      lockTtlMs: 10 * 60_000,
+      lockTtlMs: 15 * 60_000,
     });
   });
 

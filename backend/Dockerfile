@@ -16,7 +16,7 @@ RUN npx prisma generate
 
 FROM deps AS test
 ENV NODE_ENV=test
-CMD ["npm", "test"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npm test"]
 
 FROM deps AS build
 RUN npm run build \

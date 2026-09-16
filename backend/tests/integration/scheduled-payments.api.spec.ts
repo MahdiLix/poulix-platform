@@ -74,6 +74,23 @@ describe('Scheduled Payments API', () => {
     expect(payment.category).toBe('FAMILY_SUPPORT');
   });
 
+  it('returns backend-authoritative following and upcoming executions', async () => {
+    const payment = await createScheduledPayment({
+      frequency: 'WEEKLY',
+      startDate: '2026-09-16T14:45:00.000Z',
+      endDate: '2026-09-30T14:45:00.000Z',
+    });
+
+    expect(payment.startDate).toBe('2026-09-16T14:45:00.000Z');
+    expect(payment.nextExecutionAt).toBe('2026-09-16T14:45:00.000Z');
+    expect(payment.followingExecutionAt).toBe('2026-09-23T14:45:00.000Z');
+    expect(payment.upcomingExecutions).toEqual([
+      '2026-09-16T14:45:00.000Z',
+      '2026-09-23T14:45:00.000Z',
+      '2026-09-30T14:45:00.000Z',
+    ]);
+  });
+
   it('executes a due scheduled payment once and records execution history', async () => {
     const payment = await createScheduledPayment({ frequency: 'ONCE' });
 
@@ -366,6 +383,37 @@ describe('Scheduled Payments API', () => {
       'Insufficient envelope funds',
     );
     expect(balanceOf(recipientWallet.balance)).toBe(0);
+  });
+
+  it('advances weekly and monthly follow-ups on the selected calendar day', async () => {
+    const startDate = '2026-01-07T00:00:00.000Z';
+
+    const weekly = await createScheduledPayment({
+      frequency: 'WEEKLY',
+      startDate,
+    });
+    const monthly = await createScheduledPayment({
+      frequency: 'MONTHLY',
+      startDate,
+    });
+
+    await scheduler.processDuePayments();
+
+    const weeklyAfter = await db.scheduledPayment.findUniqueOrThrow({
+      where: { id: weekly.id },
+    });
+    const monthlyAfter = await db.scheduledPayment.findUniqueOrThrow({
+      where: { id: monthly.id },
+    });
+
+    expect(weeklyAfter.status).toBe('ACTIVE');
+    expect(monthlyAfter.status).toBe('ACTIVE');
+    expect(new Date(weeklyAfter.nextExecutionAt).toISOString()).toBe(
+      '2026-01-14T00:00:00.000Z',
+    );
+    expect(new Date(monthlyAfter.nextExecutionAt).toISOString()).toBe(
+      '2026-02-07T00:00:00.000Z',
+    );
   });
 
   it('retries a failed recurring payment without advancing the schedule', async () => {

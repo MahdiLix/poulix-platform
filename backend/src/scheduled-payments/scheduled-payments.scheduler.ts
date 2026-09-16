@@ -18,6 +18,7 @@ export class ScheduledPaymentsScheduler
   ) {}
 
   onModuleInit() {
+    void this.scheduledPaymentsService.processDuePayments();
     this.intervalId = setInterval(() => {
       void this.scheduledPaymentsService.processDuePayments();
     }, SCHEDULER_INTERVAL_MS);

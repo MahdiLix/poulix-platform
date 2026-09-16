@@ -119,14 +119,18 @@ export class WalletsController {
       },
     );
 
-    if (dto.accountNumber) {
-      await this.financialDestinationsService.recordBankAccount(user.id, {
-        accountNumber: dto.accountNumber,
-      });
-    } else if (dto.shabaNumber) {
-      await this.financialDestinationsService.recordShaba(user.id, {
-        shabaNumber: dto.shabaNumber,
-      });
+    try {
+      if (dto.accountNumber) {
+        await this.financialDestinationsService.recordBankAccount(user.id, {
+          accountNumber: dto.accountNumber,
+        });
+      } else if (dto.shabaNumber) {
+        await this.financialDestinationsService.recordShaba(user.id, {
+          shabaNumber: dto.shabaNumber,
+        });
+      }
+    } catch {
+      // Withdrawal already committed.
     }
 
     return result;

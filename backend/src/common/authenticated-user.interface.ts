@@ -4,4 +4,5 @@ export interface AuthenticatedUser {
   role: 'USER' | 'ADMIN';
   status: 'ACTIVE' | 'DISABLED' | 'LOCKED';
   sessionId?: string;
+  tokenExp?: number;
 }

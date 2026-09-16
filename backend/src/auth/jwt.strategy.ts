@@ -1,15 +1,33 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Strategy } from 'passport-jwt';
 import { DatabaseService } from '../database/database.service';
 import { getJwtSecret } from './jwt.config';
 import type { JwtPayload } from './jwt-payload.interface';
+
+const SESSION_COOKIE = 'poulix_session';
+
+function tokenFromRequest(request: {
+  headers?: { authorization?: string; cookie?: string };
+}): string | null {
+  const authorization = request.headers?.authorization;
+  if (authorization?.startsWith('Bearer ')) {
+    return authorization.slice('Bearer '.length);
+  }
+
+  const cookie = request.headers?.cookie ?? '';
+  const entry = cookie
+    .split(';')
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(`${SESSION_COOKIE}=`));
+  return entry ? decodeURIComponent(entry.slice(SESSION_COOKIE.length + 1)) : null;
+}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly db: DatabaseService) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: tokenFromRequest,
       ignoreExpiration: false,
       secretOrKey: getJwtSecret(),
     });
@@ -56,6 +74,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       ...user,
       sessionId: payload.sid,
+      tokenExp: payload.exp,
     };
   }
 }

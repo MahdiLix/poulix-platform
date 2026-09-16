@@ -18,6 +18,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import crypto from 'node:crypto';
 import type { JwtPayload } from './jwt-payload.interface';
+import { getJwtExpirationSeconds } from './jwt.config';
 
 @Injectable()
 export class AuthService {
@@ -63,12 +64,23 @@ export class AuthService {
       ...(user.sessionId ? { sid: user.sessionId } : {}),
     };
     const accessToken = await this.jwtService.signAsync(payload);
+    const decoded = this.jwtService.decode(accessToken);
+    const exp =
+      decoded && typeof decoded === 'object' && typeof decoded.exp === 'number'
+        ? decoded.exp
+        : undefined;
+    const expiresAt = new Date(
+      typeof exp === 'number'
+        ? exp * 1000
+        : Date.now() + getJwtExpirationSeconds() * 1000,
+    ).toISOString();
 
     return {
       user: {
         id: user.id,
         email: user.email,
         role: user.role,
+        expiresAt,
       },
       accessToken,
     };

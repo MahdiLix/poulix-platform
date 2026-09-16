@@ -15,11 +15,35 @@ type RequestLike = {
   socket?: { remoteAddress?: string };
 };
 
+const SESSION_COOKIE = 'poulix_session';
+
 let jwtService: JwtService | undefined;
 
 function jwt(): JwtService {
   jwtService ??= new JwtService({ secret: getJwtSecret() });
   return jwtService;
+}
+
+function sessionCookieToken(req: RequestLike): string | undefined {
+  const raw = req.headers?.cookie;
+  const cookie = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof cookie !== 'string' || !cookie) {
+    return undefined;
+  }
+
+  const entry = cookie
+    .split(';')
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(`${SESSION_COOKIE}=`));
+  if (!entry) {
+    return undefined;
+  }
+
+  try {
+    return decodeURIComponent(entry.slice(SESSION_COOKIE.length + 1));
+  } catch {
+    return undefined;
+  }
 }
 
 export function getRequest(context: ExecutionContext): RequestLike {
@@ -43,12 +67,19 @@ export function getClientIp(req: RequestLike): string {
 export function getUserIdFromRequest(req: RequestLike): string | undefined {
   const raw = req.headers?.authorization ?? req.headers?.Authorization;
   const header = Array.isArray(raw) ? raw[0] : raw;
-  if (typeof header !== 'string' || !header.startsWith('Bearer ')) {
+  const bearerToken =
+    typeof header === 'string' && header.startsWith('Bearer ')
+      ? header.slice(7)
+      : undefined;
+  // Real browser traffic authenticates via the HttpOnly session cookie, not
+  // a Bearer header, so fall back to it for accurate per-user throttling.
+  const token = bearerToken ?? sessionCookieToken(req);
+  if (!token) {
     return undefined;
   }
 
   try {
-    const payload = jwt().verify<{ sub?: string }>(header.slice(7));
+    const payload = jwt().verify<{ sub?: string }>(token);
     return typeof payload.sub === 'string' ? payload.sub : undefined;
   } catch {
     return undefined;

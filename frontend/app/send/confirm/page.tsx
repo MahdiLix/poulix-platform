@@ -16,7 +16,7 @@ import { HeaderBar } from "@/shared/layout/HeaderBar";
 import { Button } from "@/shared/ui/Button";
 import { PageSpinner } from "@/shared/ui/Spinner";
 import { Card } from "@/shared/ui/Card";
-import { api, getStoredToken } from "@/shared/api";
+import { api } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
@@ -34,7 +34,9 @@ import {
 import { SendRightRail } from "@/features/p2p-transfer/components/SendRightRail";
 import { flashToast } from "@/shared/ui/Toast";
 import { useRateLimitAction, withRemainingLabel } from "@/shared/rate-limit";
+import { saveTransferReceipt } from "@/features/wallet/lib/receipt";
 import type { SpendingLimitSummary } from "@/features/spending-limits/lib/spendingLimits";
+import { minRemainingLimit } from "@/features/spending-limits/lib/spendingLimits";
 import type { FinancialDestination } from "@/features/financial-destinations/lib/destinations";
 
 function ConfirmRow({
@@ -61,7 +63,7 @@ function ConfirmContent() {
   const router = useRouter();
   const { t } = useLanguage();
   const { blocked, remainingSeconds } = useRateLimitAction("transfer");
-  const { user } = useUser();
+  const { user, status: authStatus } = useUser();
   const { balance, currency } = useWalletBalance();
   const [payload, setPayload] = useState<SendConfirmPayload | null>(null);
   const [error, setError] = useState("");
@@ -84,7 +86,7 @@ function ConfirmContent() {
   }, [router]);
 
   useEffect(() => {
-    if (!getStoredToken()) return;
+    if (authStatus !== "ready") return;
     void Promise.all([
       api.getSpendingLimits().catch(() => [] as SpendingLimitSummary[]),
       api.getSavedDestinations().catch(() => [] as FinancialDestination[]),
@@ -94,14 +96,14 @@ function ConfirmContent() {
       setSavedDestinations(savedList);
       setRecentDestinations(recentList);
     });
-  }, []);
+  }, [authStatus]);
 
   async function handleConfirm() {
     if (!payload) {
       return;
     }
 
-    if (!getStoredToken()) {
+    if (authStatus !== "ready") {
       router.push("/login");
       return;
     }
@@ -110,6 +112,46 @@ function ConfirmContent() {
     setLoading(true);
 
     try {
+      const latestLimits = await api.getSpendingLimits().catch(() => limits);
+      setLimits(latestLimits);
+      const remainingLimit = minRemainingLimit(latestLimits, [
+        "DAILY_TRANSFER",
+        "MONTHLY_TRANSFER",
+      ]);
+      if (
+        remainingLimit !== null &&
+        parseAmount(payload.amount) > remainingLimit
+      ) {
+        setError(t.messages.spendingLimitExceeded);
+        return;
+      }
+
+      if (payload.envelopeId) {
+        const envelopes = await api.getEnvelopes().catch(() => null);
+        const envelope = envelopes?.envelopes?.find(
+          (item) =>
+            item.id === payload.envelopeId && item.status === "ACTIVE",
+        );
+        if (envelopes && !envelope) {
+          setError(t.messages.envelopeNotActive);
+          return;
+        }
+        if (
+          envelope &&
+          parseAmount(payload.amount) > parseAmount(envelope.allocatedAmount)
+        ) {
+          setError(t.messages.envelopeBalanceExceeded);
+          return;
+        }
+      } else {
+        const live = await api.getBalance();
+        const liveBalance = parseAmount(live.balance);
+        if (payload.amount > liveBalance) {
+          setError(t.messages.insufficientFunds);
+          return;
+        }
+      }
+
       const response = await api.transferP2P({
         recipient: payload.recipient,
         amount: parseAmount(payload.amount),
@@ -120,23 +162,27 @@ function ConfirmContent() {
 
       clearSendConfirmPayload();
 
-      const params = new URLSearchParams({
-        amount: String(payload.amount),
+      saveTransferReceipt({
+        amount: payload.amount,
         recipient: payload.recipientUser.username,
         email: payload.recipientUser.email,
-        balance: String(response.balance),
+        balance: parseAmount(response.balance),
         currency: response.currency,
+        reason: payload.reason,
+        category: payload.category,
       });
-      if (payload.reason) params.set("reason", payload.reason);
-      if (payload.category) params.set("category", payload.category);
 
       flashToast({
         title: t.send.sendSuccessful,
         description: t.messages.success.transferSuccess,
       });
-      router.push(`/send/success?${params.toString()}`);
+      router.push("/send/success");
     } catch (err) {
       setError(localizeError(err, t.messages, "transferFailed"));
+      void api
+        .getSpendingLimits()
+        .then(setLimits)
+        .catch(() => {});
     } finally {
       setLoading(false);
     }

@@ -9,7 +9,8 @@ import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { PageSpinner } from "@/shared/ui/Spinner";
 import { AmountField } from "@/shared/ui/AmountField";
-import { api, getStoredToken } from "@/shared/api";
+import { api } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import { localizeError } from "@/shared/i18n/localizeError";
@@ -28,6 +29,7 @@ import {
 export default function GoalDetailPage() {
   const params = useParams<{ id: string }>();
   const { t, language } = useLanguage();
+  const { status: authStatus } = useUser();
   const { pushToast } = useToast();
   const { balance, currency, refresh } = useWalletBalance();
   const [goal, setGoal] = useState<Goal | null>(null);
@@ -38,11 +40,13 @@ export default function GoalDetailPage() {
   const [pageLoading, setPageLoading] = useState(true);
 
   useEffect(() => {
+    if (authStatus === "loading") return;
     void loadGoal();
-  }, [params.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.id, authStatus]);
 
   async function loadGoal() {
-    if (!getStoredToken()) {
+    if (authStatus === "unauthenticated") {
       setPageLoading(false);
       return;
     }

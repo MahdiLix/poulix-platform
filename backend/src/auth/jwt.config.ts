@@ -9,7 +9,7 @@ export function getJwtSecret(): string {
 }
 
 export function getJwtExpirationSeconds(): number {
-  const expiration = Number(process.env.JWT_EXPIRES_IN_SECONDS ?? '900');
+  const expiration = Number(process.env.JWT_EXPIRES_IN_SECONDS ?? '600');
 
   if (!Number.isSafeInteger(expiration) || expiration <= 0) {
     throw new Error(

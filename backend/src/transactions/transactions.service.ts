@@ -22,6 +22,39 @@ type TransferMetadata = WithdrawMetadata & {
   scheduledPaymentExecutionId?: string;
 };
 
+const NON_ABUSIVE_FINANCIAL_FAILURES = new Set([
+  'Spending limit exceeded',
+  'Insufficient funds',
+  'Insufficient envelope funds',
+  'Too many failed financial attempts',
+]);
+
+function badRequestMessage(error: BadRequestException): string {
+  const response = error.getResponse();
+  if (typeof response === 'string') {
+    return response;
+  }
+  if (response && typeof response === 'object' && 'message' in response) {
+    const message = (response as { message: unknown }).message;
+    if (typeof message === 'string') {
+      return message;
+    }
+    if (Array.isArray(message) && typeof message[0] === 'string') {
+      return message[0];
+    }
+  }
+  return error.message;
+}
+
+function shouldRecordFailedFinancialAttempt(
+  error: unknown,
+): error is BadRequestException {
+  if (!(error instanceof BadRequestException)) {
+    return false;
+  }
+  return !NON_ABUSIVE_FINANCIAL_FAILURES.has(badRequestMessage(error));
+}
+
 export type TransferInTxResult =
   | {
       success: true;
@@ -141,11 +174,6 @@ export class TransactionsService {
         };
       });
 
-      await this.notificationsService.createWithdrawalSuccess(userId, {
-        amount,
-        currency: updatedWallet.currency,
-      });
-
       this.auditLogService.log({
         event: 'withdrawal.completed',
         action: 'complete',
@@ -155,19 +183,30 @@ export class TransactionsService {
         metadata: { amount, currency: updatedWallet.currency },
       });
 
+      try {
+        await this.notificationsService.createWithdrawalSuccess(userId, {
+          amount,
+          currency: updatedWallet.currency,
+        });
+      } catch {
+        // Withdrawal already committed.
+      }
+
       return updatedWallet;
     } catch (error) {
       if (error instanceof BadRequestException) {
-        void this.securityService.recordFailedWithdrawal(userId, {
-          reason: error.message,
-        });
+        if (shouldRecordFailedFinancialAttempt(error)) {
+          void this.securityService.recordFailedWithdrawal(userId, {
+            reason: badRequestMessage(error),
+          });
+        }
         this.auditLogService.log({
           event: 'withdrawal.failed',
           action: 'complete',
           result: 'failure',
           userId,
           resourceType: 'transaction',
-          metadata: { amount, reason: error.message },
+          metadata: { amount, reason: badRequestMessage(error) },
         });
       }
       throw error;
@@ -254,6 +293,7 @@ export class TransactionsService {
       ...(q
         ? {
             OR: [
+              { id: { contains: q, mode: 'insensitive' } },
               { reason: { contains: q, mode: 'insensitive' } },
               {
                 counterpartyUser: {
@@ -377,26 +417,6 @@ export class TransactionsService {
         };
       });
 
-      if (!metadata?.scheduledPaymentExecutionId) {
-        await this.notificationsService.createTransferSuccess(senderUserId, {
-          amount,
-          currency: result.currency,
-          recipientUsername: recipient.username,
-        });
-        await this.notificationsService.createTransferReceived(recipient.id, {
-          amount,
-          currency: result.currency,
-          senderUsername: sender?.username ?? 'user',
-        });
-        await this.financialDestinationsService.recordP2PRecipient(
-          senderUserId,
-          {
-            recipientUserId: recipient.id,
-            recipientUsername: recipient.username,
-          },
-        );
-      }
-
       this.auditLogService.log({
         event: 'transfer.completed',
         action: 'complete',
@@ -407,19 +427,45 @@ export class TransactionsService {
         metadata: { amount, currency: result.currency },
       });
 
+      if (!metadata?.scheduledPaymentExecutionId) {
+        try {
+          await this.notificationsService.createTransferSuccess(senderUserId, {
+            amount,
+            currency: result.currency,
+            recipientUsername: recipient.username,
+          });
+          await this.notificationsService.createTransferReceived(recipient.id, {
+            amount,
+            currency: result.currency,
+            senderUsername: sender?.username ?? 'user',
+          });
+          await this.financialDestinationsService.recordP2PRecipient(
+            senderUserId,
+            {
+              recipientUserId: recipient.id,
+              recipientUsername: recipient.username,
+            },
+          );
+        } catch {
+          // Transfer already committed.
+        }
+      }
+
       return result;
     } catch (error) {
       if (error instanceof BadRequestException) {
-        void this.securityService.recordFailedTransfer(senderUserId, {
-          reason: error.message,
-        });
+        if (shouldRecordFailedFinancialAttempt(error)) {
+          void this.securityService.recordFailedTransfer(senderUserId, {
+            reason: badRequestMessage(error),
+          });
+        }
         this.auditLogService.log({
           event: 'transfer.failed',
           action: 'complete',
           result: 'failure',
           userId: senderUserId,
           resourceType: 'transaction',
-          metadata: { amount, reason: error.message },
+          metadata: { amount, reason: badRequestMessage(error) },
         });
       }
       throw error;

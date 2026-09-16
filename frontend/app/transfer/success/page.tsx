@@ -2,7 +2,6 @@
 
 import { Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import {
   Calendar,
   Check,
@@ -22,6 +21,7 @@ import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import { formatMessage } from "@/shared/i18n/localizeError";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
+import { readWithdrawalReceipt } from "@/features/wallet/lib/receipt";
 
 function DetailRow({
   icon: Icon,
@@ -50,19 +50,14 @@ function DetailRow({
 }
 
 function SuccessContent() {
-  const searchParams = useSearchParams();
   const { t, language } = useLanguage();
-
-  const amount = searchParams.get("amount") || "0";
-  const destinationType = searchParams.get("type") || "account";
-  const destination =
-    searchParams.get("destination") ||
-    searchParams.get("acc") ||
-    searchParams.get("name") ||
-    "";
-  const queryBalance = searchParams.get("balance");
-  const queryCurrency = searchParams.get("currency") || "IRR";
-  const reason = searchParams.get("reason") || "";
+  const receipt = readWithdrawalReceipt();
+  const amount = receipt?.amount ?? 0;
+  const destinationType = receipt?.destinationType ?? "account";
+  const destination = receipt?.destination ?? "";
+  const queryBalance = receipt?.balance ?? 0;
+  const queryCurrency = receipt?.currency ?? "IRR";
+  const reason = receipt?.reason ?? "";
   const { status, balance, currency } = useWalletBalance();
 
   const destinationLabel =

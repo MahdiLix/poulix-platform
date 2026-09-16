@@ -4,7 +4,8 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/shared/ui/Button";
 import { TextField } from "@/shared/ui/TextField";
-import { api, getStoredToken } from "@/shared/api";
+import { api } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { flashToast } from "@/shared/ui/Toast";
@@ -13,6 +14,7 @@ import { validateEnvelopeName } from "@/features/envelopes/lib/envelopes";
 export function CreateEnvelopeForm() {
   const router = useRouter();
   const { t } = useLanguage();
+  const { status: authStatus } = useUser();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
@@ -24,7 +26,7 @@ export function CreateEnvelopeForm() {
     setError("");
     setFieldError(null);
 
-    if (!getStoredToken()) {
+    if (authStatus !== "ready") {
       router.push("/login");
       return;
     }

@@ -1,5 +1,5 @@
 import type { AuthResponse, LoginPayload, RegisterPayload } from "@/shared/api";
-import { api, setStoredToken } from "@/shared/api";
+import { api } from "@/shared/api";
 import type { TranslationDictionary } from "@/shared/i18n/translations";
 import validator from "validator";
 
@@ -57,14 +57,13 @@ export async function loginAndStoreSession(
     password: payload.password,
   });
 
-  if (!response?.accessToken) {
+  if (!response?.user) {
     throw new Error(
       messages?.loginNoToken ||
-        "Login succeeded but no access token was returned",
+        "Login succeeded but no session was returned",
     );
   }
 
-  setStoredToken(response.accessToken);
   return response;
 }
 
@@ -78,13 +77,12 @@ export async function registerAndStoreSession(
     password: payload.password,
   });
 
-  if (!response?.accessToken) {
+  if (!response?.user) {
     throw new Error(
       messages?.registerNoToken ||
-        "Registration succeeded but no access token was returned",
+        "Registration succeeded but no session was returned",
     );
   }
 
-  setStoredToken(response.accessToken);
   return response;
 }

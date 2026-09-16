@@ -17,3 +17,21 @@ export type UpdateSpendingLimitPayload = {
   type: SpendingLimitType;
   maxAmount: number;
 };
+
+export function minRemainingLimit(
+  limits: SpendingLimitSummary[],
+  types: SpendingLimitType[],
+): number | null {
+  let remaining: number | null = null;
+  for (const type of types) {
+    const limit = limits.find((item) => item.type === type);
+    if (!limit) {
+      continue;
+    }
+    remaining =
+      remaining === null
+        ? limit.remainingAmount
+        : Math.min(remaining, limit.remainingAmount);
+  }
+  return remaining;
+}

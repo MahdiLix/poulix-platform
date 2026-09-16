@@ -41,6 +41,7 @@ export const fa: TranslationDictionary = {
     moveMoney: "جابجایی پول",
     plan: "برنامه",
     account: "حساب",
+    settings: "تنظیمات",
     topUp: "افزایش موجودی",
   },
   transaction: {
@@ -790,6 +791,7 @@ export const fa: TranslationDictionary = {
     failedToSaveDestination: "ذخیره مقصد ناموفق بود",
     failedToLoadSecurity: "بارگذاری تنظیمات امنیتی ناموفق بود",
     spendingLimitExceeded: "محدودیت هزینه رد شد",
+    tooManyFailedFinancialAttempts: "تعداد تلاش‌های مالی ناموفق بیش از حد مجاز است",
     failedToLoadAdmin: "بارگذاری داده مدیریت ناموفق بود",
     adminAccessRequired: "دسترسی مدیر لازم است",
     accountDisabled: "حساب غیرفعال است",

@@ -7,9 +7,44 @@ export type CalendarMonth = {
   label: string;
 };
 
+const ISO_DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
 function toDate(value: Date | string | number): Date | null {
-  const date = value instanceof Date ? value : new Date(value);
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value === "string") {
+    const match = ISO_DATE_ONLY.exec(value.trim());
+    if (match) {
+      const date = new Date(
+        Number(match[1]),
+        Number(match[2]) - 1,
+        Number(match[3]),
+      );
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+  }
+
+  const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function toIsoDateInput(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function startOfDayIso(dateInput: string): string {
+  const trimmed = dateInput.trim();
+  const match = ISO_DATE_ONLY.exec(trimmed);
+  if (match) {
+    return `${match[1]}-${match[2]}-${match[3]}T00:00:00.000Z`;
+  }
+
+  return new Date(trimmed).toISOString();
 }
 
 export function calendarFor(language: Language): "persian" | "gregory" {
@@ -118,6 +153,23 @@ export function formatDisplayDate(
     day: "numeric",
     month: "short",
     year: "numeric",
+  }).format(date);
+}
+
+export function formatScheduleDate(value: Date | string | number, language: Language): string {
+  const date =
+    typeof value === "string" && ISO_DATE_ONLY.test(value.trim())
+      ? new Date(`${value.trim()}T00:00:00.000Z`)
+      : toDate(value);
+  if (!date) return "";
+
+  return new Intl.DateTimeFormat(localeFor(language), {
+    calendar: calendarFor(language),
+    numberingSystem: "latn",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
   }).format(date);
 }
 

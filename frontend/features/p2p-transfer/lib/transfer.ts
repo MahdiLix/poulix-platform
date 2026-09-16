@@ -40,6 +40,7 @@ export function validateTransferAmount(
   amount: number,
   balance: number | null,
   messages: Messages,
+  remainingLimit?: number | null,
 ): string | null {
   if (!Number.isFinite(amount) || amount < 1) {
     return messages.transferAmountRequired;
@@ -51,6 +52,10 @@ export function validateTransferAmount(
 
   if (balance !== null && amount > balance) {
     return messages.insufficientFunds;
+  }
+
+  if (typeof remainingLimit === "number" && amount > remainingLimit) {
+    return messages.spendingLimitExceeded;
   }
 
   return null;

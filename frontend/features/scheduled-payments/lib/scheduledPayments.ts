@@ -1,5 +1,8 @@
 import type { TransferRecipient } from "@/features/p2p-transfer/lib/transfer";
+import { startOfDayIso } from "@/shared/i18n/dates";
 import type { TranslationDictionary } from "@/shared/i18n/translations";
+
+export { startOfDayIso, toIsoDateInput } from "@/shared/i18n/dates";
 
 export type ScheduledPaymentFrequency = "ONCE" | "WEEKLY" | "MONTHLY";
 export type ScheduledPaymentStatus =
@@ -23,6 +26,8 @@ export type ScheduledPayment = {
   frequency: ScheduledPaymentFrequency;
   startDate: string;
   nextExecutionAt: string;
+  followingExecutionAt?: string | null;
+  upcomingExecutions?: string[];
   endDate?: string | null;
   status: ScheduledPaymentStatus;
   createdAt: string;
@@ -73,24 +78,32 @@ export function validateScheduledStartDate(
     return messages.scheduledStartDateRequired;
   }
 
-  const date = new Date(startDate);
-  if (Number.isNaN(date.getTime())) {
+  try {
+    const date = new Date(startOfDayIso(startDate));
+    if (Number.isNaN(date.getTime())) {
+      return messages.scheduledStartDateInvalid;
+    }
+  } catch {
     return messages.scheduledStartDateInvalid;
   }
 
   return null;
 }
 
-export function toIsoDateInput(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+export function addCalendarWeeks(from: Date, weeks: number): Date {
+  const next = new Date(from);
+  next.setUTCDate(next.getUTCDate() + weeks * 7);
+  return next;
 }
 
-export function startOfDayIso(dateInput: string): string {
-  const date = new Date(`${dateInput}T00:00:00`);
-  return date.toISOString();
+export function addCalendarMonths(from: Date, months: number): Date {
+  const next = new Date(from);
+  const day = next.getUTCDate();
+  next.setUTCMonth(next.getUTCMonth() + months, day);
+  if (next.getUTCDate() !== day) {
+    next.setUTCDate(0);
+  }
+  return next;
 }
 
 export function statusTone(

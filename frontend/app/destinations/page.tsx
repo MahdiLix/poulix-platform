@@ -9,7 +9,8 @@ import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { TextField } from "@/shared/ui/TextField";
 import { Select } from "@/shared/ui/Select";
-import { api, getStoredToken } from "@/shared/api";
+import { api, ApiRequestError } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import { localizeError } from "@/shared/i18n/localizeError";
@@ -47,6 +48,7 @@ function destinationBadgeClass(type: FinancialDestinationType) {
 
 export default function DestinationsPage() {
   const { t, language } = useLanguage();
+  const { status: authStatus } = useUser();
   const { blocked, remainingSeconds } = useRateLimitAction("destinations");
   const [saved, setSaved] = useState<FinancialDestination[]>([]);
   const [recent, setRecent] = useState<FinancialDestination[]>([]);
@@ -64,15 +66,15 @@ export default function DestinationsPage() {
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    void loadData();
-  }, []);
-
-  async function loadData() {
-    if (!getStoredToken()) {
+    if (authStatus === "loading") return;
+    if (authStatus === "unauthenticated") {
       setPageStatus("unauthenticated");
       return;
     }
+    void loadData();
+  }, [authStatus]);
 
+  async function loadData() {
     setPageStatus("loading");
     setError(null);
 
@@ -99,7 +101,7 @@ export default function DestinationsPage() {
       setRevealed(next);
       setPageStatus("ready");
     } catch (err) {
-      if (!getStoredToken()) {
+      if (err instanceof ApiRequestError && err.status === 401) {
         setPageStatus("unauthenticated");
         return;
       }

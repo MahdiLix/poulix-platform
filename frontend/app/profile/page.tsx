@@ -20,7 +20,7 @@ import { AppShell } from "@/shared/layout/AppShell";
 import { HeaderBar } from "@/shared/layout/HeaderBar";
 import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
-import { api, getStoredToken } from "@/shared/api";
+import { api } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { formatDisplayDate } from "@/shared/i18n/dates";
 import { formatIrr } from "@/features/wallet/lib/wallet";
@@ -50,16 +50,15 @@ type WalletInfo = {
 
 export default function ProfilePage() {
   const { t, language } = useLanguage();
-  const { signOut } = useUser();
+  const { status: authStatus, signOut } = useUser();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [virtualKeyboard, setVirtualKeyboard] = useState(false);
-  const { balance, currency, refresh } = useWalletBalance();
+  const { balance, currency } = useWalletBalance();
 
   const loadUserData = async () => {
-    const token = getStoredToken();
-    if (!token) {
+    if (authStatus === "unauthenticated") {
       setLoading(false);
       return;
     }
@@ -79,13 +78,14 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
+    if (authStatus === "loading") return;
     void loadUserData();
     setVirtualKeyboard(isVirtualKeyboardEnabled());
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authStatus]);
 
   function handleLogout() {
     signOut();
-    void refresh();
   }
 
   const settingsLinks = [
@@ -258,7 +258,7 @@ export default function ProfilePage() {
                   </div>
                   <ThemeToggle variant="compact" />
                 </div>
-                <div className="flex items-center justify-between gap-4 px-5 py-4">
+                <div className="flex items-center justify-between gap-4 px-5 py-4 xl:hidden">
                   <div className="flex items-start gap-3">
                     <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-primary-soft text-primary">
                       <Keyboard className="h-4 w-4" />

@@ -10,7 +10,8 @@ import { Card } from "@/shared/ui/Card";
 import { Badge } from "@/shared/ui/Badge";
 import { Pagination } from "@/shared/ui/Pagination";
 import { TextField } from "@/shared/ui/TextField";
-import { api, getStoredToken } from "@/shared/api";
+import { api, ApiRequestError } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { useRateLimitAction, withRemainingLabel } from "@/shared/rate-limit";
@@ -101,6 +102,7 @@ function severityLabel(severity: EventSeverity, language: "en" | "fa"): string {
 
 export default function SecurityPage() {
   const { t, language } = useLanguage();
+  const { status: authStatus } = useUser();
   const { blocked, remainingSeconds } = useRateLimitAction("securityLimits");
   const [limits, setLimits] = useState<SpendingLimitSummary[]>([]);
   const [limitDrafts, setLimitDrafts] = useState<Record<string, string>>({});
@@ -113,16 +115,16 @@ export default function SecurityPage() {
   const [eventsTotal, setEventsTotal] = useState(0);
 
   useEffect(() => {
-    void loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventsPage]);
-
-  async function loadData() {
-    if (!getStoredToken()) {
+    if (authStatus === "loading") return;
+    if (authStatus === "unauthenticated") {
       setPageStatus("unauthenticated");
       return;
     }
+    void loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authStatus, eventsPage]);
 
+  async function loadData() {
     if (pageStatus !== "ready") {
       setPageStatus("loading");
     }
@@ -149,7 +151,7 @@ export default function SecurityPage() {
       setPageStatus("ready");
       void api.touchSecuritySession().catch(() => {});
     } catch (err) {
-      if (!getStoredToken()) {
+      if (err instanceof ApiRequestError && err.status === 401) {
         setPageStatus("unauthenticated");
         return;
       }

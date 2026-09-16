@@ -19,7 +19,8 @@ import { HeaderBar } from "@/shared/layout/HeaderBar";
 import { Button, ButtonLink } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { Pagination } from "@/shared/ui/Pagination";
-import { api, getStoredToken } from "@/shared/api";
+import { api, ApiRequestError } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
@@ -103,6 +104,7 @@ function filterDotClass(filter: Filter) {
 
 export default function NotificationsPage() {
   const { t, language } = useLanguage();
+  const { status: authStatus } = useUser();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [pageStatus, setPageStatus] = useState<PageStatus>("loading");
   const [listError, setListError] = useState<string | null>(null);
@@ -112,18 +114,18 @@ export default function NotificationsPage() {
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
+    if (authStatus === "loading") return;
+    if (authStatus === "unauthenticated") {
+      setPageStatus("unauthenticated");
+      return;
+    }
     void loadNotifications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, page]);
+  }, [authStatus, filter, page]);
 
   useEffect(() => setPage(1), [filter]);
 
   async function loadNotifications() {
-    if (!getStoredToken()) {
-      setPageStatus("unauthenticated");
-      return;
-    }
-
     setPageStatus("loading");
     setListError(null);
 
@@ -137,7 +139,7 @@ export default function NotificationsPage() {
       setTotal(data.total);
       setPageStatus("ready");
     } catch (err) {
-      if (!getStoredToken()) {
+      if (err instanceof ApiRequestError && err.status === 401) {
         setPageStatus("unauthenticated");
         return;
       }

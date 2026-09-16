@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { api, getStoredToken } from "@/shared/api";
+import { api } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { Select } from "@/shared/ui/Select";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
@@ -25,12 +26,13 @@ export function FundingSourceSelect({
   currency?: string;
 }) {
   const { language } = useLanguage();
+  const { status } = useUser();
   const [envelopes, setEnvelopes] = useState<Envelope[]>([]);
   const mainWalletLabel = language === "fa" ? "کیف پول اصلی" : "Main wallet";
   const fieldLabel = language === "fa" ? "منبع پرداخت" : "Payment source";
 
   useEffect(() => {
-    if (!getStoredToken()) return;
+    if (status !== "ready") return;
     void api
       .getEnvelopes()
       .then((result) => {
@@ -43,7 +45,7 @@ export function FundingSourceSelect({
         );
       })
       .catch(() => setEnvelopes([]));
-  }, []);
+  }, [status]);
 
   const sources = useMemo<FundingSource[]>(
     () => [

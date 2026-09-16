@@ -60,6 +60,11 @@ describe('Spending Limits API', () => {
       .set('Authorization', `Bearer ${user.accessToken}`)
       .send({ amount: 100_000, accountNumber: '1234567890' })
       .expect(400);
+
+    const failedWithdrawals = await db.securityEvent.count({
+      where: { userId: user.userId, type: 'FAILED_WITHDRAWAL' },
+    });
+    expect(failedWithdrawals).toBe(0);
   });
 
   it('does not allow concurrent transfers to exceed the daily limit', async () => {

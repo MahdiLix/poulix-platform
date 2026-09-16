@@ -27,7 +27,8 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/shared/ui/Table";
-import { api, getStoredToken } from "@/shared/api";
+import { api, ApiRequestError } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { formatDisplayDate, formatDisplayDateTime } from "@/shared/i18n/dates";
 import { localizeError, formatMessage } from "@/shared/i18n/localizeError";
@@ -97,6 +98,7 @@ const PILL_OPTIONS = [
 
 export default function HistoryPage() {
   const { t, language } = useLanguage();
+  const { status: authStatus } = useUser();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [status, setStatus] = useState<HistoryStatus>("loading");
   const [error, setError] = useState<string | null>(null);
@@ -144,21 +146,20 @@ export default function HistoryPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / ROWS_PER_PAGE));
   useEffect(() => {
-    const timer = window.setTimeout(() => void loadHistory(), 250);
-    return () => window.clearTimeout(timer);
-    // loadHistory intentionally reads the current filter state.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, typeFilter, pillFilter, search]);
-
-  async function loadHistory() {
-    const token = getStoredToken();
-    if (!token) {
+    if (authStatus === "loading") return;
+    if (authStatus === "unauthenticated") {
       setTransactions([]);
       setError(null);
       setStatus("unauthenticated");
       return;
     }
+    const timer = window.setTimeout(() => void loadHistory(), 250);
+    return () => window.clearTimeout(timer);
+    // loadHistory intentionally reads the current filter state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authStatus, page, typeFilter, pillFilter, search]);
 
+  async function loadHistory() {
     setStatus("loading");
     setError(null);
 
@@ -179,7 +180,7 @@ export default function HistoryPage() {
       setTotal(data.total);
       setStatus("ready");
     } catch (err) {
-      if (!getStoredToken()) {
+      if (err instanceof ApiRequestError && err.status === 401) {
         setTransactions([]);
         setError(null);
         setStatus("unauthenticated");
@@ -193,7 +194,7 @@ export default function HistoryPage() {
   }
 
   async function exportHistory() {
-    if (!getStoredToken() || exporting) return;
+    if (authStatus !== "ready" || exporting) return;
     setExporting(true);
     try {
       const pageSize = 100;

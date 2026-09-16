@@ -9,7 +9,8 @@ import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { PageSpinner } from "@/shared/ui/Spinner";
 import { DonutChart } from "@/shared/ui/DonutChart";
-import { api, getStoredToken } from "@/shared/api";
+import { api, ApiRequestError } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatIrr } from "@/features/wallet/lib/wallet";
@@ -31,6 +32,7 @@ type PageStatus = "loading" | "ready" | "unauthenticated" | "error";
 
 export default function GoalsPage() {
   const { t } = useLanguage();
+  const { status: authStatus } = useUser();
   const { status, balance, currency, error: walletError } = useWalletBalance();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [totalSaved, setTotalSaved] = useState(0);
@@ -39,15 +41,15 @@ export default function GoalsPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
-    void loadGoals();
-  }, []);
-
-  async function loadGoals() {
-    if (!getStoredToken()) {
+    if (authStatus === "loading") return;
+    if (authStatus === "unauthenticated") {
       window.location.replace("/login");
       return;
     }
+    void loadGoals();
+  }, [authStatus]);
 
+  async function loadGoals() {
     setPageStatus("loading");
     setListError(null);
 
@@ -57,7 +59,7 @@ export default function GoalsPage() {
       setTotalSaved(parseGoalAmount(data.summary.totalSavedInGoals));
       setPageStatus("ready");
     } catch (err) {
-      if (!getStoredToken()) {
+      if (err instanceof ApiRequestError && err.status === 401) {
         window.location.replace("/login");
         return;
       }

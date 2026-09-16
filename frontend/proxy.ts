@@ -26,6 +26,44 @@ const PUBLIC_PREFIXES = [
   "/favicon.ico",
 ];
 
+const SESSION_COOKIE = "poulix_session";
+
+function clearClientSession(response: NextResponse) {
+  // Attributes must match the backend Set-Cookie on login so browsers
+  // actually delete the HttpOnly session cookie.
+  const secure = process.env.APP_ENV === "production";
+  response.cookies.set(SESSION_COOKIE, "", {
+    path: "/",
+    maxAge: 0,
+    httpOnly: true,
+    sameSite: "lax",
+    secure,
+  });
+}
+
+function readSessionToken(request: NextRequest): string | undefined {
+  const fromStore = request.cookies.get(SESSION_COOKIE)?.value;
+  if (fromStore) return fromStore;
+
+  // Fallback: parse the Cookie header directly. The Next cookie store has
+  // been observed to miss the HttpOnly JWT in this Proxy/middleware path.
+  const header = request.headers.get("cookie");
+  if (!header) return undefined;
+
+  for (const part of header.split(";")) {
+    const trimmed = part.trim();
+    if (!trimmed.startsWith(`${SESSION_COOKIE}=`)) continue;
+    const raw = trimmed.slice(SESSION_COOKIE.length + 1);
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
+  }
+
+  return undefined;
+}
+
 function isExpiredJwt(token?: string): boolean {
   if (!token) return false;
   try {
@@ -42,7 +80,7 @@ function isExpiredJwt(token?: string): boolean {
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get("poulix_access_token")?.value;
+  const token = readSessionToken(request);
   const tokenExpired = isExpiredJwt(token);
 
   const isPublic = PUBLIC_PREFIXES.some(
@@ -50,13 +88,14 @@ export function proxy(request: NextRequest) {
   );
 
   if (isPublic) {
-    if (tokenExpired) {
+    if (token && tokenExpired) {
       const response = NextResponse.next();
-      response.cookies.delete("poulix_access_token");
+      clearClientSession(response);
       return response;
     }
     if (
       token &&
+      !tokenExpired &&
       (pathname === "/login" ||
         pathname === "/register" ||
         pathname.startsWith("/login/") ||
@@ -76,7 +115,12 @@ export function proxy(request: NextRequest) {
   if (isProtected && (!token || tokenExpired)) {
     const loginUrl = new URL("/login", request.url);
     const response = NextResponse.redirect(loginUrl);
-    if (tokenExpired) response.cookies.delete("poulix_access_token");
+    // Only wipe cookies when we positively detected an expired JWT.
+    // If the token is merely absent, do not clear — a parse miss must not
+    // destroy a valid HttpOnly session.
+    if (tokenExpired) {
+      clearClientSession(response);
+    }
     return response;
   }
 

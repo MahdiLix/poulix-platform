@@ -38,6 +38,8 @@ describe('Auth API', () => {
     createdUserIds.push(response.body.user.id);
     expect(response.body.user.email).toBe(user.email);
     expect(response.body.user).not.toHaveProperty('passwordHash');
+    expect(typeof response.body.user.expiresAt).toBe('string');
+    expect(Date.parse(response.body.user.expiresAt)).toBeGreaterThan(Date.now());
     expect(typeof response.body.accessToken).toBe('string');
     expect(response.body.accessToken.length).toBeGreaterThan(20);
   });
@@ -64,6 +66,8 @@ describe('Auth API', () => {
       .expect(201);
 
     expect(response.body.user.id).toBe(registered.body.user.id);
+    expect(typeof response.body.user.expiresAt).toBe('string');
+    expect(Date.parse(response.body.user.expiresAt)).toBeGreaterThan(Date.now());
     expect(typeof response.body.accessToken).toBe('string');
     expect(response.body.accessToken.length).toBeGreaterThan(20);
   });
@@ -148,6 +152,75 @@ describe('Auth API', () => {
       .get('/wallets/balance')
       .set('Authorization', `Bearer ${registered.body.accessToken}`)
       .expect(200);
+  });
+
+  it('clears the session cookie with attributes matching the one set on login', async () => {
+    const user = uniqueUser();
+    const registered = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(user)
+      .expect(201);
+    createdUserIds.push(registered.body.user.id);
+
+    const loginSetCookie = registered.get('Set-Cookie') ?? [];
+    const loginCookie = loginSetCookie.find((cookie: string) =>
+      cookie.startsWith('poulix_session='),
+    );
+    expect(loginCookie).toBeDefined();
+
+    const logout = await request(app.getHttpServer())
+      .post('/auth/logout')
+      .set('Authorization', `Bearer ${registered.body.accessToken}`)
+      .expect(201);
+
+    const logoutSetCookie = logout.get('Set-Cookie') ?? [];
+    const clearCookies = logoutSetCookie.filter((cookie: string) =>
+      cookie.startsWith('poulix_session='),
+    );
+    expect(clearCookies.length).toBeGreaterThan(0);
+    for (const cookie of clearCookies) {
+      expect(cookie).toMatch(/HttpOnly/i);
+      expect(cookie).toContain('SameSite=Lax');
+      // Local/test envs run over HTTP, so Secure should be absent here just
+      // like the login cookie; both must agree either way.
+      const loginHasSecure = /secure/i.test(loginCookie ?? '');
+      const clearHasSecure = /secure/i.test(cookie);
+      expect(clearHasSecure).toBe(loginHasSecure);
+    }
+  });
+
+  it('clears the session cookie when logout is unauthorized', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/logout')
+      .expect(401);
+
+    const clearCookies = (response.get('Set-Cookie') ?? []).filter(
+      (cookie: string) => cookie.startsWith('poulix_session='),
+    );
+    expect(clearCookies.length).toBeGreaterThan(0);
+    for (const cookie of clearCookies) {
+      expect(cookie).toMatch(/HttpOnly/i);
+      expect(cookie).toContain('SameSite=Lax');
+    }
+  });
+
+  it('returns a non-secret expiresAt on the current user profile', async () => {
+    const user = uniqueUser();
+    const registered = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(user)
+      .expect(201);
+    createdUserIds.push(registered.body.user.id);
+
+    const me = await request(app.getHttpServer())
+      .get('/users/me')
+      .set('Authorization', `Bearer ${registered.body.accessToken}`)
+      .expect(200);
+
+    expect(me.body.id).toBe(registered.body.user.id);
+    expect(typeof me.body.expiresAt).toBe('string');
+    expect(Date.parse(me.body.expiresAt)).toBeGreaterThan(Date.now());
+    expect(me.body).not.toHaveProperty('accessToken');
   });
 
   it('groups duplicate environments and identifies the current session', async () => {

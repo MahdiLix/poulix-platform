@@ -61,6 +61,7 @@ export type FlatMessages = {
   failedToSaveDestination: string;
   failedToLoadSecurity: string;
   spendingLimitExceeded: string;
+  tooManyFailedFinancialAttempts: string;
   failedToLoadAdmin: string;
   adminAccessRequired: string;
   accountDisabled: string;
@@ -174,6 +175,7 @@ export type TranslationDictionary = {
     moveMoney: string;
     plan: string;
     account: string;
+    settings: string;
     topUp: string;
   };
   transaction: {

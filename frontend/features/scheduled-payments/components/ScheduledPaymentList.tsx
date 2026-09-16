@@ -26,7 +26,7 @@ import {
 } from "@/shared/ui/Table";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { useRateLimitAction } from "@/shared/rate-limit";
-import { formatDisplayDate } from "@/shared/i18n/dates";
+import { formatScheduleDate } from "@/shared/i18n/dates";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import {
   statusTone,
@@ -147,7 +147,9 @@ export function ScheduledPaymentList({
             <p className="text-sm font-bold text-foreground">
               Next run /{" "}
               <span className="text-success">
-                {formatDisplayDate(nextRun.nextExecutionAt, language)}
+                <bdi>
+                  {formatScheduleDate(nextRun.nextExecutionAt, language)}
+                </bdi>
               </span>
               {" · "}
               <span className="text-success">
@@ -207,7 +209,9 @@ export function ScheduledPaymentList({
                     {formatIrr(parseAmount(payment.amount))}
                   </TableCell>
                   <TableCell className="text-xs text-muted">
-                    {formatDisplayDate(payment.nextExecutionAt, language)}
+                    <bdi>
+                      {formatScheduleDate(payment.nextExecutionAt, language)}
+                    </bdi>
                   </TableCell>
                   <TableCell>
                     <Badge variant={badgeVariant(tone)}>
@@ -304,7 +308,9 @@ export function ScheduledPaymentList({
                   {formatIrr(parseAmount(payment.amount))}
                 </span>
                 <span className="text-xs text-muted">
-                  {formatDisplayDate(payment.nextExecutionAt, language)}
+                  <bdi>
+                    {formatScheduleDate(payment.nextExecutionAt, language)}
+                  </bdi>
                 </span>
               </div>
               <div className="flex items-center justify-end gap-2 text-xs font-semibold">

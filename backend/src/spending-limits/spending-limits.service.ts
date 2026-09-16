@@ -50,8 +50,8 @@ export class SpendingLimitsService {
     );
 
     const now = new Date();
-    const dayStart = startOfDay(now);
-    const monthStart = startOfMonth(now);
+    const dayStart = spendingLimitPeriodStart(now, 'day');
+    const monthStart = spendingLimitPeriodStart(now, 'month');
 
     const usageByType = await this.computeUsage(
       wallet.id,
@@ -143,8 +143,8 @@ export class SpendingLimitsService {
     );
 
     const now = new Date();
-    const dayStart = startOfDay(now);
-    const monthStart = startOfMonth(now);
+    const dayStart = spendingLimitPeriodStart(now, 'day');
+    const monthStart = spendingLimitPeriodStart(now, 'month');
 
     for (const type of types) {
       const maxAmount = overrideMap.get(type) ?? DEFAULT_SPENDING_LIMITS[type];
@@ -228,15 +228,70 @@ function sumType(
   return Number(row?._sum.amount ?? 0);
 }
 
-function startOfDay(date: Date) {
-  const copy = new Date(date);
-  copy.setHours(0, 0, 0, 0);
-  return copy;
+const SPENDING_LIMIT_TIME_ZONE = 'Asia/Tehran';
+
+export function spendingLimitPeriodStart(
+  now: Date,
+  period: 'day' | 'month',
+): Date {
+  const parts = datePartsInTimeZone(now, SPENDING_LIMIT_TIME_ZONE);
+  return zonedMidnightUtc(
+    parts.year,
+    parts.month,
+    period === 'month' ? 1 : parts.day,
+    SPENDING_LIMIT_TIME_ZONE,
+  );
 }
 
-function startOfMonth(date: Date) {
-  const copy = new Date(date);
-  copy.setDate(1);
-  copy.setHours(0, 0, 0, 0);
-  return copy;
+function datePartsInTimeZone(date: Date, timeZone: string) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const parts = formatter.formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value);
+  return {
+    year: value('year'),
+    month: value('month'),
+    day: value('day'),
+  };
+}
+
+function timeZoneOffsetMs(date: Date, timeZone: string): number {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  });
+  const parts = formatter.formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value);
+  const asUtc = Date.UTC(
+    value('year'),
+    value('month') - 1,
+    value('day'),
+    value('hour'),
+    value('minute'),
+    value('second'),
+  );
+  return asUtc - date.getTime();
+}
+
+function zonedMidnightUtc(
+  year: number,
+  month: number,
+  day: number,
+  timeZone: string,
+): Date {
+  const utcGuess = Date.UTC(year, month - 1, day, 0, 0, 0);
+  const instant = utcGuess - timeZoneOffsetMs(new Date(utcGuess), timeZone);
+  return new Date(utcGuess - timeZoneOffsetMs(new Date(instant), timeZone));
 }

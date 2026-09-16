@@ -29,15 +29,6 @@ vi.mock("@/shared/ui/Toast", () => ({
   flashToast: vi.fn(),
 }));
 
-vi.mock("@/shared/api", async () => {
-  const actual =
-    await vi.importActual<typeof import("@/shared/api")>("@/shared/api");
-  return {
-    ...actual,
-    getStoredToken: () => null,
-  };
-});
-
 describe("login redirect", () => {
   beforeEach(() => {
     loginAndStoreSession.mockReset();
@@ -55,8 +46,9 @@ describe("login redirect", () => {
   });
 
   it("redirects to / after a successful login", async () => {
+    // Production/dev responses never include accessToken — the session
+    // lives only in the HttpOnly cookie set by the backend.
     loginAndStoreSession.mockResolvedValue({
-      accessToken: "token",
       user: {
         id: "1",
         email: "sara@poulix.test",

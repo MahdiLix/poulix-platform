@@ -26,10 +26,10 @@ export type DatePickerProps = {
 };
 
 function toIsoDate(date: DateObject) {
-  const jsDate = date.toDate();
-  const year = jsDate.getFullYear();
-  const month = String(jsDate.getMonth() + 1).padStart(2, "0");
-  const day = String(jsDate.getDate()).padStart(2, "0");
+  const gregorianDate = new DateObject(date).convert(gregorian);
+  const year = gregorianDate.year;
+  const month = String(gregorianDate.month.number).padStart(2, "0");
+  const day = String(gregorianDate.day).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
@@ -130,7 +130,7 @@ export function AppDatePicker({
                 )}
               >
                 {isValidDate
-                  ? formatDisplayDate(value!, language)
+                  ? <bdi>{formatDisplayDate(value!, language)}</bdi>
                   : placeholder}
               </span>
             </span>

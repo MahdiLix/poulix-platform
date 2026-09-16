@@ -1,241 +1,589 @@
 # Poulix
 
-Poulix is a personal digital wallet. Users can register, view an IRR balance, top up through ZarinPal, withdraw to an account or Sheba number, and review history. An admin dashboard covers users, payments, withdrawals, security events, and audit logs.
+Poulix is a financial digital wallet focused on IRR (Iranian rial). Users can register, sign in, manage a wallet balance, top up through ZarinPal, withdraw to a card/account or Sheba number, and review transactions and statistics. An admin dashboard provides user, payment, withdrawal, security-event, and audit visibility.
 
-The application runs in Docker only. Do not run the frontend or backend with `npm`, `node`, or `pm2` on the host.
+Live application: **[https://poulix.ir](https://poulix.ir)**
+
+Repository: **[https://github.com/MahdiLix/Poulix-Platform](https://github.com/MahdiLix/Poulix-Platform)**
+
+## Main Technology Stack
+
+### Backend
+
+- **NestJS 11**
+- **TypeScript**
+- **Prisma 7**
+- **PostgreSQL**
+- **JWT**
+- **Jest / Supertest**
+
+
+
+### Frontend
+
+- **React**
+- **TypeScript**
+- **HTML / CSS**
+- **Cookie-based Authentication**
+
+
+
+### Payments
+
+- **ZarinPal**
+- **IRR (Iranian Rial)**
+- **Wallet & Transaction System**
+
+
+
+### DevOps
+
+- **Docker**
+- **Docker Compose**
+- **Nginx**
+- **Cloudflare**
+- **Linux VPS**
+- **GitHub**
+- **GitHub Actions CI/CD**
+
+
+
+### Security
+
+- **JWT Authentication**
+- **HTTP-only Cookies**
+- **Password Hashing**
+- **Protected Routes**
+- **Account Lockout**
+- **Audit Logging**
+- **HTTPS**
+
+
+
+### Architecture
+
+- **REST API**
+- **Modular NestJS Architecture**
+- **Containerized Services**
+- **Nginx Reverse Proxy**
+
+
+
+### Core Features
+
+- User registration and authentication
+- IRR digital wallet
+- ZarinPal wallet top-up
+- Withdrawals to card / account / Sheba
+- Transaction history
+- Balance and financial statistics
+- Notifications
+- Admin dashboard
+- User and payment management
+- Security and audit events
+
+
+
+## Main Features
+
+
+
+### Implemented
+
+- User registration and authentication
+- JWT-based authenticated sessions using cookies
+- IRR wallet balance and transaction history
+- ZarinPal wallet top-up flow
+- Withdrawals to card/account or Sheba destinations
+- Inflow/outflow statistics
+- Notifications
+- Admin dashboard for users, payments, withdrawals, security events, and audit logs
+- Request logging without sensitive request data
+- Application audit logging
+- Docker-based local development, testing, and production deployment
+
+
+
+### Planned / Product Direction
+
+- Payment reasons such as lunch/dinner
+- Family transfers such as father/brother
+- Scheduled weekly/monthly payments
+- Saving goals such as a MacBook
+- Virtual envelopes for food, gym, games, etc.
+- Saved Shaba/account destinations
+- Security-limit management
+- Smart payment/history features
+- Improved animated notifications
+- Real bill, internet, mobile, and credit-card payments when implemented
+
+
 
 ## Architecture
 
-Two isolated Docker environments share application code, Prisma schema, and Nginx routing. They do not share env files, Compose project names, or Postgres volumes.
+The application runs in Docker with separate local and production Compose configurations.
 
 ```text
 Browser
-   ↓
-Nginx          ← only public ports
-   ├── frontend:3000
-   └── backend:3001
-             ├── postgres:5432
-             └── redis:6379   ← rate-limit counters / lockout only
+   |
+   v
+Nginx                    <- only public ports
+   |
+   +--> frontend:3000
+   |
+   +--> backend:3001
+            |
+            +--> postgres:5432
+            |
+            +--> redis:6379
 ```
 
-| | Local | Production |
-| --- | --- | --- |
-| Compose | `docker-compose.yml` + `docker-compose.dev.yml` | `docker-compose.yml` + `docker-compose.prod.yml` |
-| Env file | `.env.docker` | `.env.production` |
-| Project name | `poulix-dev` | `poulix-prod` |
-| Postgres volume | `poulix_dev_postgres` | `poulix-platform_postgres_data` |
-| Public origin | `http://localhost` | `https://poulix.ir` |
-| Public ports | 80 | 80 and 443 |
-| Payments | ZarinPal sandbox | ZarinPal live API |
 
-`www.poulix.ir` is not a second origin. Production Nginx redirects it to `https://poulix.ir`.
+|                 | Local                                           | Production                                       |
+| --------------- | ----------------------------------------------- | ------------------------------------------------ |
+| Compose         | `docker-compose.yml` + `docker-compose.dev.yml` | `docker-compose.yml` + `docker-compose.prod.yml` |
+| Project name    | `poulix-dev`                                    | `poulix-prod`                                    |
+| Postgres volume | `poulix_dev_postgres`                           | `poulix-platform_postgres_data`                  |
+| Public origin   | `http://localhost`                              | `https://poulix.ir`                              |
+| Public ports    | 80                                              | 80 and 443                                       |
+| Payments        | ZarinPal sandbox                                | ZarinPal live API                                |
 
-Do not start the shared Compose file alone. Do not use `.env.docker` on the VPS or `.env.production` on a developer machine.
+
+`www.poulix.ir` is not a second application origin. Production Nginx redirects it to `https://poulix.ir`.
+
+Do not start the shared Compose file alone.
+
+## Payment Flow
+
+The wallet top-up flow is designed to prevent duplicate credits:
+
+```text
+Create Payment
+      |
+    PENDING
+      |
+Request Authority from ZarinPal
+      |
+Save Authority on Payment
+      |
+Redirect to ZarinPal
+      |
+Callback Authority + Status
+      |
+Status OK -> Verify
+      |
+Code 100 / 101
+      |
+Atomic settlement
+      |
+Payment -> PAID
+      |
+Wallet increment
+      |
+Transaction -> DEPOSIT
+```
+
+The callback `Authority` must match the stored `Payment.authority`. Wallet credit must happen atomically and only once.
 
 ## Requirements
 
-- Docker and Docker Compose v2
+- Docker
+- Docker Compose v2
+- Git
 
-## Environment files
 
-| File | Purpose |
-| --- | --- |
-| `.env.example` → `.env` | Empty variable list. Fill with your own values. Do not commit secrets. |
-| `.env.docker.example` → `.env.docker` | Local Docker. Origin `http://localhost`. Sandbox ZarinPal. |
-| `.env.production.example` → `.env.production` | Production Docker on the VPS. Origin `https://poulix.ir`. Live ZarinPal. |
-| `.env.docker.ci.example` → `.env.docker.ci` | GitHub Actions tests only. CI/test-safe values. Paste into secret `ENV_DOCKER_CI`. |
 
-Do not commit filled env files. `POSTGRES_PASSWORD` must match the password inside `DATABASE_URL`. `DATABASE_URL` must use hostname `postgres` (the Compose service), never `localhost`.
+## Local Setup
 
-## Local commands
+Start the local Docker environment with the development Compose configuration.
+
+### Start
 
 ```bash
-cp .env.docker.example .env.docker
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  --env-file .env.docker \
+  up --build
 ```
 
-Set local secrets. Keep `FRONTEND_URL=http://localhost`, `ZARINPAL_CALLBACK_URL=http://localhost/deposit/callback`, and `ZARINPAL_BASE_URL=https://sandbox.zarinpal.com`.
+
+
+### Stop
 
 ```bash
-# start (Rate Limiting OFF)
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker up --build
-
-# start with Rate Limit test mode (burst 5/10s, login 3/60s in the overlay, lockout 3/60s, …)
-docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.rate-limit.yml --env-file .env.docker up --build -d
-
-# stop
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker down
-
-# rebuild
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker up --build
-
-# restart (no rebuild)
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker up -d
-
-# logs
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker logs -f
-
-# status
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker ps
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  --env-file .env.docker \
+  down
 ```
 
-Open http://localhost
 
-Local Nginx serves HTTP only. Production certificate files are not used.
 
-## Production commands
-
-On the VPS:
+### Rebuild
 
 ```bash
-cp .env.production.example .env.production
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  --env-file .env.docker \
+  up --build
 ```
 
-Set unique production secrets. Keep `FRONTEND_URL=https://poulix.ir`, `ZARINPAL_CALLBACK_URL=https://poulix.ir/deposit/callback`, and `ZARINPAL_BASE_URL=https://api.zarinpal.com`.
 
-Host certificates stay at `/etc/nginx/certs` (`origin.crt`, `origin.key`, and the existing origin-pull client certificate). Do not change those paths.
+
+### Restart without rebuild
 
 ```bash
-# start / rebuild
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production up -d --build
-
-# restart (no rebuild)
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production up -d
-
-# logs
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production logs -f
-
-# status
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production ps
-
-# stop (does not delete the Postgres volume)
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production down
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  --env-file .env.docker \
+  up -d
 ```
 
-Rebuild after backend, frontend, Dockerfile, or Compose build-arg changes. Recreate containers (`up -d`) after runtime env changes. Bind-mounted Nginx conf can be reloaded with `docker compose ... exec nginx nginx -s reload`.
 
-## CI/CD
 
-GitHub Actions in `.github/workflows/ci-cd.yml` uses the same Docker Compose files as local and production.
+### Logs
 
-| Job | When | What it does |
-| --- | --- | --- |
-| Test | Pull requests, pushes to `main` / `development`, and manual runs | Repeats the existing Docker development tests (`backend-test`, `backend-test-rate-limit`, `frontend-test`) with `.env.docker.ci` |
-| Deploy to VPS | Push to `main` (or a manual run on `main`) after tests succeed | SSHs to the VPS, checks out that commit, and runs the production `up -d --build` command |
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  --env-file .env.docker \
+  logs -f
+```
 
-Failed tests stop later stages. Pull requests never deploy. CI does not contact the VPS or `https://poulix.ir`. Production images are built on the VPS during deploy, using the VPS `.env.production`.
 
-CI writes `.env.docker.ci` from repository secret `ENV_DOCKER_CI` (CI/test-safe values only). That file is gitignored. Local developer templates remain `.env.docker.example` and `.env.production.example`. Do not copy VPS `.env.production` into GitHub.
 
-| Secret | Purpose |
-| --- | --- |
-| `ENV_DOCKER_CI` | Full contents of `.env.docker.ci` for the existing Docker tests |
+### Status
 
-Create a GitHub Environment named `production` (used for optional approval rules) and set these secrets on that environment or on the repository:
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  --env-file .env.docker \
+  ps
+```
 
-| Secret | Purpose |
-| --- | --- |
-| `SSH_HOST` | VPS hostname or IP |
-| `SSH_USER` | SSH user |
-| `SSH_PRIVATE_KEY` | Private key whose public key is in the VPS `authorized_keys` |
-| `SSH_KNOWN_HOSTS` | Host key line(s) from `ssh-keyscan -t ed25519,rsa <host>` |
-| `DEPLOY_PATH` | Absolute path to the existing git clone on the VPS |
-| `SSH_PORT` | Optional. Defaults to `22` |
+Open **[http://localhost](http://localhost)**.
 
-The VPS clone must already exist, with Docker Compose and `.env.production` configured as above. The deploy user needs permission to `git fetch` this repository (a deploy key if the repo is private).
+Local Nginx is HTTP-only. Production certificate files are not used locally.
+
+## Production Deployment
+
+The production application runs on the VPS at `/opt/poulix-platform` behind Cloudflare and Nginx.
+
+```text
+Cloudflare
+   |
+   v
+Nginx :80/:443
+   |
+   +--> frontend
+   +--> backend
+          |
+          +--> postgres
+          +--> redis
+```
+
+Only Nginx exposes public ports. Frontend, backend, PostgreSQL, and Redis remain internal to Docker.
+
+Host certificate paths remain:
+
+```text
+/etc/nginx/certs/origin.crt
+/etc/nginx/certs/origin.key
+```
+
+The existing origin-pull client certificate setup is preserved. Do not change these certificate paths unless there is a critical reason.
+
+### Start / rebuild
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.prod.yml \
+  --env-file .env.production \
+  up -d --build
+```
+
+
+
+### Restart without rebuild
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.prod.yml \
+  --env-file .env.production \
+  up -d
+```
+
+
+
+### Logs
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.prod.yml \
+  --env-file .env.production \
+  logs -f
+```
+
+
+
+### Status
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.prod.yml \
+  --env-file .env.production \
+  ps
+```
+
+
+
+### Stop
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.prod.yml \
+  --env-file .env.production \
+  down
+```
+
+`down` does not delete the PostgreSQL volume.
+
+Rebuild after backend, frontend, Dockerfile, or Compose build-argument changes. Recreate containers after runtime environment changes. Reload a bind-mounted Nginx configuration with:
+
+```bash
+docker compose ... exec nginx nginx -s reload
+```
+
+
 
 ## Tests
 
-Run tests through Docker. Unit and integration tests live in the existing backend and frontend test suites.
+Run tests through Docker only.
+
+### Backend
 
 ```bash
-# backend (unit + integration)
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker --profile test run --rm --build backend-test
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  --env-file .env.docker \
+  --profile test \
+  run --rm --build backend-test
+```
 
-# backend rate-limit / login security suite (separate from the normal suite)
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker --profile test run --rm --build backend-test-rate-limit
 
-# frontend
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker --profile test run --rm --build frontend-test
+
+### Frontend
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  --env-file .env.docker \
+  --profile test \
+  run --rm --build frontend-test
 ```
 
 There is no separate e2e suite.
 
-The optional `docker-compose.rate-limit.yml` overlay only affects the running local **backend** service. It does not change `backend-test` (Rate Limiting stays OFF) or `backend-test-rate-limit` (already ON with `TEST_RATE_LIMITS`, including login 3/10s). The overlay uses the same small burst/payment windows, with login/register/lockout stretched to 60s so they can be tried by hand.
-
-Do not run the test profile with the production Compose files.
-
 ## Database
 
-Both environments use the same Prisma schema and migrations. Only `DATABASE_URL` / credentials / volume differ. The backend container runs `npx prisma migrate deploy` on start.
+Both environments use the same Prisma schema and migration history. Credentials, `DATABASE_URL`, and PostgreSQL volumes are environment-specific.
+
+The backend container runs:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker exec backend npx prisma migrate status
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker exec backend npx prisma migrate deploy
+npx prisma migrate deploy
 ```
 
-Do not run destructive Prisma commands against production.
+Useful commands:
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  --env-file .env.docker \
+  exec backend npx prisma migrate status
+
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  --env-file .env.docker \
+  exec backend npx prisma migrate deploy
+```
+
+Never run destructive Prisma commands against production.
 
 ## Logging
 
+
+
 ### Request logs
 
-Request logs are **not stored in the database**. They are JSON lines on the backend container stdout. Inspect them with Docker logs.
+Request logs are **not stored in PostgreSQL**. They are JSON lines written to backend container stdout.
 
 ```bash
-# local
+# Local
 docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker logs -f backend
 
-# production
+# Production
 docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production logs -f backend
 ```
 
-Look for `"msg":"request completed"` (method, path, status, request id). Bodies, cookies, tokens, and payment secrets are not logged.
+Look for:
+
+```text
+"msg":"request completed"
+```
+
+Request logs contain only essential fields such as method, path, status, and request ID. Bodies, cookies, tokens, and payment secrets are not logged.
 
 ### Audit logs
 
 There are two audit stores:
 
-| Store | What it records | How to view it |
-| --- | --- | --- |
-| `AdminAuditLog` | Admin actions (admin login, disable/lock user) | Admin UI: http://localhost/admin/audit (admin account required). Production: https://poulix.ir/admin/audit |
-| `AuditLog` | App events (login, register, deposits, transfers, withdrawals) | Postgres only; no app page |
 
-Confirm Postgres user and database names from the running container, then query `AuditLog`:
+| Store           | What it records                                                              | Where to view   |
+| --------------- | ---------------------------------------------------------------------------- | --------------- |
+| `AdminAuditLog` | Admin actions such as admin login and user disable/lock                      | Admin UI        |
+| `AuditLog`      | Application events such as login, register, deposits, transfers, withdrawals | PostgreSQL only |
+
+
+Admin audit page:
+
+```text
+Local:      http://localhost/admin/audit
+Production: https://poulix.ir/admin/audit
+```
+
+Check PostgreSQL credentials:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker exec postgres env | grep -E 'POSTGRES_(USER|DB|DATABASE)'
-
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker exec postgres \
-  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT \"createdAt\", event, action, result, \"userId\", \"requestId\" FROM \"AuditLog\" ORDER BY \"createdAt\" DESC LIMIT 20;"'
 ```
 
-Production (on the VPS):
+Example query:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production exec postgres env | grep -E 'POSTGRES_(USER|DB|DATABASE)'
-
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production exec postgres \
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  --env-file .env.docker \
+  exec postgres \
   sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT \"createdAt\", event, action, result, \"userId\", \"requestId\" FROM \"AuditLog\" ORDER BY \"createdAt\" DESC LIMIT 20;"'
 ```
 
-The example env files use `POSTGRES_USER=poulix` and `POSTGRES_DB=poulix_db`. Use the values from the `env | grep` output if you changed them.
+Production uses the same pattern with `docker-compose.prod.yml` and `.env.production`.
 
 ## Important URLs
 
-| | Local | Production |
-| --- | --- | --- |
-| Application | http://localhost | https://poulix.ir |
-| API | http://localhost/api | https://poulix.ir/api |
-| ZarinPal callback | http://localhost/deposit/callback | https://poulix.ir/deposit/callback |
+
+|                   | Local                                                                  | Production                                                               |
+| ----------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Application       | [http://localhost](http://localhost)                                   | [https://poulix.ir](https://poulix.ir)                                   |
+| API               | [http://localhost/api](http://localhost/api)                           | [https://poulix.ir/api](https://poulix.ir/api)                           |
+| ZarinPal callback | [http://localhost/deposit/callback](http://localhost/deposit/callback) | [https://poulix.ir/deposit/callback](https://poulix.ir/deposit/callback) |
+| Admin audit       | [http://localhost/admin/audit](http://localhost/admin/audit)           | [https://poulix.ir/admin/audit](https://poulix.ir/admin/audit)           |
+
+
+
 
 ## Troubleshooting
 
+
+
+### Check containers
+
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker ps
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker logs --tail=100 backend frontend nginx postgres
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.docker up -d --build --force-recreate
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  --env-file .env.docker \
+  ps
+```
+
+
+
+### Check recent logs
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  --env-file .env.docker \
+  logs --tail=100 backend frontend nginx postgres
+```
+
+
+
+### Force recreate
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  --env-file .env.docker \
+  up -d --build --force-recreate
+```
+
+
+
+### Basic HTTP checks
+
+```bash
 curl -sS -o /dev/null -w "%{http_code}\n" http://localhost/
 curl -sS -o /dev/null -w "%{http_code}\n" http://localhost/api/auth/login
 ```
 
-If ZarinPal sandbox calls fail with DNS errors, the backend service already uses `8.8.8.8` and `1.1.1.1`. Confirm `ZARINPAL_BASE_URL` is the sandbox URL locally and `https://api.zarinpal.com` in production.
+
+
+### ZarinPal DNS / connection errors
+
+The backend service is configured with `8.8.8.8` and `1.1.1.1` DNS servers. Confirm the correct base URL:
+
+- Local: `https://sandbox.zarinpal.com`
+- Production: `https://api.zarinpal.com`
+
+
+
+### Nginx / TLS notes
+
+- Cloudflare sits in front of the VPS.
+- Nginx is the only public Docker-facing service.
+- `www.poulix.ir` redirects to `poulix.ir`.
+- Keep the existing certificate paths under `/etc/nginx/certs`.
+- Do not add or enable client-certificate requirements unless there is a specific critical requirement.
+
+
+
+### Docker cleanup after deployments
+
+Old stopped containers and unused images can consume disk space. Remove unused containers/networks when appropriate, but preserve the PostgreSQL volume unless intentionally deleting data. Do not delete images that are still needed for rollback without checking first.
+
+## Development Rules
+
+- Prefer Docker for development, testing, and production.
+- Keep database I/O and logging minimal.
+- Do not log request bodies, secrets, tokens, or payment credentials.
+- Avoid unnecessary architecture, URL, environment, or UI changes.
+- Prefer simple, readable, maintainable code.
+- Make targeted fixes instead of broad refactors unless required.
+
+
+
+## License
+
+Poulix Platform is licensed under the **GNU General Public License v3.0**.
+
+See the [LICENSE](LICENSE) file for the full license text.

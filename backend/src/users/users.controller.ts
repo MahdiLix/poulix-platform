@@ -9,8 +9,18 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get('me')
-  findMe(@CurrentUser() user: AuthenticatedUser) {
-    return this.usersService.findById(user.id);
+  async findMe(@CurrentUser() user: AuthenticatedUser) {
+    const profile = await this.usersService.findById(user.id);
+    if (!profile) {
+      return profile;
+    }
+    return {
+      ...profile,
+      expiresAt:
+        typeof user.tokenExp === 'number'
+          ? new Date(user.tokenExp * 1000).toISOString()
+          : undefined,
+    };
   }
 
   @Get('lookup')

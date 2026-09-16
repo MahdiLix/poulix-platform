@@ -6,9 +6,13 @@ import { AppShell } from "@/shared/layout/AppShell";
 import { HeaderBar } from "@/shared/layout/HeaderBar";
 import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
-import { api, getStoredToken } from "@/shared/api";
+import { api } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
-import { formatDisplayDate, formatDisplayDateTime } from "@/shared/i18n/dates";
+import {
+  formatDisplayDateTime,
+  formatScheduleDate,
+} from "@/shared/i18n/dates";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import {
@@ -23,17 +27,20 @@ import {
 export default function ScheduledPaymentDetailPage() {
   const params = useParams<{ id: string }>();
   const { t, language } = useLanguage();
+  const { status: authStatus } = useUser();
   const [payment, setPayment] = useState<ScheduledPayment | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
+    if (authStatus === "loading") return;
     void loadPayment();
-  }, [params.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.id, authStatus]);
 
   async function loadPayment() {
-    if (!getStoredToken()) {
+    if (authStatus === "unauthenticated") {
       setLoading(false);
       return;
     }
@@ -166,7 +173,7 @@ export default function ScheduledPaymentDetailPage() {
                 {t.scheduled.startDate}
               </p>
               <p className="font-bold text-foreground">
-                {formatDisplayDate(payment.startDate, language)}
+                {formatScheduleDate(payment.startDate, language)}
               </p>
             </div>
             <div>
@@ -174,7 +181,7 @@ export default function ScheduledPaymentDetailPage() {
                 {t.scheduled.nextExecution}
               </p>
               <p className="font-bold text-foreground">
-                {formatDisplayDate(payment.nextExecutionAt, language)}
+                {formatScheduleDate(payment.nextExecutionAt, language)}
               </p>
             </div>
           </div>
@@ -196,6 +203,26 @@ export default function ScheduledPaymentDetailPage() {
             </div>
           ) : null}
         </Card>
+
+        {payment.upcomingExecutions && payment.upcomingExecutions.length > 0 ? (
+          <Card className="space-y-3 p-5">
+            <h3 className="text-sm font-bold text-foreground">
+              {t.scheduled.nextRuns}
+            </h3>
+            <ol className="space-y-2">
+              {payment.upcomingExecutions.map((scheduledFor, index) => (
+                <li key={scheduledFor}>
+                  <bdi className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary-soft text-[10px] font-bold text-primary">
+                      {index + 1}
+                    </span>
+                    <span>{formatScheduleDate(scheduledFor, language)}</span>
+                  </bdi>
+                </li>
+              ))}
+            </ol>
+          </Card>
+        ) : null}
 
         {error ? (
           <div className="rounded-xl bg-danger-soft p-3 text-xs font-semibold text-danger">

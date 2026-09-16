@@ -8,7 +8,8 @@ import { HeaderBar } from "@/shared/layout/HeaderBar";
 import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { PageSpinner } from "@/shared/ui/Spinner";
-import { api, getStoredToken } from "@/shared/api";
+import { api, ApiRequestError } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
@@ -40,6 +41,7 @@ type AllocationSegment = {
 
 export default function EnvelopesPage() {
   const { t, language } = useLanguage();
+  const { status: authStatus } = useUser();
   const { status, balance, currency, error: walletError } = useWalletBalance();
   const [envelopes, setEnvelopes] = useState<Envelope[]>([]);
   const [totalAllocated, setTotalAllocated] = useState(0);
@@ -48,15 +50,15 @@ export default function EnvelopesPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
-    void loadEnvelopes();
-  }, []);
-
-  async function loadEnvelopes() {
-    if (!getStoredToken()) {
+    if (authStatus === "loading") return;
+    if (authStatus === "unauthenticated") {
       window.location.replace("/login");
       return;
     }
+    void loadEnvelopes();
+  }, [authStatus]);
 
+  async function loadEnvelopes() {
     setPageStatus("loading");
     setListError(null);
 
@@ -68,7 +70,7 @@ export default function EnvelopesPage() {
       );
       setPageStatus("ready");
     } catch (err) {
-      if (!getStoredToken()) {
+      if (err instanceof ApiRequestError && err.status === 401) {
         window.location.replace("/login");
         return;
       }

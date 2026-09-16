@@ -19,7 +19,7 @@ function parseDateInput(value: string, fieldName: string): Date {
   return date;
 }
 
-function computeNextExecutionAt(
+export function computeNextExecutionAt(
   from: Date,
   frequency: 'ONCE' | 'WEEKLY' | 'MONTHLY',
 ): Date | null {
@@ -28,19 +28,27 @@ function computeNextExecutionAt(
   }
 
   if (frequency === 'WEEKLY') {
-    const next = new Date(from);
-    next.setDate(next.getDate() + 7);
+    const next = new Date(from.getTime());
+    next.setUTCDate(next.getUTCDate() + 7);
     return next;
   }
 
-  const next = new Date(from);
-  const day = next.getDate();
-  next.setMonth(next.getMonth() + 1);
-  if (next.getDate() < day) {
-    next.setDate(0);
+  const next = new Date(from.getTime());
+  const day = next.getUTCDate();
+  next.setUTCMonth(next.getUTCMonth() + 1, day);
+  if (next.getUTCDate() !== day) {
+    next.setUTCDate(0);
   }
   return next;
 }
+
+type ScheduleProjectionInput = {
+  frequency: 'ONCE' | 'WEEKLY' | 'MONTHLY';
+  startDate: Date;
+  nextExecutionAt: Date;
+  endDate: Date | null;
+  status: 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
+};
 
 @Injectable()
 export class ScheduledPaymentsService {
@@ -84,7 +92,7 @@ export class ScheduledPaymentsService {
 
     const reason = dto.reason?.trim() || undefined;
 
-    return this.db.$transaction(async (tx) => {
+    const payment = await this.db.$transaction(async (tx) => {
       if (dto.envelopeId) {
         const envelope = await tx.envelope.findFirst({
           where: {
@@ -116,14 +124,16 @@ export class ScheduledPaymentsService {
         include: this.defaultInclude(),
       });
     });
+    return this.withScheduleProjection(payment);
   }
 
   async listForUser(userId: string) {
-    return this.db.scheduledPayment.findMany({
+    const payments = await this.db.scheduledPayment.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       include: this.defaultInclude(),
     });
+    return payments.map((payment) => this.withScheduleProjection(payment));
   }
 
   async getByIdForUser(userId: string, id: string) {
@@ -142,7 +152,7 @@ export class ScheduledPaymentsService {
       throw new NotFoundException('Scheduled payment not found');
     }
 
-    return payment;
+    return this.withScheduleProjection(payment);
   }
 
   async pause(userId: string, id: string) {
@@ -170,11 +180,12 @@ export class ScheduledPaymentsService {
       throw new BadRequestException('Scheduled payment cannot be cancelled');
     }
 
-    return this.db.scheduledPayment.update({
+    const updatedPayment = await this.db.scheduledPayment.update({
       where: { id },
       data: { status: 'CANCELLED' },
       include: this.defaultInclude(),
     });
+    return this.withScheduleProjection(updatedPayment);
   }
 
   async processDuePayments(now = new Date()) {
@@ -510,11 +521,54 @@ export class ScheduledPaymentsService {
       );
     }
 
-    return this.db.scheduledPayment.update({
+    const updatedPayment = await this.db.scheduledPayment.update({
       where: { id },
       data: { status: nextStatus },
       include: this.defaultInclude(),
     });
+    return this.withScheduleProjection(updatedPayment);
+  }
+
+  private withScheduleProjection<T extends ScheduleProjectionInput>(payment: T) {
+    const followingExecutionAt = computeNextExecutionAt(
+      payment.startDate,
+      payment.frequency,
+    );
+    const boundedFollowingExecutionAt =
+      followingExecutionAt &&
+      (!payment.endDate || followingExecutionAt <= payment.endDate)
+        ? followingExecutionAt
+        : null;
+
+    return {
+      ...payment,
+      followingExecutionAt: boundedFollowingExecutionAt,
+      upcomingExecutions: this.upcomingExecutions(payment),
+    };
+  }
+
+  private upcomingExecutions(payment: ScheduleProjectionInput): Date[] {
+    if (
+      payment.status !== 'ACTIVE' &&
+      payment.status !== 'PAUSED'
+    ) {
+      return [];
+    }
+
+    const executions: Date[] = [];
+    let scheduledFor = payment.nextExecutionAt;
+    while (
+      executions.length < 3 &&
+      (!payment.endDate || scheduledFor <= payment.endDate)
+    ) {
+      executions.push(scheduledFor);
+      const next = computeNextExecutionAt(scheduledFor, payment.frequency);
+      if (!next) {
+        break;
+      }
+      scheduledFor = next;
+    }
+    return executions;
   }
 
   private defaultInclude() {

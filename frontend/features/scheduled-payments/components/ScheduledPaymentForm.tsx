@@ -8,7 +8,8 @@ import { TextField } from "@/shared/ui/TextField";
 import { AmountField } from "@/shared/ui/AmountField";
 import { Select } from "@/shared/ui/Select";
 import { DatePicker } from "@/shared/ui/DatePicker";
-import { api, getStoredToken } from "@/shared/api";
+import { api } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { flashToast } from "@/shared/ui/Toast";
@@ -20,6 +21,8 @@ import {
 import { validateRecipientIdentifier } from "@/features/p2p-transfer/lib/transfer";
 import {
   SCHEDULED_FREQUENCIES,
+  addCalendarMonths,
+  addCalendarWeeks,
   startOfDayIso,
   toIsoDateInput,
   validateScheduledAmount,
@@ -36,18 +39,19 @@ import {
   type FundingSource,
 } from "@/features/envelopes/components/FundingSourceSelect";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
-import { formatDisplayDate } from "@/shared/i18n/dates";
+import { formatScheduleDate } from "@/shared/i18n/dates";
 
 export function ScheduledPaymentForm() {
   const router = useRouter();
   const { t, language } = useLanguage();
+  const { status: authStatus } = useUser();
   const { blocked, remainingSeconds } = useRateLimitAction("scheduled");
   const { balance, currency } = useWalletBalance();
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
   const [frequency, setFrequency] =
     useState<ScheduledPaymentFrequency>("MONTHLY");
-  const [startDate, setStartDate] = useState(toIsoDateInput(new Date()));
+  const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
   const [category, setCategory] = useState("");
@@ -64,37 +68,36 @@ export function ScheduledPaymentForm() {
 
   const nextRuns = useMemo(() => {
     if (!startDate) return [];
-    const start = new Date(`${startDate}T00:00:00`);
+    const start = new Date(startOfDayIso(startDate));
     if (Number.isNaN(start.getTime())) return [];
     const dates: Date[] = [start];
     if (frequency === "WEEKLY") {
-      dates.push(new Date(start.getTime() + 7 * 86400000));
-      dates.push(new Date(start.getTime() + 14 * 86400000));
+      dates.push(addCalendarWeeks(start, 1), addCalendarWeeks(start, 2));
     } else if (frequency === "MONTHLY") {
-      const second = new Date(start);
-      second.setMonth(second.getMonth() + 1);
-      const third = new Date(start);
-      third.setMonth(third.getMonth() + 2);
-      dates.push(second, third);
+      dates.push(addCalendarMonths(start, 1), addCalendarMonths(start, 2));
     }
     return dates.slice(0, frequency === "ONCE" ? 1 : 3);
   }, [startDate, frequency]);
 
   useEffect(() => {
-    if (!getStoredToken()) return;
+    setStartDate((current) => current || toIsoDateInput(new Date()));
+  }, []);
+
+  useEffect(() => {
+    if (authStatus !== "ready") return;
     void api.getRecentDestinations().then((items) => {
       setRecentRecipients(
         items.filter((item) => item.type === "P2P_USER").slice(0, 6),
       );
     });
-  }, []);
+  }, [authStatus]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
     setFieldError(null);
 
-    if (!getStoredToken()) {
+    if (authStatus !== "ready") {
       router.push("/login");
       return;
     }
@@ -298,12 +301,12 @@ export function ScheduledPaymentForm() {
                   key={date.toISOString()}
                   className="flex items-center justify-between text-xs"
                 >
-                  <span className="flex items-center gap-2">
+                  <bdi className="flex items-center gap-2">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-soft text-[10px] font-bold text-primary">
                       {index + 1}
                     </span>
-                    {formatDisplayDate(date, language)}
-                  </span>
+                    <span>{formatScheduleDate(date, language)}</span>
+                  </bdi>
                   <span className="font-semibold">
                     {parseAmount(amount) > 0
                       ? formatIrr(parseAmount(amount))

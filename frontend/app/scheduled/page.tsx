@@ -6,7 +6,8 @@ import { Plus } from "lucide-react";
 import { AppShell } from "@/shared/layout/AppShell";
 import { HeaderBar } from "@/shared/layout/HeaderBar";
 import { Button } from "@/shared/ui/Button";
-import { api, getStoredToken } from "@/shared/api";
+import { api, ApiRequestError } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { ScheduledPaymentList } from "@/features/scheduled-payments/components/ScheduledPaymentList";
@@ -16,21 +17,22 @@ type PageStatus = "loading" | "ready" | "unauthenticated" | "error";
 
 export default function ScheduledPaymentsPage() {
   const { t } = useLanguage();
+  const { status: authStatus } = useUser();
   const [payments, setPayments] = useState<ScheduledPayment[]>([]);
   const [status, setStatus] = useState<PageStatus>("loading");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void loadPayments();
-  }, []);
-
-  async function loadPayments() {
-    if (!getStoredToken()) {
+    if (authStatus === "loading") return;
+    if (authStatus === "unauthenticated") {
       setPayments([]);
       setStatus("unauthenticated");
       return;
     }
+    void loadPayments();
+  }, [authStatus]);
 
+  async function loadPayments() {
     setStatus("loading");
     setError(null);
 
@@ -39,7 +41,7 @@ export default function ScheduledPaymentsPage() {
       setPayments(Array.isArray(data) ? data : []);
       setStatus("ready");
     } catch (err) {
-      if (!getStoredToken()) {
+      if (err instanceof ApiRequestError && err.status === 401) {
         setStatus("unauthenticated");
         return;
       }

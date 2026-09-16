@@ -81,7 +81,10 @@ const SERVER_MESSAGE_KEYS: Record<string, MessageKey> = {
   "ThrottlerException: Too Many Requests": "tooManyRequests",
   "Cannot change your own account status": "cannotChangeOwnAccount",
   "Cannot disable the last admin": "cannotDisableLastAdmin",
-  "Too many failed financial attempts": "spendingLimitExceeded",
+  "Spending limit exceeded": "spendingLimitExceeded",
+  "Too many failed financial attempts": "tooManyFailedFinancialAttempts",
+  "Provide exactly one account number or Shaba number":
+    "provideExactlyOneDestination",
   "Release envelope balance before cancelling": "releaseEnvelopeBeforeCancel",
   "Missing payment authority from ZarinPal.": "missingAuthority",
   "This payment was already verified. Your wallet was not credited twice.":

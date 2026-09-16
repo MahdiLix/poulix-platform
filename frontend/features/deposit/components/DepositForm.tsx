@@ -7,7 +7,7 @@ import { Button } from "@/shared/ui/Button";
 import { Badge } from "@/shared/ui/Badge";
 import { Spinner } from "@/shared/ui/Spinner";
 import { AmountField } from "@/shared/ui/AmountField";
-import { getStoredToken } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
@@ -19,7 +19,6 @@ import {
   validateDepositAmount,
 } from "@/features/deposit/lib/deposit";
 import {
-  applyOfferPercent,
   consumeActiveOffer,
   getActiveOffer,
   localizeOfferCopy,
@@ -44,6 +43,7 @@ function formatPreset(amount: number): string {
 export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
   const router = useRouter();
   const { t, language } = useLanguage();
+  const { status: authStatus } = useUser();
   const { blocked, remainingSeconds } = useRateLimitAction("deposit");
   const { balance, status: balanceStatus, currency } = useWalletBalance();
   const [amount, setAmount] = useState(initialAmount);
@@ -74,7 +74,7 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
       return;
     }
 
-    if (!getStoredToken()) {
+    if (authStatus !== "ready") {
       setError(t.messages.pleaseSignInToDeposit);
       router.push("/login");
       return;
@@ -90,7 +90,7 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
 
     try {
       if (activeOffer) consumeActiveOffer();
-      await startZarinpalDeposit(numericAmount, t.messages);
+      await startZarinpalDeposit(numericAmount, t.messages, authStatus === "ready");
     } catch (err: unknown) {
       setError(localizeError(err, t.messages, "depositFailedGeneric"));
       setLoading(false);
@@ -99,10 +99,7 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
 
   const numericAmount = parseAmount(amount);
   const currentBalance = balance ?? 0;
-  const bonus = activeOffer
-    ? applyOfferPercent(numericAmount, activeOffer.percent)
-    : 0;
-  const afterBalance = currentBalance + numericAmount + bonus;
+  const afterBalance = currentBalance + numericAmount;
   const displayActiveOffer = activeOffer
     ? localizeOfferCopy(activeOffer, t.home)
     : null;
@@ -148,11 +145,6 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
             {displayActiveOffer.title}
           </p>
           <p className="mt-1 text-muted">{displayActiveOffer.description}</p>
-          {bonus > 0 ? (
-            <p className="mt-2 font-semibold text-secondary">
-              +{formatIrr(bonus, currency, language)}
-            </p>
-          ) : null}
         </div>
       ) : null}
 

@@ -1,35 +1,46 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { LanguageProvider } from "@/shared/i18n/LanguageProvider";
+import { UserProvider } from "@/shared/user/UserProvider";
 import { ApiRequestError } from "@/shared/api";
 import { RATE_LIMIT_EVENT } from "@/shared/rate-limit/types";
 import { useWalletBalance } from "./useWalletBalance";
 
 const getBalance = vi.fn();
-const getStoredToken = vi.fn(() => "token");
+// The real production contract: the client never holds a JWT, it probes
+// GET /users/me against the HttpOnly session cookie to learn auth status.
+const getMe = vi.fn(() =>
+  Promise.resolve({ id: "user-1", email: "sara@poulix.test" }),
+);
 
 vi.mock("@/shared/api", async () => {
   const actual =
     await vi.importActual<typeof import("@/shared/api")>("@/shared/api");
   return {
     ...actual,
-    getStoredToken: () => getStoredToken(),
     api: {
       ...actual.api,
       getBalance: (...args: unknown[]) => getBalance(...args),
+      getMe: (...args: unknown[]) => getMe(...args),
     },
   };
 });
 
 function wrapper({ children }: { children: React.ReactNode }) {
-  return <LanguageProvider>{children}</LanguageProvider>;
+  return (
+    <LanguageProvider>
+      <UserProvider>{children}</UserProvider>
+    </LanguageProvider>
+  );
 }
 
 describe("useWalletBalance rate limit", () => {
   beforeEach(() => {
     getBalance.mockReset();
-    getStoredToken.mockReturnValue("token");
+    getMe.mockReset();
+    getMe.mockResolvedValue({ id: "user-1", email: "sara@poulix.test" });
     sessionStorage.removeItem("poulix_wallet_last_balance");
+    sessionStorage.removeItem("poulix_wallet_last_balance:user-1");
   });
 
   it("keeps the last amount during a 429 and refetches after the window expires", async () => {
@@ -63,7 +74,7 @@ describe("useWalletBalance rate limit", () => {
 
   it("shows the last saved amount instead of 0 when the first load is rate-limited", async () => {
     sessionStorage.setItem(
-      "poulix_wallet_last_balance",
+      "poulix_wallet_last_balance:user-1",
       JSON.stringify({ balance: 88_000, currency: "IRR" }),
     );
     getBalance.mockRejectedValueOnce(

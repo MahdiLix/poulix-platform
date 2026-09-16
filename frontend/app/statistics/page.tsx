@@ -10,7 +10,8 @@ import { AreaChart } from "@/shared/ui/AreaChart";
 import { DonutChart } from "@/shared/ui/DonutChart";
 import { BarChart } from "@/shared/ui/BarChart";
 import { cn } from "@/shared/cn";
-import { api, getStoredToken } from "@/shared/api";
+import { api } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import {
   getCalendarYearMonth,
@@ -60,6 +61,7 @@ const EXPENSE_TYPES = new Set([
 
 export default function StatisticsPage() {
   const { t, language } = useLanguage();
+  const { status: authStatus } = useUser();
   const { currency, balance } = useWalletBalance();
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [signedIn, setSignedIn] = useState(false);
@@ -68,8 +70,7 @@ export default function StatisticsPage() {
   const [envelopes, setEnvelopes] = useState<Envelope[]>([]);
 
   async function loadTransactions() {
-    const token = getStoredToken();
-    if (!token) {
+    if (authStatus !== "ready") {
       setTransactions(null);
       setSignedIn(false);
       return;
@@ -78,7 +79,7 @@ export default function StatisticsPage() {
     setSignedIn(true);
     try {
       const [txRes, goalsRes, envelopesRes] = await Promise.all([
-        api.getTransactions().catch(() => []),
+        api.getAllTransactions().catch(() => []),
         api.getGoals().catch(() => ({ goals: [] })),
         api.getEnvelopes().catch(() => ({ envelopes: [] })),
       ]);
@@ -91,8 +92,10 @@ export default function StatisticsPage() {
   }
 
   useEffect(() => {
+    if (authStatus === "loading") return;
     void loadTransactions();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authStatus]);
 
   const selectedDays = Number(chartRange);
   const rangeTransactions = useMemo(

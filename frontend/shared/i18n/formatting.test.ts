@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { en } from "@/shared/i18n/messages/en";
 import { fa } from "@/shared/i18n/messages/fa";
-import { formatDisplayDate, monthLabel } from "@/shared/i18n/dates";
+import {
+  formatDisplayDate,
+  formatDisplayDateTime,
+  formatScheduleDate,
+  monthLabel,
+  startOfDayIso,
+} from "@/shared/i18n/dates";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import {
@@ -14,6 +20,36 @@ describe("localized formatting", () => {
     expect(formatIrr(1234567, "IRR", "fa")).toBe("1,234,567 IRR");
     expect(formatDisplayDate("2026-09-06T00:00:00Z", "fa")).not.toMatch(
       /[۰-۹]/,
+    );
+  });
+
+  it("treats date-only values as local calendar days, not UTC midnight", () => {
+    expect(formatDisplayDate("2026-09-16", "en")).toBe(
+      formatDisplayDate(new Date(2026, 8, 16), "en"),
+    );
+    expect(formatDisplayDate("2026-09-16", "fa")).toBe(
+      formatDisplayDate(new Date(2026, 8, 16), "fa"),
+    );
+  });
+
+  it("stores selected calendar days at UTC midnight for scheduling", () => {
+    expect(startOfDayIso("2026-09-16")).toBe("2026-09-16T00:00:00.000Z");
+    expect(startOfDayIso(" 2026-01-31 ")).toBe("2026-01-31T00:00:00.000Z");
+  });
+
+  it("formats the same scheduled instant in either language without changing it", () => {
+    const scheduledAt = "2026-09-16T14:45:00.000Z";
+    expect(formatDisplayDateTime(scheduledAt, "en")).toBeTruthy();
+    expect(formatDisplayDateTime(scheduledAt, "fa")).toBeTruthy();
+    expect(scheduledAt).toBe("2026-09-16T14:45:00.000Z");
+  });
+
+  it("uses the same calendar day for date-only and stored schedule values", () => {
+    expect(formatScheduleDate("2026-09-16", "en")).toBe(
+      formatScheduleDate("2026-09-16T00:00:00.000Z", "en"),
+    );
+    expect(formatScheduleDate("2026-09-16", "fa")).toBe(
+      formatScheduleDate("2026-09-16T00:00:00.000Z", "fa"),
     );
   });
 
@@ -38,6 +74,24 @@ describe("localized formatting", () => {
     expect(
       localizeError(new Error("internal database detail"), en.messages),
     ).toBe(en.messages.genericError);
+  });
+
+  it("maps spending-limit and financial-lockout errors to distinct messages", () => {
+    expect(
+      localizeError(new Error("Spending limit exceeded"), en.messages),
+    ).toBe(en.messages.spendingLimitExceeded);
+    expect(
+      localizeError(
+        new Error("Too many failed financial attempts"),
+        en.messages,
+      ),
+    ).toBe(en.messages.tooManyFailedFinancialAttempts);
+    expect(
+      localizeError(
+        new Error("Provide exactly one account number or Shaba number"),
+        en.messages,
+      ),
+    ).toBe(en.messages.provideExactlyOneDestination);
   });
 
   it("localizes transaction types and generated reasons", () => {

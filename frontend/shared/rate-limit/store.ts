@@ -170,7 +170,7 @@ export function setLockoutCooldown(
   const alreadyActive = state.lockoutUntil > now;
   state = {
     ...state,
-    lockoutUntil: alreadyActive ? Math.min(state.lockoutUntil, until) : until,
+    lockoutUntil: alreadyActive ? Math.max(state.lockoutUntil, until) : until,
   };
   armExpiry("lockout", state.lockoutUntil);
   emit();
@@ -199,7 +199,7 @@ export function setRateLimitCooldown(
     const alreadyActive = state.globalUntil > now;
     state = {
       ...state,
-      globalUntil: alreadyActive ? Math.min(state.globalUntil, until) : until,
+      globalUntil: alreadyActive ? Math.max(state.globalUntil, until) : until,
     };
     armExpiry("global", state.globalUntil);
     emit();
@@ -208,7 +208,7 @@ export function setRateLimitCooldown(
 
   const alreadyActive = (state.actions[action] ?? 0) > now;
   const nextUntil = alreadyActive
-    ? Math.min(state.actions[action] ?? until, until)
+    ? Math.max(state.actions[action] ?? until, until)
     : until;
   state = {
     ...state,
@@ -268,7 +268,11 @@ export function clearExpiredCooldowns(
   return cleared;
 }
 
-export function clearAuthCooldowns() {
+export function clearAuthCooldowns({
+  clearGlobal = false,
+}: {
+  clearGlobal?: boolean;
+} = {}) {
   const actions = { ...state.actions };
   delete actions.login;
   delete actions.register;
@@ -283,14 +287,21 @@ export function clearAuthCooldowns() {
     const loginTimer = expiryTimers.get("login");
     const registerTimer = expiryTimers.get("register");
     const lockoutTimer = expiryTimers.get("lockout");
+    const globalTimer = clearGlobal ? expiryTimers.get("global") : undefined;
     if (loginTimer) window.clearTimeout(loginTimer);
     if (registerTimer) window.clearTimeout(registerTimer);
     if (lockoutTimer) window.clearTimeout(lockoutTimer);
+    if (globalTimer) window.clearTimeout(globalTimer);
     expiryTimers.delete("login");
     expiryTimers.delete("register");
     expiryTimers.delete("lockout");
+    if (clearGlobal) expiryTimers.delete("global");
   }
-  state = { globalUntil: state.globalUntil, lockoutUntil: 0, actions };
+  state = {
+    globalUntil: clearGlobal ? 0 : state.globalUntil,
+    lockoutUntil: 0,
+    actions,
+  };
   emit();
 }
 
@@ -316,8 +327,7 @@ export function shouldWarnOnce(
   }
 
   const previous = warnedNearLimit.get(name);
-  const crossedIntoWarning =
-    previous !== undefined && previous > threshold;
+  const crossedIntoWarning = previous !== undefined && previous > threshold;
   warnedNearLimit.set(name, remaining);
   return crossedIntoWarning;
 }

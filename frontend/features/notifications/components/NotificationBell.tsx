@@ -21,7 +21,8 @@ import {
   ExternalLink,
   X,
 } from "lucide-react";
-import { api, getStoredToken } from "@/shared/api";
+import { api, ApiRequestError } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { getGlobalCooldownRemaining } from "@/shared/rate-limit/store";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
@@ -42,6 +43,7 @@ export function NotificationBell({
 }) {
   const router = useRouter();
   const { t, language } = useLanguage();
+  const { status: authStatus } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isSignedIn, setIsSignedIn] = useState(false);
@@ -53,8 +55,7 @@ export function NotificationBell({
 
   const refreshUnread = useCallback(async () => {
     if (getGlobalCooldownRemaining() > 0) return;
-    const token = getStoredToken();
-    if (!token) {
+    if (authStatus !== "ready") {
       setIsSignedIn(false);
       setUnreadCount(0);
       return;
@@ -65,16 +66,16 @@ export function NotificationBell({
     try {
       const { count } = await api.getUnreadNotificationCount();
       setUnreadCount(count);
-    } catch {
-      if (!getStoredToken()) {
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.status === 401) {
         setIsSignedIn(false);
         setUnreadCount(0);
       }
     }
-  }, []);
+  }, [authStatus]);
 
   const loadNotifications = useCallback(async () => {
-    if (!getStoredToken()) return;
+    if (authStatus !== "ready") return;
     setLoadingList(true);
     try {
       const data = await api.getNotifications();
@@ -84,7 +85,7 @@ export function NotificationBell({
     } finally {
       setLoadingList(false);
     }
-  }, []);
+  }, [authStatus]);
 
   useEffect(() => {
     void refreshUnread();

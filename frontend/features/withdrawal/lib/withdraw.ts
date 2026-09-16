@@ -30,6 +30,7 @@ export function validateWithdrawAmount(
   raw: string,
   messages: Messages,
   availableBalance?: number | null,
+  remainingLimit?: number | null,
 ): string | null {
   const trimmed = raw.trim();
   if (!trimmed) {
@@ -43,6 +44,10 @@ export function validateWithdrawAmount(
 
   if (typeof availableBalance === "number" && amount > availableBalance) {
     return messages.insufficientFunds;
+  }
+
+  if (typeof remainingLimit === "number" && amount > remainingLimit) {
+    return messages.spendingLimitExceeded;
   }
 
   return null;
@@ -88,112 +93,22 @@ export function validateShabaNumber(
   return null;
 }
 
-const ACCOUNT_NUMBER_COOKIE = "poulix_account_number";
-const SHABA_NUMBER_COOKIE = "poulix_shaba_number";
-const DESTINATION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
-
-function isBrowser() {
-  return typeof window !== "undefined" && typeof document !== "undefined";
-}
-
-function cookieAttributeString(maxAgeSeconds: number) {
-  const parts = ["Path=/", `Max-Age=${maxAgeSeconds}`, "SameSite=Lax"];
-  if (isBrowser() && window.location.protocol === "https:") {
-    parts.push("Secure");
-  }
-  return parts.join("; ");
-}
-
-function readCookie(name: string): string | null {
-  if (!isBrowser()) return null;
-
-  const prefix = `${encodeURIComponent(name)}=`;
-  const match = document.cookie
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(prefix));
-
-  if (!match) return null;
-
-  const value = decodeURIComponent(match.slice(prefix.length));
-  return value || null;
-}
-
-function writeCookie(name: string, value: string) {
-  if (!isBrowser()) return;
-  document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; ${cookieAttributeString(DESTINATION_COOKIE_MAX_AGE_SECONDS)}`;
-}
-
 export function getSavedAccountNumber(): string {
-  const saved = readCookie(ACCOUNT_NUMBER_COOKIE);
-  if (!saved || !/^\d{10,18}$/.test(normalizeAccountNumber(saved))) {
-    return "";
-  }
-  return saved;
-}
-
-const ACCOUNT_RECENTS_KEY = "poulix_recent_account_numbers";
-const SHABA_RECENTS_KEY = "poulix_recent_shaba_numbers";
-const MAX_RECENTS = 8;
-
-function readRecentList(key: string): string[] {
-  if (!isBrowser()) return [];
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? parsed.filter((item): item is string => typeof item === "string")
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeRecentList(key: string, values: string[]) {
-  if (!isBrowser()) return;
-  window.localStorage.setItem(
-    key,
-    JSON.stringify(values.slice(0, MAX_RECENTS)),
-  );
-}
-
-function rememberValue(key: string, value: string) {
-  if (!value) return;
-  const next = [value, ...readRecentList(key).filter((item) => item !== value)];
-  writeRecentList(key, next);
+  return "";
 }
 
 export function listRecentAccountNumbers(): string[] {
-  const saved = getSavedAccountNumber();
-  const recents = readRecentList(ACCOUNT_RECENTS_KEY);
-  return [...new Set([saved, ...recents].filter(Boolean))];
+  return [];
 }
 
 export function listRecentShabaNumbers(): string[] {
-  const saved = getSavedShabaNumber();
-  const recents = readRecentList(SHABA_RECENTS_KEY);
-  return [...new Set([saved, ...recents].filter(Boolean))];
+  return [];
 }
 
 export function getSavedShabaNumber(): string {
-  const saved = readCookie(SHABA_NUMBER_COOKIE);
-  if (!saved || !/^IR\d{24}$/.test(normalizeShabaNumber(saved))) {
-    return "";
-  }
-  return saved;
+  return "";
 }
 
-export function saveAccountNumber(raw: string) {
-  const value = normalizeAccountNumber(raw);
-  if (!/^\d{10,18}$/.test(value)) return;
-  writeCookie(ACCOUNT_NUMBER_COOKIE, value);
-  rememberValue(ACCOUNT_RECENTS_KEY, value);
-}
+export function saveAccountNumber(_raw: string) {}
 
-export function saveShabaNumber(raw: string) {
-  const value = normalizeShabaNumber(raw);
-  if (!/^IR\d{24}$/.test(value)) return;
-  writeCookie(SHABA_NUMBER_COOKIE, value);
-  rememberValue(SHABA_RECENTS_KEY, value);
-}
+export function saveShabaNumber(_raw: string) {}

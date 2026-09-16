@@ -2,7 +2,6 @@
 
 import { Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import {
   Calendar,
   Check,
@@ -20,6 +19,7 @@ import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
+import { readTransferReceipt } from "@/features/wallet/lib/receipt";
 import {
   isTransactionCategory,
   type TransactionCategory,
@@ -52,17 +52,16 @@ function DetailRow({
 }
 
 function SuccessContent() {
-  const searchParams = useSearchParams();
   const { t, language } = useLanguage();
   const { status, balance, currency } = useWalletBalance();
-
-  const amount = searchParams.get("amount") || "0";
-  const recipient = searchParams.get("recipient") || "";
-  const email = searchParams.get("email") || "";
-  const queryBalance = searchParams.get("balance");
-  const queryCurrency = searchParams.get("currency") || "IRR";
-  const reason = searchParams.get("reason") || "";
-  const category = searchParams.get("category") || "";
+  const receipt = readTransferReceipt();
+  const amount = receipt?.amount ?? 0;
+  const recipient = receipt?.recipient ?? "";
+  const email = receipt?.email ?? "";
+  const queryBalance = receipt?.balance ?? 0;
+  const queryCurrency = receipt?.currency ?? "IRR";
+  const reason = receipt?.reason ?? "";
+  const category = receipt?.category ?? "";
   const formattedDate = formatDisplayDateTime(new Date(), language);
   const remaining =
     status === "ready" && balance !== null

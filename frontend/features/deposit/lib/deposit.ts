@@ -1,4 +1,4 @@
-import { api, getStoredToken } from "@/shared/api";
+import { api } from "@/shared/api";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import type { TranslationDictionary } from "@/shared/i18n/translations";
 import { formatMessage } from "@/shared/i18n/localizeError";
@@ -29,8 +29,9 @@ export function validateDepositAmount(
 export async function startZarinpalDeposit(
   amount: number,
   messages: Messages,
+  signedIn: boolean,
 ): Promise<void> {
-  if (!getStoredToken()) {
+  if (!signedIn) {
     throw new Error(messages.pleaseSignInToDeposit);
   }
 

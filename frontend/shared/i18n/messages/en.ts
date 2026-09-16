@@ -41,6 +41,7 @@ export const en: TranslationDictionary = {
     moveMoney: "Move money",
     plan: "Plan",
     account: "Account",
+    settings: "Settings",
     topUp: "Top Up",
   },
   transaction: {
@@ -793,6 +794,7 @@ export const en: TranslationDictionary = {
     failedToSaveDestination: "Could not save destination",
     failedToLoadSecurity: "Could not load security settings",
     spendingLimitExceeded: "Spending limit exceeded",
+    tooManyFailedFinancialAttempts: "Too many failed financial attempts",
     failedToLoadAdmin: "Could not load admin data",
     adminAccessRequired: "Admin access required",
     accountDisabled: "Account disabled",

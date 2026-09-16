@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiRequestError, api, getStoredToken } from "@/shared/api";
+import { ApiRequestError, api } from "@/shared/api";
 import { parseAmount } from "@/features/wallet/lib/wallet";
+import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import {
@@ -17,10 +18,14 @@ const LAST_BALANCE_KEY = "poulix_wallet_last_balance";
 
 type SavedBalance = { balance: number; currency: string };
 
-function readSavedBalance(): SavedBalance | null {
+function lastBalanceStorageKey(userId: string | null): string {
+  return userId ? `${LAST_BALANCE_KEY}:${userId}` : LAST_BALANCE_KEY;
+}
+
+function readSavedBalance(userId: string | null): SavedBalance | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.sessionStorage.getItem(LAST_BALANCE_KEY);
+    const raw = window.sessionStorage.getItem(lastBalanceStorageKey(userId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as SavedBalance;
     if (
@@ -38,17 +43,29 @@ function readSavedBalance(): SavedBalance | null {
   }
 }
 
-function writeSavedBalance(balance: number, currency: string) {
+function writeSavedBalance(
+  userId: string | null,
+  balance: number,
+  currency: string,
+) {
   if (typeof window === "undefined") return;
   window.sessionStorage.setItem(
-    LAST_BALANCE_KEY,
+    lastBalanceStorageKey(userId),
     JSON.stringify({ balance, currency }),
   );
 }
 
-function clearSavedBalance() {
+function clearSavedBalance(userId: string | null) {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(lastBalanceStorageKey(userId));
+}
+
+export function clearSavedBalanceForUser(userId?: string) {
   if (typeof window === "undefined") return;
   window.sessionStorage.removeItem(LAST_BALANCE_KEY);
+  if (userId) {
+    window.sessionStorage.removeItem(`${LAST_BALANCE_KEY}:${userId}`);
+  }
 }
 
 function isRateLimitError(err: unknown): boolean {
@@ -71,6 +88,8 @@ function retryAfterSeconds(err: unknown): number {
 
 export function useWalletBalance() {
   const { t } = useLanguage();
+  const { status: authStatus, user } = useUser();
+  const userId = user?.id ?? null;
   const [status, setStatus] = useState<WalletBalanceStatus>("idle");
   const [balance, setBalance] = useState<number | null>(null);
   const [currency, setCurrency] = useState("IRR");
@@ -79,15 +98,18 @@ export function useWalletBalance() {
   const refreshRef = useRef<() => Promise<void>>(async () => {});
 
   const refresh = useCallback(async () => {
-    if (!getStoredToken()) {
-      clearSavedBalance();
+    if (authStatus === "loading") {
+      return;
+    }
+    if (authStatus === "unauthenticated") {
+      clearSavedBalance(null);
       setStatus("unauthenticated");
       setBalance(null);
       setError(null);
       return;
     }
 
-    const saved = readSavedBalance();
+    const saved = readSavedBalance(userId);
     if (saved) {
       setBalance((current) => current ?? saved.balance);
       setCurrency(saved.currency);
@@ -109,7 +131,7 @@ export function useWalletBalance() {
       const nextBalance = parseAmount(data.balance);
       const nextCurrency =
         typeof data.currency === "string" ? data.currency : "IRR";
-      writeSavedBalance(nextBalance, nextCurrency);
+      writeSavedBalance(userId, nextBalance, nextCurrency);
       setBalance(nextBalance);
       setCurrency(nextCurrency);
       setStatus("ready");
@@ -138,8 +160,8 @@ export function useWalletBalance() {
         return;
       }
 
-      if (!getStoredToken()) {
-        clearSavedBalance();
+      if (err instanceof ApiRequestError && err.status === 401) {
+        clearSavedBalance(userId);
         setStatus("unauthenticated");
         setBalance(null);
         setError(null);
@@ -150,7 +172,7 @@ export function useWalletBalance() {
       setError(localizeError(err, t.messages, "failedToLoadBalance"));
       setStatus("error");
     }
-  }, [t.messages]);
+  }, [t.messages, authStatus, userId]);
 
   refreshRef.current = refresh;
 

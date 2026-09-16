@@ -8,12 +8,14 @@ import { TextField } from "@/shared/ui/TextField";
 import { AmountField } from "@/shared/ui/AmountField";
 import { Select } from "@/shared/ui/Select";
 import { Badge } from "@/shared/ui/Badge";
-import { api, getStoredToken } from "@/shared/api";
+import { api } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { useRateLimitAction } from "@/shared/rate-limit";
+import { minRemainingLimit } from "@/features/spending-limits/lib/spendingLimits";
 import {
   TRANSACTION_CATEGORIES,
   type TransactionCategory,
@@ -35,6 +37,7 @@ export function SendForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useLanguage();
+  const { status: authStatus } = useUser();
   const { blocked } = useRateLimitAction("transfer");
   const {
     status,
@@ -62,7 +65,7 @@ export function SendForm() {
   const [destinations, setDestinations] = useState<FinancialDestination[]>([]);
 
   useEffect(() => {
-    if (!getStoredToken()) return;
+    if (authStatus !== "ready") return;
     void Promise.all([
       api.getSavedDestinations().catch(() => []),
       api.getRecentDestinations().catch(() => []),
@@ -73,11 +76,11 @@ export function SendForm() {
         .forEach((item) => unique.set(item.recipientUsername!, item));
       setDestinations([...unique.values()].slice(0, 8));
     });
-  }, []);
+  }, [authStatus]);
 
   useEffect(() => {
     const destinationId = searchParams.get("destinationId");
-    if (!destinationId || !getStoredToken()) return;
+    if (!destinationId || authStatus !== "ready") return;
     void api
       .getDestinationValue(destinationId)
       .then((value) => {
@@ -87,7 +90,7 @@ export function SendForm() {
         }
       })
       .catch(() => {});
-  }, [searchParams]);
+  }, [searchParams, authStatus]);
 
   useEffect(() => {
     const trimmed = recipient.trim();
@@ -119,7 +122,7 @@ export function SendForm() {
     setError("");
     setFieldError(null);
 
-    if (!getStoredToken()) {
+    if (authStatus !== "ready") {
       setError(t.send.pleaseSignInToSend);
       router.push("/login");
       return;
@@ -132,22 +135,48 @@ export function SendForm() {
     }
 
     const parsedAmount = parseAmount(amount);
-    const sourceBalance = fundingSource.envelopeId
-      ? fundingSource.balance
-      : balance;
-    const amountError = validateTransferAmount(
-      parsedAmount,
-      sourceBalance,
-      t.messages,
-    );
-    if (amountError) {
-      setError(amountError);
-      return;
-    }
 
     setLoading(true);
 
     try {
+      let sourceBalance = fundingSource.envelopeId
+        ? fundingSource.balance
+        : balance;
+
+      if (fundingSource.envelopeId) {
+        const envelopes = await api.getEnvelopes().catch(() => null);
+        const envelope = envelopes?.envelopes?.find(
+          (item) =>
+            item.id === fundingSource.envelopeId && item.status === "ACTIVE",
+        );
+        if (envelopes && !envelope) {
+          setError(t.messages.envelopeNotActive);
+          return;
+        }
+        if (envelope) {
+          sourceBalance = parseAmount(envelope.allocatedAmount);
+        }
+      } else {
+        const live = await api.getBalance();
+        sourceBalance = parseAmount(live.balance);
+      }
+
+      const latestLimits = await api.getSpendingLimits().catch(() => []);
+      const remainingLimit = minRemainingLimit(latestLimits, [
+        "DAILY_TRANSFER",
+        "MONTHLY_TRANSFER",
+      ]);
+      const amountError = validateTransferAmount(
+        parsedAmount,
+        sourceBalance,
+        t.messages,
+        remainingLimit,
+      );
+      if (amountError) {
+        setError(amountError);
+        return;
+      }
+
       const lookup = await api.lookupUser(recipient);
 
       if (!lookup.found) {
@@ -359,7 +388,12 @@ export function SendForm() {
       <Button
         type="submit"
         className="h-12 w-full text-base"
-        disabled={loading || blocked}
+        disabled={
+          loading ||
+          blocked ||
+          status === "unauthenticated" ||
+          (!fundingSource.envelopeId && status !== "ready")
+        }
       >
         {loading ? t.send.lookingUpRecipient : t.send.continueBtn}
       </Button>

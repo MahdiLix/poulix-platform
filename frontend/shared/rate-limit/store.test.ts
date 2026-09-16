@@ -12,7 +12,7 @@ import {
 
 describe("rate-limit store persistence", () => {
   afterEach(() => {
-    clearAuthCooldowns();
+    clearAuthCooldowns({ clearGlobal: true });
     sessionStorage.removeItem("poulix_rl_until");
   });
 
@@ -26,12 +26,11 @@ describe("rate-limit store persistence", () => {
     expect(getLockoutCooldownRemaining(before)).toBe(55);
   });
 
-  it("does not extend an active lockout when the same retryAfter is applied again", () => {
+  it("extends an active lockout when the server renews its retry window", () => {
     const started = Date.now();
     setLockoutCooldown(60, started);
-    const first = getRateLimitState().lockoutUntil;
     setLockoutCooldown(60, started + 2000);
-    expect(getRateLimitState().lockoutUntil).toBe(first);
+    expect(getRateLimitState().lockoutUntil).toBe(started + 62_000);
   });
 
   it("dispatches one expired notification when a cooldown ends", () => {
@@ -54,5 +53,17 @@ describe("rate-limit store persistence", () => {
     setRateLimitCooldown("withdraw", 2, started);
     clearExpiredCooldowns(started + 2000);
     expect(shouldWarnOnce("withdraw", 1, 2)).toBe(false);
+  });
+
+  it("clears a pre-authentication global cooldown after authentication", () => {
+    const started = Date.now();
+    setRateLimitCooldown("global", 30, started);
+
+    clearAuthCooldowns({ clearGlobal: true });
+
+    expect(getRateLimitState().globalUntil).toBe(0);
+    expect(
+      JSON.parse(sessionStorage.getItem("poulix_rl_until") ?? "{}").globalUntil,
+    ).toBe(0);
   });
 });

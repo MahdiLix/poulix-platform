@@ -10,11 +10,12 @@ import { DatePicker } from "@/shared/ui/DatePicker";
 import { Card } from "@/shared/ui/Card";
 import { Badge } from "@/shared/ui/Badge";
 import { DonutChart } from "@/shared/ui/DonutChart";
-import { api, getStoredToken } from "@/shared/api";
+import { api } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { flashToast } from "@/shared/ui/Toast";
-import { formatDisplayDate } from "@/shared/i18n/dates";
+import { formatScheduleDate } from "@/shared/i18n/dates";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 import {
@@ -26,6 +27,7 @@ import {
 export function CreateGoalForm() {
   const router = useRouter();
   const { t, language } = useLanguage();
+  const { status: authStatus } = useUser();
   const { status, balance, currency } = useWalletBalance();
   const [title, setTitle] = useState("");
   const [targetAmount, setTargetAmount] = useState("");
@@ -42,7 +44,7 @@ export function CreateGoalForm() {
     setError("");
     setFieldError(null);
 
-    if (!getStoredToken()) {
+    if (authStatus !== "ready") {
       router.push("/login");
       return;
     }
@@ -190,7 +192,7 @@ export function CreateGoalForm() {
               <div className="flex justify-between">
                 <dt className="text-muted">{t.goals.targetDateOptional}</dt>
                 <dd className="font-semibold">
-                  {formatDisplayDate(targetDate, language)}
+                  {formatScheduleDate(targetDate, language)}
                 </dd>
               </div>
             ) : null}

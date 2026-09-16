@@ -7,12 +7,14 @@ import { Card } from "@/shared/ui/Card";
 import { SendForm } from "@/features/p2p-transfer/components/SendForm";
 import { SendRightRail } from "@/features/p2p-transfer/components/SendRightRail";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
-import { api, getStoredToken } from "@/shared/api";
+import { api } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import type { SpendingLimitSummary } from "@/features/spending-limits/lib/spendingLimits";
 import type { FinancialDestination } from "@/features/financial-destinations/lib/destinations";
 
 export default function SendPage() {
   const { t } = useLanguage();
+  const { status } = useUser();
   const [limits, setLimits] = useState<SpendingLimitSummary[]>([]);
   const [savedDestinations, setSavedDestinations] = useState<
     FinancialDestination[]
@@ -22,7 +24,7 @@ export default function SendPage() {
   >([]);
 
   useEffect(() => {
-    if (!getStoredToken()) return;
+    if (status !== "ready") return;
 
     void Promise.all([
       api.getSpendingLimits().catch(() => [] as SpendingLimitSummary[]),
@@ -33,7 +35,7 @@ export default function SendPage() {
       setSavedDestinations(savedList);
       setRecentDestinations(recentList);
     });
-  }, []);
+  }, [status]);
 
   return (
     <AppShell showBottomNav={false}>

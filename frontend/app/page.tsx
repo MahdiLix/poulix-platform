@@ -27,7 +27,7 @@ import { AreaChart } from "@/shared/ui/AreaChart";
 import { DonutChart } from "@/shared/ui/DonutChart";
 import { ProgressBar } from "@/shared/ui/ProgressBar";
 import { DashboardMetricCard } from "@/shared/ui/DashboardMetricCard";
-import { api, getStoredToken } from "@/shared/api";
+import { api } from "@/shared/api";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { useUser } from "@/shared/user/UserProvider";
 import { useRateLimitAction, withRemainingLabel } from "@/shared/rate-limit";
@@ -167,7 +167,7 @@ export default function HomePage() {
   const router = useRouter();
   const { t, language } = useLanguage();
   const { status, balance, currency, error, refresh } = useWalletBalance();
-  const { user } = useUser();
+  const { user, status: authStatus } = useUser();
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [hideBalance, setHideBalance] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -177,12 +177,11 @@ export default function HomePage() {
   const [offer, setOffer] = useState<HomepageOffer | null>(null);
 
   const loadDashboardData = async () => {
-    const token = getStoredToken();
-    if (!token) return;
+    if (authStatus !== "ready") return;
 
     try {
       const [txRes, goalsRes, envelopesRes] = await Promise.all([
-        api.getTransactions(),
+        api.getAllTransactions(),
         api.getGoals(),
         api.getEnvelopes(),
       ]);
@@ -199,9 +198,11 @@ export default function HomePage() {
   };
 
   useEffect(() => {
+    if (authStatus === "loading") return;
     void loadDashboardData();
     setOffer(getHomepageOffer());
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authStatus]);
 
   const stats = useMemo(() => {
     let totalSent = 0;
@@ -294,7 +295,7 @@ export default function HomePage() {
   const displayOffer = offer ? localizeOfferCopy(offer, t.home) : null;
 
   const openTopUp = (fromOffer = false) => {
-    if (!getStoredToken()) router.push("/login");
+    if (authStatus !== "ready") router.push("/login");
     else {
       if (fromOffer && offer) activateHomepageOffer(offer, user?.id);
       setIsDepositOpen(true);

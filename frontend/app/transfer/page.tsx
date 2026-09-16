@@ -9,18 +9,20 @@ import { Card } from "@/shared/ui/Card";
 import { ProgressBar } from "@/shared/ui/ProgressBar";
 import { WithdrawForm } from "@/features/withdrawal/components/WithdrawForm";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
-import { api, getStoredToken } from "@/shared/api";
+import { api } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { formatIrr } from "@/features/wallet/lib/wallet";
 import type { SpendingLimitSummary } from "@/features/spending-limits/lib/spendingLimits";
 import type { FinancialDestination } from "@/features/financial-destinations/lib/destinations";
 
 export default function WithdrawPage() {
   const { t } = useLanguage();
+  const { status } = useUser();
   const [limits, setLimits] = useState<SpendingLimitSummary[]>([]);
   const [saved, setSaved] = useState<FinancialDestination[]>([]);
 
   useEffect(() => {
-    if (!getStoredToken()) return;
+    if (status !== "ready") return;
     void Promise.all([
       api.getSpendingLimits().catch(() => [] as SpendingLimitSummary[]),
       api.getSavedDestinations().catch(() => [] as FinancialDestination[]),
@@ -32,7 +34,7 @@ export default function WithdrawPage() {
         ),
       );
     });
-  }, []);
+  }, [status]);
 
   const daily = limits.find((item) => item.type === "DAILY_WITHDRAWAL");
 

@@ -23,7 +23,10 @@ import { Button } from "@/shared/ui/Button";
 import { Badge } from "@/shared/ui/Badge";
 import { ProgressBar } from "@/shared/ui/ProgressBar";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
-import { formatDisplayDate, formatDisplayDateTime } from "@/shared/i18n/dates";
+import {
+  formatDisplayDateTime,
+  formatScheduleDate,
+} from "@/shared/i18n/dates";
 import { formatIrr } from "@/features/wallet/lib/wallet";
 import {
   goalProgressPercent,
@@ -169,7 +172,7 @@ export function GoalCard({
           <div className="flex items-center gap-1.5">
             <CalendarDays className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">
-              {formatDisplayDate(goal.targetDate, language)}
+              {formatScheduleDate(goal.targetDate, language)}
             </span>
           </div>
         ) : (

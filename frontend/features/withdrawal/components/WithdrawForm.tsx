@@ -6,7 +6,8 @@ import { Button } from "@/shared/ui/Button";
 import { TextField } from "@/shared/ui/TextField";
 import { AmountField } from "@/shared/ui/AmountField";
 import { Select } from "@/shared/ui/Select";
-import { api, getStoredToken } from "@/shared/api";
+import { api } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 import { WalletBalance } from "@/features/wallet/components/WalletBalance";
@@ -36,7 +37,9 @@ import {
 import { ProgressBar } from "@/shared/ui/ProgressBar";
 import { RecentValueList } from "@/shared/ui/RecentValueList";
 import { Spinner } from "@/shared/ui/Spinner";
+import { saveWithdrawalReceipt } from "@/features/wallet/lib/receipt";
 import type { SpendingLimitSummary } from "@/features/spending-limits/lib/spendingLimits";
+import { minRemainingLimit } from "@/features/spending-limits/lib/spendingLimits";
 import {
   FundingSourceSelect,
   type FundingSource,
@@ -46,6 +49,7 @@ export function WithdrawForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useLanguage();
+  const { status: authStatus } = useUser();
   const { blocked, remainingSeconds } = useRateLimitAction("withdraw");
   const {
     status,
@@ -64,9 +68,7 @@ export function WithdrawForm() {
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [dailyLimit, setDailyLimit] = useState<SpendingLimitSummary | null>(
-    null,
-  );
+  const [spendLimits, setSpendLimits] = useState<SpendingLimitSummary[]>([]);
   const [accountFocused, setAccountFocused] = useState(false);
   const [shabaFocused, setShabaFocused] = useState(false);
   const [recentAccounts, setRecentAccounts] = useState<string[]>([]);
@@ -84,15 +86,13 @@ export function WithdrawForm() {
     }
     setRecentAccounts(listRecentAccountNumbers());
     setRecentShabas(listRecentShabaNumbers());
-    if (getStoredToken()) {
+    if (authStatus === "ready") {
       void Promise.all([
         api.getSavedDestinations().catch(() => []),
         api.getRecentDestinations().catch(() => []),
         api.getSpendingLimits().catch(() => [] as SpendingLimitSummary[]),
       ]).then(async ([savedList, recentList, limits]) => {
-        setDailyLimit(
-          limits.find((item) => item.type === "DAILY_WITHDRAWAL") ?? null,
-        );
+        setSpendLimits(limits);
         const candidates = [...savedList, ...recentList].filter(
           (item) => item.type === "BANK_ACCOUNT" || item.type === "SHABA",
         );
@@ -120,7 +120,7 @@ export function WithdrawForm() {
         }
       });
     }
-  }, [destination, searchParams]);
+  }, [searchParams, authStatus]);
 
   function destinationFieldError() {
     if (destination === "account") {
@@ -134,7 +134,7 @@ export function WithdrawForm() {
     setError("");
     setFieldError(null);
 
-    if (!getStoredToken()) {
+    if (authStatus !== "ready") {
       setError(t.withdrawal.pleaseSignInToWithdraw);
       router.push("/login");
       return;
@@ -146,23 +146,51 @@ export function WithdrawForm() {
       return;
     }
 
-    const sourceBalance = fundingSource.envelopeId
-      ? fundingSource.balance
-      : balance;
-    const amountError = validateWithdrawAmount(
-      amount,
-      t.messages,
-      sourceBalance ?? undefined,
-    );
-    if (amountError) {
-      setError(amountError);
-      return;
-    }
-
-    const numericAmount = parseAmount(amount);
     setLoading(true);
 
     try {
+      const latestLimits = await api.getSpendingLimits().catch(() => spendLimits);
+      setSpendLimits(latestLimits);
+      const remainingLimit = minRemainingLimit(latestLimits, [
+        "DAILY_WITHDRAWAL",
+        "MONTHLY_WITHDRAWAL",
+      ]);
+
+      let sourceBalance = fundingSource.envelopeId
+        ? fundingSource.balance
+        : balance;
+
+      if (fundingSource.envelopeId) {
+        const envelopes = await api.getEnvelopes().catch(() => null);
+        const envelope = envelopes?.envelopes?.find(
+          (item) =>
+            item.id === fundingSource.envelopeId && item.status === "ACTIVE",
+        );
+        if (envelopes && !envelope) {
+          setError(t.messages.envelopeNotActive);
+          return;
+        }
+        if (envelope) {
+          sourceBalance = parseAmount(envelope.allocatedAmount);
+        }
+      } else {
+        const live = await api.getBalance();
+        sourceBalance = parseAmount(live.balance);
+      }
+
+      const amountError = validateWithdrawAmount(
+        amount,
+        t.messages,
+        sourceBalance ?? undefined,
+        remainingLimit,
+      );
+      if (amountError) {
+        setError(amountError);
+        return;
+      }
+
+      const numericAmount = parseAmount(amount);
+
       const trimmedReason = reason.trim();
       const meta =
         trimmedReason || category
@@ -200,30 +228,37 @@ export function WithdrawForm() {
       } else {
         saveShabaNumber(shabaNumber);
       }
-      const params = new URLSearchParams({
-        amount: String(numericAmount),
-        type: destination,
+      saveWithdrawalReceipt({
+        amount: numericAmount,
+        destinationType: destination,
         destination:
           destination === "account"
             ? normalizeAccountNumber(accountNumber)
             : normalizeShabaNumber(shabaNumber),
-        balance: String(remaining),
+        balance: remaining,
         currency: typeof result.currency === "string" ? result.currency : "IRR",
+        reason: trimmedReason || undefined,
+        category: category || undefined,
       });
-      if (trimmedReason) params.set("reason", trimmedReason);
-      if (category) params.set("category", category);
       flashToast({
         title: t.withdrawal.withdrawalSuccessful,
         description: t.messages.success.withdrawalSuccess,
       });
-      router.push(`/transfer/success?${params.toString()}`);
+      router.push("/transfer/success");
     } catch (err: unknown) {
       setError(localizeError(err, t.messages, "withdrawalFailed"));
       void refresh();
+      void api
+        .getSpendingLimits()
+        .then(setSpendLimits)
+        .catch(() => {});
     } finally {
       setLoading(false);
     }
   }
+
+  const dailyLimit =
+    spendLimits.find((item) => item.type === "DAILY_WITHDRAWAL") ?? null;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -402,7 +437,12 @@ export function WithdrawForm() {
 
       <Button
         type="submit"
-        disabled={loading || status === "unauthenticated" || blocked}
+        disabled={
+          loading ||
+          blocked ||
+          status === "unauthenticated" ||
+          (!fundingSource.envelopeId && status !== "ready")
+        }
       >
         {loading ? (
           <Spinner size="sm" label={t.withdrawal.processing} />

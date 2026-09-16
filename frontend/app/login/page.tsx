@@ -21,7 +21,7 @@ import { BrandLogo } from "@/shared/brand/BrandLogo";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError, formatMessage } from "@/shared/i18n/localizeError";
 import { flashToast } from "@/shared/ui/Toast";
-import { getStoredToken, ApiRequestError } from "@/shared/api";
+import { ApiRequestError } from "@/shared/api";
 import { useRateLimitAction, withRemainingLabel } from "@/shared/rate-limit";
 import {
   loginAndStoreSession,
@@ -56,12 +56,6 @@ export default function LoginPage() {
     }
     wasBlocked.current = blocked;
   }, [blocked]);
-
-  useEffect(() => {
-    if (getStoredToken()) {
-      window.location.replace("/");
-    }
-  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

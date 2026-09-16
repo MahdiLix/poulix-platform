@@ -3,19 +3,22 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { PageSpinner } from "@/shared/ui/Spinner";
-import { api, getStoredToken } from "@/shared/api";
+import { api } from "@/shared/api";
+import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 
 export function AdminGate({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { t } = useLanguage();
+  const { status: authStatus } = useUser();
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     async function verify() {
-      if (!getStoredToken()) {
+      if (authStatus === "loading") return;
+      if (authStatus === "unauthenticated") {
         router.replace("/login");
         return;
       }
@@ -39,7 +42,7 @@ export function AdminGate({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, authStatus]);
 
   if (!allowed) {
     return (

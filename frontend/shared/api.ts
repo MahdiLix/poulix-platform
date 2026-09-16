@@ -48,13 +48,7 @@ import type {
   AdminUserDetail,
   AdminUserSummary,
 } from "@/features/admin/lib/admin";
-import {
-  DEFAULT_TOKEN_MAX_AGE_SECONDS,
-  getTokenMaxAgeSeconds,
-  isPublicAuthPath,
-  isTokenExpired,
-  notifySessionExpired,
-} from "@/shared/user/session";
+import { isPublicAuthPath, notifySessionExpired } from "@/shared/user/session";
 import { parseAmount } from "@/features/wallet/lib/wallet";
 import { API_BASE_URL } from "@/shared/config";
 import {
@@ -83,11 +77,12 @@ export type AuthUser = {
   role?: "USER" | "ADMIN";
   username?: string;
   status?: "ACTIVE" | "DISABLED" | "LOCKED";
+  expiresAt?: string;
 };
 
 export type AuthResponse = {
   user: AuthUser;
-  accessToken: string;
+  accessToken?: string;
 };
 
 export type PaginatedResponse<T> = {
@@ -137,12 +132,23 @@ export type DepositCallbackResponse = {
   currency?: string;
 };
 
-const ACCESS_TOKEN_COOKIE = "poulix_access_token";
-const LEGACY_TOKEN_STORAGE_KEY = "poulix_access_token";
-
 function isAuthSessionEndpoint(endpoint: string) {
   const path = endpoint.split("?")[0].replace(/^\/api/, "");
+  return (
+    path === "/auth/login" ||
+    path === "/auth/register" ||
+    path === "/auth/logout"
+  );
+}
+
+function isAuthEstablishEndpoint(endpoint: string) {
+  const path = endpoint.split("?")[0].replace(/^\/api/, "");
   return path === "/auth/login" || path === "/auth/register";
+}
+
+function isBackgroundSessionProbe(endpoint: string, method: string) {
+  const path = endpoint.split("?")[0].replace(/^\/api/, "");
+  return method.toUpperCase() === "GET" && path === "/users/me";
 }
 
 function isMutatingMethod(method: string) {
@@ -191,60 +197,6 @@ function isBrowser() {
   return typeof window !== "undefined" && typeof document !== "undefined";
 }
 
-function cookieAttributeString(maxAgeSeconds: number) {
-  const parts = ["Path=/", `Max-Age=${maxAgeSeconds}`, "SameSite=Lax"];
-  if (isBrowser() && window.location.protocol === "https:") {
-    parts.push("Secure");
-  }
-  return parts.join("; ");
-}
-
-function tokenMaxAgeSeconds(token: string) {
-  return getTokenMaxAgeSeconds(token, DEFAULT_TOKEN_MAX_AGE_SECONDS);
-}
-
-function clearLegacyLocalStorageToken() {
-  if (!isBrowser()) return;
-  window.localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
-}
-
-export function getStoredToken(): string | null {
-  if (!isBrowser()) return null;
-  clearLegacyLocalStorageToken();
-
-  const prefix = `${encodeURIComponent(ACCESS_TOKEN_COOKIE)}=`;
-  const match = document.cookie
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(prefix));
-
-  if (!match) return null;
-
-  const value = decodeURIComponent(match.slice(prefix.length));
-  if (value && isTokenExpired(value)) {
-    removeStoredToken();
-    notifySessionExpired();
-    return null;
-  }
-  return value || null;
-}
-
-export function setStoredToken(token: string) {
-  if (!isBrowser()) return;
-  clearLegacyLocalStorageToken();
-  document.cookie = `${encodeURIComponent(ACCESS_TOKEN_COOKIE)}=${encodeURIComponent(token)}; ${cookieAttributeString(tokenMaxAgeSeconds(token))}`;
-}
-
-export function removeStoredToken() {
-  if (!isBrowser()) return;
-  clearLegacyLocalStorageToken();
-  document.cookie = `${encodeURIComponent(ACCESS_TOKEN_COOKIE)}=; ${cookieAttributeString(0)}`;
-}
-
-export function isAuthenticated(): boolean {
-  return Boolean(getStoredToken());
-}
-
 export class ApiRequestError extends Error {
   status: number;
   retryAfter?: number;
@@ -283,6 +235,11 @@ function observeRateLimit(
   }
 
   if (response.status === 429) {
+    // Session discovery is background lifecycle work, not a user action.
+    // Its limiter must not create a global client cooldown or toast.
+    if (isBackgroundSessionProbe(endpoint, method)) {
+      return;
+    }
     const resolved = resolveExceededAction(name, action);
     notifyRateLimit({
       type: "exceeded",
@@ -347,34 +304,36 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     }
   }
 
-  const token = getStoredToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "application/json",
     ...(options.headers as Record<string, string>),
   };
 
-  const attachToken = Boolean(token) && !isAuthSessionEndpoint(endpoint);
-
-  if (attachToken && token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
+  // The HttpOnly session cookie is sent automatically via credentials.
+  // Any non-auth-session request that comes back 401 means the session is
+  // no longer valid (never set, expired, or revoked), so it should redirect
+  // to login. isPublicAuthPath below still guards against redirect loops on
+  // the login/register pages themselves.
+  const attachToken = !isAuthSessionEndpoint(endpoint);
 
   const url = formatEndpoint(endpoint);
   const response = await fetch(url, {
     ...options,
     headers,
+    credentials: "same-origin",
   });
 
   observeRateLimit(response, endpoint, method);
 
   if (response.ok && isAuthSessionEndpoint(endpoint)) {
-    clearAuthCooldowns();
+    clearAuthCooldowns({
+      clearGlobal: isAuthEstablishEndpoint(endpoint),
+    });
   }
 
   // Failed login/register is 401 and must not wipe an existing session.
   if (response.status === 401 && attachToken) {
-    removeStoredToken();
     notifySessionExpired();
     if (isBrowser() && !isPublicAuthPath(window.location.pathname)) {
       window.location.assign("/login");
@@ -452,6 +411,7 @@ export const api = {
   logout: (): Promise<{ success: boolean }> =>
     fetchWithAuth("/auth/logout", {
       method: "POST",
+      keepalive: true,
     }),
 
   getMe: () => fetchWithAuth("/users/me"),
@@ -713,6 +673,23 @@ export const api = {
     const data = (await fetchWithAuth("/transactions?page=1&pageSize=100")) as
       UserTransaction[] | PaginatedResponse<UserTransaction>;
     return normalizePage(data, 1, 100).items;
+  },
+
+  getAllTransactions: async (): Promise<UserTransaction[]> => {
+    const pageSize = 100;
+    const items: UserTransaction[] = [];
+    let page = 1;
+    let total = 0;
+    do {
+      const response = await api.getTransactionsPage({
+        page,
+        pageSize,
+      });
+      items.push(...response.items);
+      total = response.total;
+      page += 1;
+    } while (items.length < total);
+    return items;
   },
 
   getTransactionsPage: async <

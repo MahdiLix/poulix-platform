@@ -31,4 +31,53 @@ describe("ProfileMenu logout", () => {
     fireEvent.click(screen.getByRole("button", { name: /log out|خروج/i }));
     expect(signOut).toHaveBeenCalledOnce();
   });
+
+  it("links remaining account pages from the panel", () => {
+    render(
+      <LanguageProvider>
+        <ProfileMenu />
+      </LanguageProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "TU" }));
+    const hrefs = screen
+      .getAllByRole("link")
+      .map((link) => link.getAttribute("href"));
+    expect(hrefs).toEqual([
+      "/",
+      "/statistics",
+      "/history",
+      "/send",
+      "/deposit",
+      "/transfer",
+      "/scheduled",
+      "/goals",
+      "/envelopes",
+      "/destinations",
+      "/notifications",
+      "/security",
+      "/profile",
+    ]);
+    expect(screen.getByRole("link", { name: /security/i })).toHaveAttribute(
+      "href",
+      "/security",
+    );
+    expect(
+      screen.getByRole("link", { name: /saved destinations/i }),
+    ).toHaveAttribute("href", "/destinations");
+    expect(screen.getByRole("link", { name: /saving goals/i })).toHaveAttribute(
+      "href",
+      "/goals",
+    );
+    expect(
+      screen.getByRole("link", { name: /virtual envelopes/i }),
+    ).toHaveAttribute("href", "/envelopes");
+    expect(
+      screen.getByRole("link", { name: /scheduled payments/i }),
+    ).toHaveAttribute("href", "/scheduled");
+    expect(screen.getByRole("link", { name: /notifications/i })).toHaveAttribute(
+      "href",
+      "/notifications",
+    );
+  });
 });

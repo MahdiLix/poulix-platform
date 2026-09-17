@@ -1,23 +1,54 @@
 export const SESSION_EXPIRED_EVENT = "poulix:session-expired";
-export const SESSION_SYNC_STORAGE_KEY = "poulix:session-sync";
+const SESSION_CHANNEL = "poulix-session";
 
 const PUBLIC_AUTH_PATHS = ["/login", "/register", "/deposit/callback"];
+const CREDENTIAL_PATHS = ["/login", "/register"];
 
-export function isPublicAuthPath(pathname: string): boolean {
-  return PUBLIC_AUTH_PATHS.some(
+function matchesPath(pathname: string, prefixes: string[]) {
+  return prefixes.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   );
 }
 
+export function isPublicAuthPath(pathname: string): boolean {
+  return matchesPath(pathname, PUBLIC_AUTH_PATHS);
+}
+
+export function isCredentialPath(pathname: string): boolean {
+  return matchesPath(pathname, CREDENTIAL_PATHS);
+}
+
 export function broadcastSessionLogout() {
-  if (typeof window === "undefined") return;
+  if (
+    typeof window === "undefined" ||
+    typeof BroadcastChannel === "undefined"
+  ) {
+    return;
+  }
   try {
-    window.localStorage.setItem(
-      SESSION_SYNC_STORAGE_KEY,
-      JSON.stringify({ type: "logout", at: Date.now() }),
-    );
+    const channel = new BroadcastChannel(SESSION_CHANNEL);
+    channel.postMessage({ type: "logout", at: Date.now() });
+    channel.close();
   } catch {
-    // Storage can be unavailable in private browsing.
+    // BroadcastChannel can be unavailable in some privacy modes.
+  }
+}
+
+export function subscribeSessionLogout(onLogout: () => void) {
+  if (
+    typeof window === "undefined" ||
+    typeof BroadcastChannel === "undefined"
+  ) {
+    return () => {};
+  }
+  try {
+    const channel = new BroadcastChannel(SESSION_CHANNEL);
+    channel.onmessage = (event) => {
+      if (event.data?.type === "logout") onLogout();
+    };
+    return () => channel.close();
+  } catch {
+    return () => {};
   }
 }
 

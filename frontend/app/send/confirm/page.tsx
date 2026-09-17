@@ -129,8 +129,7 @@ function ConfirmContent() {
       if (payload.envelopeId) {
         const envelopes = await api.getEnvelopes().catch(() => null);
         const envelope = envelopes?.envelopes?.find(
-          (item) =>
-            item.id === payload.envelopeId && item.status === "ACTIVE",
+          (item) => item.id === payload.envelopeId && item.status === "ACTIVE",
         );
         if (envelopes && !envelope) {
           setError(t.messages.envelopeNotActive);

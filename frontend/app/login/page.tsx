@@ -173,8 +173,8 @@ export default function LoginPage() {
 
       <div className="flex flex-1 flex-col">
         <div className="flex items-center justify-end gap-2 p-4 lg:p-6">
-          <LanguageToggle />
           <ThemeToggle />
+          <LanguageToggle />
         </div>
 
         <div className="flex flex-1 flex-col items-center justify-center px-6 pb-10">

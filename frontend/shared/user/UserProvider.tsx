@@ -15,9 +15,10 @@ import { getUserInitials } from "@/shared/user/displayName";
 import { clearSavedBalanceForUser } from "@/features/wallet/hooks/useWalletBalance";
 import {
   SESSION_EXPIRED_EVENT,
-  SESSION_SYNC_STORAGE_KEY,
   broadcastSessionLogout,
+  isCredentialPath,
   isPublicAuthPath,
+  subscribeSessionLogout,
 } from "@/shared/user/session";
 
 type UserStatus = "loading" | "ready" | "unauthenticated" | "error";
@@ -32,24 +33,23 @@ type UserContextType = {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 const SESSION_RECHECK_INTERVAL_MS = 5_000;
 
-function isCredentialPath(pathname: string) {
-  return (
-    pathname === "/login" ||
-    pathname.startsWith("/login/") ||
-    pathname === "/register" ||
-    pathname.startsWith("/register/")
-  );
-}
-
 function redirectToLogin() {
   if (typeof window === "undefined") return;
   if (isPublicAuthPath(window.location.pathname)) return;
   window.location.assign("/login");
 }
 
-export function UserProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [status, setStatus] = useState<UserStatus>("loading");
+export function UserProvider({
+  children,
+  initialUser = null,
+}: {
+  children: ReactNode;
+  initialUser?: AuthUser | null;
+}) {
+  const [user, setUser] = useState<AuthUser | null>(initialUser);
+  const [status, setStatus] = useState<UserStatus>(
+    initialUser ? "ready" : "loading",
+  );
   const signingOut = useRef(false);
   const redirected = useRef(false);
   const userRef = useRef<AuthUser | null>(null);
@@ -139,7 +139,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
         scheduleExpiry(data.expiresAt);
       } catch (err) {
         const unauthorized =
-          err instanceof ApiRequestError && err.status === 401;
+          err instanceof ApiRequestError &&
+          (err.status === 401 || err.status === 403);
         if (unauthorized) {
           clearExpiryTimer();
           setUser(null);
@@ -182,8 +183,19 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, [clearExpiryTimer, scheduleExpiry]);
 
   useEffect(() => {
+    if (initialUser) {
+      scheduleExpiry(initialUser.expiresAt);
+      return;
+    }
+    if (
+      typeof window !== "undefined" &&
+      isCredentialPath(window.location.pathname)
+    ) {
+      setStatus("unauthenticated");
+      return;
+    }
     void refresh();
-  }, [refresh]);
+  }, [initialUser, refresh, scheduleExpiry]);
 
   useEffect(() => {
     return () => clearExpiryTimer();
@@ -193,9 +205,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
     function onExpired() {
       signOut();
     }
-    function onStorage(event: StorageEvent) {
-      if (event.key === SESSION_SYNC_STORAGE_KEY) signOut();
-    }
     function recheckSession() {
       void refresh();
     }
@@ -203,14 +212,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
       if (document.visibilityState === "visible") recheckSession();
     }
     window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
-    window.addEventListener("storage", onStorage);
     window.addEventListener("focus", recheckSession);
     document.addEventListener("visibilitychange", onVisibilityChange);
+    const unsubscribe = subscribeSessionLogout(() => {
+      void signOut();
+    });
     return () => {
       window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
-      window.removeEventListener("storage", onStorage);
       window.removeEventListener("focus", recheckSession);
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      unsubscribe();
     };
   }, [refresh, signOut]);
 

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { collectWithdrawDestinationValues, validateWithdrawAmount } from "./withdraw";
+import {
+  collectWithdrawDestinationValues,
+  validateWithdrawAmount,
+} from "./withdraw";
 import { en } from "@/shared/i18n/messages/en";
 
 describe("saved withdrawal destinations", () => {
@@ -18,8 +21,8 @@ describe("saved withdrawal destinations", () => {
   });
 
   it("rejects an amount that exceeds remaining spending limit", () => {
-    expect(
-      validateWithdrawAmount("100000", en.messages, 500_000, 50_000),
-    ).toBe(en.messages.spendingLimitExceeded);
+    expect(validateWithdrawAmount("100000", en.messages, 500_000, 50_000)).toBe(
+      en.messages.spendingLimitExceeded,
+    );
   });
 });

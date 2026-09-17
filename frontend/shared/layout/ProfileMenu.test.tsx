@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { LanguageProvider } from "@/shared/i18n/LanguageProvider";
+import { ThemeProvider } from "@/shared/theme/ThemeProvider";
 import { ProfileMenu } from "@/shared/layout/ProfileMenu";
 
 const { signOut } = vi.hoisted(() => ({ signOut: vi.fn() }));
@@ -22,9 +23,11 @@ vi.mock("@/shared/user/UserProvider", () => ({
 describe("ProfileMenu logout", () => {
   it("places logout in the panel and calls the shared signOut", () => {
     render(
-      <LanguageProvider>
-        <ProfileMenu />
-      </LanguageProvider>,
+      <ThemeProvider>
+        <LanguageProvider>
+          <ProfileMenu />
+        </LanguageProvider>
+      </ThemeProvider>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "TU" }));
@@ -34,9 +37,11 @@ describe("ProfileMenu logout", () => {
 
   it("links remaining account pages from the panel", () => {
     render(
-      <LanguageProvider>
-        <ProfileMenu />
-      </LanguageProvider>,
+      <ThemeProvider>
+        <LanguageProvider>
+          <ProfileMenu />
+        </LanguageProvider>
+      </ThemeProvider>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "TU" }));
@@ -75,9 +80,8 @@ describe("ProfileMenu logout", () => {
     expect(
       screen.getByRole("link", { name: /scheduled payments/i }),
     ).toHaveAttribute("href", "/scheduled");
-    expect(screen.getByRole("link", { name: /notifications/i })).toHaveAttribute(
-      "href",
-      "/notifications",
-    );
+    expect(
+      screen.getByRole("link", { name: /notifications/i }),
+    ).toHaveAttribute("href", "/notifications");
   });
 });

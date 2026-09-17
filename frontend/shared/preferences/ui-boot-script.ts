@@ -1,0 +1,4 @@
+import { LANGUAGE_COOKIE } from "@/shared/i18n/language-cookie";
+import { THEME_COOKIE } from "@/shared/theme/theme-cookie";
+
+export const UI_BOOT_SCRIPT = `try{var r=document.documentElement;var lm=document.cookie.match(/(?:^|; )${LANGUAGE_COOKIE}=([^;]*)/);var lang=lm&&decodeURIComponent(lm[1])==='fa'?'fa':'en';r.lang=lang;if(lang==='fa'){r.dir='rtl';r.classList.add('rtl')}else{r.dir='ltr';r.classList.remove('rtl')}var theme;var tm=document.cookie.match(/(?:^|; )${THEME_COOKIE}=([^;]*)/);if(tm){try{theme=decodeURIComponent(tm[1])}catch(e){theme=tm[1]}}if(theme!=='light'&&theme!=='dark'){theme=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var secure=location.protocol==='https:'?'; Secure':'';document.cookie='${THEME_COOKIE}='+theme+'; Path=/; Max-Age=31536000; SameSite=Lax'+secure}if(theme==='dark'){r.classList.add('dark')}else{r.classList.remove('dark')}r.style.colorScheme=theme}catch(e){}`;

@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { PATHNAME_HEADER } from "@/shared/user/pathname-header";
 
 const PROTECTED_PREFIXES = [
   "/",
   "/transfer",
   "/send",
+  "/deposit",
   "/scheduled",
   "/goals",
   "/envelopes",
@@ -38,6 +40,14 @@ function clearClientSession(response: NextResponse) {
     httpOnly: true,
     sameSite: "lax",
     secure,
+  });
+}
+
+function nextWithPath(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(PATHNAME_HEADER, request.nextUrl.pathname);
+  return NextResponse.next({
+    request: { headers: requestHeaders },
   });
 }
 
@@ -89,21 +99,11 @@ export function proxy(request: NextRequest) {
 
   if (isPublic) {
     if (token && tokenExpired) {
-      const response = NextResponse.next();
+      const response = nextWithPath(request);
       clearClientSession(response);
       return response;
     }
-    if (
-      token &&
-      !tokenExpired &&
-      (pathname === "/login" ||
-        pathname === "/register" ||
-        pathname.startsWith("/login/") ||
-        pathname.startsWith("/register/"))
-    ) {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-    return NextResponse.next();
+    return nextWithPath(request);
   }
 
   const isProtected =
@@ -124,7 +124,7 @@ export function proxy(request: NextRequest) {
     return response;
   }
 
-  return NextResponse.next();
+  return nextWithPath(request);
 }
 
 // Keep middleware export alias for compatibility

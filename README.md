@@ -14,17 +14,25 @@ Repository: **[https://github.com/MahdiLix/Poulix-Platform](https://github.com/M
 - **TypeScript**
 - **Prisma 7**
 - **PostgreSQL**
+- **Redis**
 - **JWT**
+- **Passport**
+- **Helmet**
+- **Pino**
+- **NestJS Throttler**
 - **Jest / Supertest**
 
 
 
 ### Frontend
 
+- **Next.js 16** 
 - **React**
 - **TypeScript**
-- **HTML / CSS**
+- **Tailwind CSS 4**
+- **English / Persian (RTL)**
 - **Cookie-based Authentication**
+- **Vitest / Playwright**
 
 
 
@@ -41,6 +49,7 @@ Repository: **[https://github.com/MahdiLix/Poulix-Platform](https://github.com/M
 - **Docker**
 - **Docker Compose**
 - **Nginx**
+- **Redis**
 - **Cloudflare**
 - **Linux VPS**
 - **GitHub**
@@ -55,6 +64,8 @@ Repository: **[https://github.com/MahdiLix/Poulix-Platform](https://github.com/M
 - **Password Hashing**
 - **Protected Routes**
 - **Account Lockout**
+- **Rate Limiting**
+- **Helmet**
 - **Audit Logging**
 - **HTTPS**
 

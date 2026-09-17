@@ -44,36 +44,36 @@ export const RATE_LIMIT_NAMES = {
 export type RateLimitName =
   (typeof RATE_LIMIT_NAMES)[keyof typeof RATE_LIMIT_NAMES];
 
-  export const PRODUCTION_RATE_LIMITS: RateLimitLimits = {
-    burst: { limit: 15, ttlMs: 10_000 },
-  
-    short: { limit: 60, ttlMs: 60_000 },
-  
-    user: { limit: 300, ttlMs: 5 * 60_000 },
-  
-    login: { limit: 5, ttlMs: 60_000 },
-  
-    register: { limit: 2, ttlMs: 5 * 60_000 },
-  
-    deposit: { limit: 3, ttlMs: 60_000 },
-  
-    withdraw: { limit: 3, ttlMs: 60_000 },
-  
-    transfer: { limit: 5, ttlMs: 60_000 },
-  
-    payments: { limit: 3, ttlMs: 60_000 },
-  
-    destinations: { limit: 5, ttlMs: 60_000 },
-  
-    scheduled: { limit: 5, ttlMs: 60_000 },
-  
-    securityLimits: { limit: 5, ttlMs: 60_000 },
-  
-    accountLockout: {
-      maxFailedAttempts: 5,
-      lockTtlMs: 15 * 60_000,
-    },
-  };
+export const PRODUCTION_RATE_LIMITS: RateLimitLimits = {
+  burst: { limit: 15, ttlMs: 10_000 },
+
+  short: { limit: 60, ttlMs: 60_000 },
+
+  user: { limit: 300, ttlMs: 5 * 60_000 },
+
+  login: { limit: 5, ttlMs: 60_000 },
+
+  register: { limit: 2, ttlMs: 5 * 60_000 },
+
+  deposit: { limit: 3, ttlMs: 60_000 },
+
+  withdraw: { limit: 3, ttlMs: 60_000 },
+
+  transfer: { limit: 5, ttlMs: 60_000 },
+
+  payments: { limit: 3, ttlMs: 60_000 },
+
+  destinations: { limit: 5, ttlMs: 60_000 },
+
+  scheduled: { limit: 5, ttlMs: 60_000 },
+
+  securityLimits: { limit: 5, ttlMs: 60_000 },
+
+  accountLockout: {
+    maxFailedAttempts: 5,
+    lockTtlMs: 15 * 60_000,
+  },
+};
 
 export const TEST_RATE_LIMITS: RateLimitLimits = {
   burst: { limit: 5, ttlMs: 10_000 },

@@ -77,6 +77,8 @@ services:
       context: ./frontend
       args:
         BACKEND_URL: ${BACKEND_URL:-http://backend:3001}
+    environment:
+      BACKEND_URL: ${BACKEND_URL:-http://backend:3001}
     restart: unless-stopped
     networks:
       - poulix

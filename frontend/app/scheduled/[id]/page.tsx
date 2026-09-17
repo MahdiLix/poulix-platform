@@ -9,10 +9,7 @@ import { Card } from "@/shared/ui/Card";
 import { api } from "@/shared/api";
 import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
-import {
-  formatDisplayDateTime,
-  formatScheduleDate,
-} from "@/shared/i18n/dates";
+import { formatDisplayDateTime, formatScheduleDate } from "@/shared/i18n/dates";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
 import {

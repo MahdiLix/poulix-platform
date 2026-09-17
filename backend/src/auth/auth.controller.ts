@@ -71,8 +71,6 @@ export class AuthController {
     result: Awaited<ReturnType<AuthService['login']>>,
   ) {
     setSessionCookie(res, result.accessToken);
-    return process.env.NODE_ENV === 'test'
-      ? result
-      : { user: result.user };
+    return process.env.NODE_ENV === 'test' ? result : { user: result.user };
   }
 }

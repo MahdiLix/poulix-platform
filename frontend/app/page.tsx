@@ -18,7 +18,7 @@ import {
   Send,
   Shield,
   Target,
-  WalletCards,
+  Wallet,
 } from "lucide-react";
 import { AppShell } from "@/shared/layout/AppShell";
 import { Card } from "@/shared/ui/Card";
@@ -295,8 +295,8 @@ export default function HomePage() {
   const displayOffer = offer ? localizeOfferCopy(offer, t.home) : null;
 
   const openTopUp = (fromOffer = false) => {
-    if (authStatus !== "ready") router.push("/login");
-    else {
+    if (authStatus === "unauthenticated") router.push("/login");
+    else if (authStatus === "ready") {
       if (fromOffer && offer) activateHomepageOffer(offer, user?.id);
       setIsDepositOpen(true);
     }
@@ -420,7 +420,7 @@ export default function HomePage() {
           <div className="fintech-grid-pattern pointer-events-none absolute inset-0 z-0 opacity-60" />
           <div className="relative z-10 flex min-w-0 items-center gap-4">
             <span className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.2)] sm:flex">
-              <WalletCards className="h-7 w-7 text-cyan-200" />
+              <Wallet className="h-7 w-7 text-cyan-200" />
             </span>
             <div className="min-w-0">
               <h1 className="text-lg font-black tracking-tight sm:text-2xl">
@@ -539,7 +539,7 @@ export default function HomePage() {
           <DashboardMetricCard
             label={t.home.netThisMonth}
             value={formatIrr(stats.net, currency)}
-            icon={WalletCards}
+            icon={Wallet}
             tone={stats.net >= 0 ? "emerald" : "rose"}
             caption={t.home.thisMonth}
             spark={chartSeries[0]?.data.map((d) => d.value) ?? []}

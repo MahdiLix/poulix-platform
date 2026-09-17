@@ -156,7 +156,10 @@ export function formatDisplayDate(
   }).format(date);
 }
 
-export function formatScheduleDate(value: Date | string | number, language: Language): string {
+export function formatScheduleDate(
+  value: Date | string | number,
+  language: Language,
+): string {
   const date =
     typeof value === "string" && ISO_DATE_ONLY.test(value.trim())
       ? new Date(`${value.trim()}T00:00:00.000Z`)

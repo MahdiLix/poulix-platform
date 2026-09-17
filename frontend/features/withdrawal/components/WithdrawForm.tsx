@@ -149,7 +149,9 @@ export function WithdrawForm() {
     setLoading(true);
 
     try {
-      const latestLimits = await api.getSpendingLimits().catch(() => spendLimits);
+      const latestLimits = await api
+        .getSpendingLimits()
+        .catch(() => spendLimits);
       setSpendLimits(latestLimits);
       const remainingLimit = minRemainingLimit(latestLimits, [
         "DAILY_WITHDRAWAL",

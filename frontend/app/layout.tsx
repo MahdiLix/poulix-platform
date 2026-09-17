@@ -1,10 +1,24 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import { Geist, Geist_Mono, Vazirmatn } from "next/font/google";
 import { ThemeProvider } from "@/shared/theme/ThemeProvider";
 import { LanguageProvider } from "@/shared/i18n/LanguageProvider";
 import { UserProvider } from "@/shared/user/UserProvider";
 import { ToastProvider } from "@/shared/ui/Toast";
 import { RateLimitProvider } from "@/shared/rate-limit";
+import {
+  LANGUAGE_COOKIE,
+  languageDirection,
+  parseLanguageCookie,
+} from "@/shared/i18n/language-cookie";
+import {
+  THEME_COOKIE,
+  parseThemeCookie,
+  themeClassName,
+} from "@/shared/theme/theme-cookie";
+import { UI_BOOT_SCRIPT } from "@/shared/preferences/ui-boot-script";
+import { loadLayoutSession } from "@/shared/user/get-session-user";
+import { cn } from "@/shared/cn";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -43,26 +57,42 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-const langBootScript = `try{var m=document.cookie.match(/poulix_lang=([^;]+)/);if(m&&m[1]==='fa'){document.documentElement.lang='fa';document.documentElement.dir='rtl';document.documentElement.classList.add('rtl')}}catch(e){}`;
+export const dynamic = "force-dynamic";
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const cookieStore = await cookies();
+  const language = parseLanguageCookie(cookieStore.get(LANGUAGE_COOKIE)?.value);
+  const theme = parseThemeCookie(cookieStore.get(THEME_COOKIE)?.value);
+  const dir = languageDirection(language);
+  const themeClass = themeClassName(theme);
+  const { user } = await loadLayoutSession();
+
   return (
     <html
-      lang="en"
+      lang={language}
+      dir={dir}
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${vazirmatn.variable} h-full antialiased`}
+      className={cn(
+        geistSans.variable,
+        geistMono.variable,
+        vazirmatn.variable,
+        "h-full antialiased",
+        language === "fa" && "rtl",
+        themeClass,
+      )}
+      style={{ colorScheme: theme }}
     >
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: langBootScript,
+            __html: UI_BOOT_SCRIPT,
           }}
         />
       </head>
       <body className="min-h-full bg-canvas font-sans text-foreground">
-        <ThemeProvider>
-          <LanguageProvider>
-            <UserProvider>
+        <ThemeProvider initialTheme={theme}>
+          <LanguageProvider initialLanguage={language}>
+            <UserProvider initialUser={user}>
               <ToastProvider>
                 <RateLimitProvider>{children}</RateLimitProvider>
               </ToastProvider>

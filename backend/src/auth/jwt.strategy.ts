@@ -20,7 +20,14 @@ function tokenFromRequest(request: {
     .split(';')
     .map((value) => value.trim())
     .find((value) => value.startsWith(`${SESSION_COOKIE}=`));
-  return entry ? decodeURIComponent(entry.slice(SESSION_COOKIE.length + 1)) : null;
+  if (!entry) {
+    return null;
+  }
+  try {
+    return decodeURIComponent(entry.slice(SESSION_COOKIE.length + 1));
+  } catch {
+    return null;
+  }
 }
 
 @Injectable()

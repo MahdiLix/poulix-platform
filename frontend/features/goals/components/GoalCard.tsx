@@ -23,10 +23,7 @@ import { Button } from "@/shared/ui/Button";
 import { Badge } from "@/shared/ui/Badge";
 import { ProgressBar } from "@/shared/ui/ProgressBar";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
-import {
-  formatDisplayDateTime,
-  formatScheduleDate,
-} from "@/shared/i18n/dates";
+import { formatDisplayDateTime, formatScheduleDate } from "@/shared/i18n/dates";
 import { formatIrr } from "@/features/wallet/lib/wallet";
 import {
   goalProgressPercent,

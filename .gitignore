@@ -7,6 +7,10 @@
 !.env.docker.example
 !.env.production.example
 !.env.docker.ci.example
+.env.docker.ci
+
+# html source
+poulix-home.html
 
 # OS / editor
 .DS_Store

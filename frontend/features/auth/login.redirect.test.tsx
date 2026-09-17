@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import LoginPage from "@/app/login/page";
 import { LanguageProvider } from "@/shared/i18n/LanguageProvider";
+import { ThemeProvider } from "@/shared/theme/ThemeProvider";
 
 const loginAndStoreSession = vi.fn();
 
@@ -58,9 +59,11 @@ describe("login redirect", () => {
     });
 
     render(
-      <LanguageProvider>
-        <LoginPage />
-      </LanguageProvider>,
+      <ThemeProvider>
+        <LanguageProvider>
+          <LoginPage />
+        </LanguageProvider>
+      </ThemeProvider>,
     );
 
     fireEvent.change(screen.getByPlaceholderText("sara"), {

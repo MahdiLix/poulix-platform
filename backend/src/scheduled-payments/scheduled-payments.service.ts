@@ -529,7 +529,9 @@ export class ScheduledPaymentsService {
     return this.withScheduleProjection(updatedPayment);
   }
 
-  private withScheduleProjection<T extends ScheduleProjectionInput>(payment: T) {
+  private withScheduleProjection<T extends ScheduleProjectionInput>(
+    payment: T,
+  ) {
     const followingExecutionAt = computeNextExecutionAt(
       payment.startDate,
       payment.frequency,
@@ -548,10 +550,7 @@ export class ScheduledPaymentsService {
   }
 
   private upcomingExecutions(payment: ScheduleProjectionInput): Date[] {
-    if (
-      payment.status !== 'ACTIVE' &&
-      payment.status !== 'PAUSED'
-    ) {
+    if (payment.status !== 'ACTIVE' && payment.status !== 'PAUSED') {
       return [];
     }
 

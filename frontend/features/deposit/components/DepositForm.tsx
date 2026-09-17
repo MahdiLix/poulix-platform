@@ -74,9 +74,15 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
       return;
     }
 
-    if (authStatus !== "ready") {
+    if (authStatus === "unauthenticated") {
       setError(t.messages.pleaseSignInToDeposit);
       router.push("/login");
+      return;
+    }
+    if (authStatus !== "ready") {
+      if (authStatus === "error") {
+        setError(t.messages.genericError);
+      }
       return;
     }
 
@@ -90,7 +96,11 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
 
     try {
       if (activeOffer) consumeActiveOffer();
-      await startZarinpalDeposit(numericAmount, t.messages, authStatus === "ready");
+      await startZarinpalDeposit(
+        numericAmount,
+        t.messages,
+        authStatus === "ready",
+      );
     } catch (err: unknown) {
       setError(localizeError(err, t.messages, "depositFailedGeneric"));
       setLoading(false);
@@ -226,7 +236,7 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
 
       <Button
         type="submit"
-        disabled={loading || blocked}
+        disabled={loading || blocked || authStatus === "loading"}
         size="lg"
         className="h-12 text-base"
       >

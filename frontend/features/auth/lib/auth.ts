@@ -59,8 +59,7 @@ export async function loginAndStoreSession(
 
   if (!response?.user) {
     throw new Error(
-      messages?.loginNoToken ||
-        "Login succeeded but no session was returned",
+      messages?.loginNoToken || "Login succeeded but no session was returned",
     );
   }
 

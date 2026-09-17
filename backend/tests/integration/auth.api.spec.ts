@@ -39,7 +39,9 @@ describe('Auth API', () => {
     expect(response.body.user.email).toBe(user.email);
     expect(response.body.user).not.toHaveProperty('passwordHash');
     expect(typeof response.body.user.expiresAt).toBe('string');
-    expect(Date.parse(response.body.user.expiresAt)).toBeGreaterThan(Date.now());
+    expect(Date.parse(response.body.user.expiresAt)).toBeGreaterThan(
+      Date.now(),
+    );
     expect(typeof response.body.accessToken).toBe('string');
     expect(response.body.accessToken.length).toBeGreaterThan(20);
   });
@@ -67,7 +69,9 @@ describe('Auth API', () => {
 
     expect(response.body.user.id).toBe(registered.body.user.id);
     expect(typeof response.body.user.expiresAt).toBe('string');
-    expect(Date.parse(response.body.user.expiresAt)).toBeGreaterThan(Date.now());
+    expect(Date.parse(response.body.user.expiresAt)).toBeGreaterThan(
+      Date.now(),
+    );
     expect(typeof response.body.accessToken).toBe('string');
     expect(response.body.accessToken.length).toBeGreaterThan(20);
   });

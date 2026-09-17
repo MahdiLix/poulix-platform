@@ -1,20 +1,38 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { LanguageProvider } from "@/shared/i18n/LanguageProvider";
 import { LanguageToggle } from "@/shared/theme/LanguageToggle";
 import { Spinner } from "@/shared/ui/Spinner";
 import NotFoundPage from "@/app/not-found";
 
 describe("LanguageToggle", () => {
-  it("renders separate EN and FA buttons without a pipe separator", () => {
+  it("shows the next language on a single circular button", () => {
     render(
-      <LanguageProvider>
+      <LanguageProvider initialLanguage="en">
         <LanguageToggle />
       </LanguageProvider>,
     );
-    expect(screen.getByRole("button", { name: "EN" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "FA" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Switch to Persian" }),
+    ).toHaveTextContent("FA");
+    expect(screen.queryByText("EN")).not.toBeInTheDocument();
     expect(screen.queryByText("|")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch to Persian" }));
+    expect(
+      screen.getByRole("button", { name: "Switch to English" }),
+    ).toHaveTextContent("EN");
+  });
+
+  it("uses the server language on the first render", () => {
+    render(
+      <LanguageProvider initialLanguage="fa">
+        <LanguageToggle />
+      </LanguageProvider>,
+    );
+    expect(
+      screen.getByRole("button", { name: "Switch to English" }),
+    ).toHaveTextContent("EN");
   });
 });
 
@@ -29,7 +47,7 @@ describe("Spinner", () => {
 describe("404 page", () => {
   it("renders the custom not found page", () => {
     render(
-      <LanguageProvider>
+      <LanguageProvider initialLanguage="en">
         <NotFoundPage />
       </LanguageProvider>,
     );

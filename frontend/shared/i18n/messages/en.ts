@@ -3,7 +3,7 @@ import type { TranslationDictionary } from "./types";
 export const en: TranslationDictionary = {
   common: {
     appName: "Poulix",
-    welcomeBack: "Welcome back",
+    welcomeBack: "Welcome back to poulix",
     guestUser: "Guest User",
     loggedIn: "Logged in",
     signIn: "Sign in",
@@ -23,7 +23,7 @@ export const en: TranslationDictionary = {
     done: "Done",
     loading: "Loading...",
     currency: "IRR",
-    welcomeToPoulix: "Welcome to Poulix",
+    welcomeToPoulix: "Polix, your smart wallet",
     pageNotFound: "Page not found",
     pageNotFoundSub: "This page does not exist or is no longer available.",
     goHome: "Back to home",
@@ -104,7 +104,7 @@ export const en: TranslationDictionary = {
     securityDesc: "Protect your account",
     overviewEyebrow: "Overview",
     greeting: "Welcome to Poulix",
-    welcomeToPoulix: "Welcome to Poulix",
+    welcomeToPoulix: "Polix, your smart wallet",
     walletInsight: "Your wallet is up {percent} this month",
     walletInsightFlat: "Your wallet this month",
     allocated: "Allocated",
@@ -130,7 +130,7 @@ export const en: TranslationDictionary = {
     },
   },
   auth: {
-    welcomeTitle: "Welcome back",
+    welcomeTitle: "Welcome back to poulix",
     loginSub: "Sign in to Poulix",
     joinTitle: "Join Poulix",
     registerHeading: "Create your account",
@@ -857,7 +857,7 @@ export const en: TranslationDictionary = {
     withdrewAmount: "Withdrew {amount}",
     tooManyRequests: "Too many requests",
     accountTemporarilyLocked: "Account temporarily locked",
-    rateLimitNearLimit: "⚠️ You are approaching the request limit.",
+    rateLimitNearLimit: "You are approaching the request limit.",
     rateLimitBurstExceeded: "Too many requests have been sent.",
     rateLimitBurstExceededDetail:
       "Some actions are paused temporarily. Please wait until this limit ends.",

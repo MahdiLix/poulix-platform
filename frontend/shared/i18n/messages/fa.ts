@@ -3,7 +3,7 @@ import type { TranslationDictionary } from "./types";
 export const fa: TranslationDictionary = {
   common: {
     appName: "پولیکس",
-    welcomeBack: "خوش آمدید",
+    welcomeBack: "به پولیکس خوش آمدید",
     guestUser: "کاربر مهمان",
     loggedIn: "وارد شده",
     signIn: "ورود",
@@ -23,7 +23,7 @@ export const fa: TranslationDictionary = {
     done: "انجام شد",
     loading: "در حال بارگذاری...",
     currency: "ریال",
-    welcomeToPoulix: "به پولیکس خوش آمدید",
+    welcomeToPoulix: "پولیکس، کیف پول هوشمند تو",
     pageNotFound: "صفحه پیدا نشد",
     pageNotFoundSub: "این صفحه وجود ندارد یا دیگر در دسترس نیست.",
     goHome: "بازگشت به خانه",
@@ -104,7 +104,7 @@ export const fa: TranslationDictionary = {
     securityDesc: "محافظت از حساب کاربری",
     overviewEyebrow: "نمای کلی",
     greeting: "به پولیکس خوش آمدید",
-    welcomeToPoulix: "به پولیکس خوش آمدید",
+    welcomeToPoulix: "پولیکس، کیف پول هوشمند تو",
     walletInsight: "کیف پول شما این ماه {percent} رشد داشته",
     walletInsightFlat: "کیف پول شما در این ماه",
     allocated: "تخصیص‌یافته",
@@ -130,7 +130,7 @@ export const fa: TranslationDictionary = {
     },
   },
   auth: {
-    welcomeTitle: "خوش آمدید",
+    welcomeTitle: "به پولیکس خوش آمدید",
     loginSub: "ورود به پولیکس",
     joinTitle: "عضویت در پولیکس",
     registerHeading: "ساخت حساب کاربری",
@@ -791,7 +791,8 @@ export const fa: TranslationDictionary = {
     failedToSaveDestination: "ذخیره مقصد ناموفق بود",
     failedToLoadSecurity: "بارگذاری تنظیمات امنیتی ناموفق بود",
     spendingLimitExceeded: "محدودیت هزینه رد شد",
-    tooManyFailedFinancialAttempts: "تعداد تلاش‌های مالی ناموفق بیش از حد مجاز است",
+    tooManyFailedFinancialAttempts:
+      "تعداد تلاش‌های مالی ناموفق بیش از حد مجاز است",
     failedToLoadAdmin: "بارگذاری داده مدیریت ناموفق بود",
     adminAccessRequired: "دسترسی مدیر لازم است",
     accountDisabled: "حساب غیرفعال است",
@@ -853,7 +854,7 @@ export const fa: TranslationDictionary = {
     withdrewAmount: "مبلغ {amount} برداشت شد",
     tooManyRequests: "تعداد درخواست‌ها بیش از حد مجاز است",
     accountTemporarilyLocked: "حساب موقتاً قفل شده است",
-    rateLimitNearLimit: "⚠️ شما به محدودیت درخواست نزدیک شده‌اید.",
+    rateLimitNearLimit: "شما به محدودیت درخواست نزدیک شده‌اید.",
     rateLimitBurstExceeded: "تعداد درخواست‌ها بیش از حد مجاز شده است.",
     rateLimitBurstExceededDetail:
       "برخی عملیات موقتاً متوقف شده‌اند. لطفاً تا پایان این محدودیت صبر کنید.",

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@/shared/theme/ThemeProvider";
 import { cn } from "@/shared/cn";
@@ -12,20 +11,15 @@ export function ThemeToggle({
   className?: string;
   variant?: "default" | "sidebar" | "compact";
 }) {
-  const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  const isDark = mounted && resolvedTheme === "dark";
+  const { resolvedTheme, toggleTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   const isSidebar = variant === "sidebar";
   const isCompact = variant === "compact" || isSidebar;
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   return (
     <button
       type="button"
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      onClick={toggleTheme}
       aria-label="Toggle color theme"
       className={cn(
         "inline-flex cursor-pointer items-center gap-1 transition active:scale-95",
@@ -38,23 +32,23 @@ export function ThemeToggle({
       <Sun
         className={cn(
           isCompact ? "h-3 w-3" : "h-3.5 w-3.5",
-          mounted && !isDark && "text-primary",
+          !isDark && "text-accent-amber",
         )}
       />
       <span
         className={cn(
-          "relative rounded-full transition",
+          "relative rounded-full shadow-inner transition",
           isCompact ? "h-4 w-7" : "h-5 w-9",
           isDark
-            ? "bg-primary"
+            ? "bg-primary ring-1 ring-inset ring-white/25"
             : isSidebar
-              ? "bg-white/20"
-              : "bg-surface-muted",
+              ? "bg-white/45 ring-1 ring-inset ring-white/50"
+              : "bg-primary/45 ring-1 ring-inset ring-primary/30",
         )}
       >
         <span
           className={cn(
-            "absolute rounded-full bg-white shadow-sm transition-all",
+            "absolute rounded-full bg-white shadow-md shadow-black/20 transition-all",
             isCompact ? "top-0.5 h-3 w-3" : "top-0.5 h-4 w-4",
             isDark ? "end-0.5" : "start-0.5",
           )}
@@ -63,7 +57,7 @@ export function ThemeToggle({
       <Moon
         className={cn(
           isCompact ? "h-3 w-3" : "h-3.5 w-3.5",
-          isDark && "text-primary",
+          isDark && "text-accent-teal",
         )}
       />
     </button>

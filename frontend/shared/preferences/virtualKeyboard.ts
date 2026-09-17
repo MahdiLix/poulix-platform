@@ -23,7 +23,10 @@ export function setVirtualKeyboardEnabled(enabled: boolean) {
 }
 
 export function isMobileViewport(): boolean {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+  if (
+    typeof window === "undefined" ||
+    typeof window.matchMedia !== "function"
+  ) {
     return false;
   }
   return window.matchMedia("(max-width: 1279px)").matches;

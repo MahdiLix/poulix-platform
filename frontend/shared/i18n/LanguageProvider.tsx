@@ -10,13 +10,16 @@ import {
   type ReactNode,
 } from "react";
 import {
+  DEFAULT_LANGUAGE,
+  languageDirection,
+  readLanguageCookie,
+  writeLanguageCookie,
+} from "./language-cookie";
+import {
   translations,
   type Language,
   type TranslationDictionary,
 } from "./translations";
-
-const LANGUAGE_COOKIE = "poulix_lang";
-const DEFAULT_LANGUAGE: Language = "en";
 
 type LanguageContextType = {
   language: Language;
@@ -32,41 +35,35 @@ const LanguageContext = createContext<LanguageContextType | undefined>(
   undefined,
 );
 
-function readLanguageCookie(): Language {
-  if (typeof window === "undefined" || typeof document === "undefined") {
-    return DEFAULT_LANGUAGE;
-  }
-  const prefix = `${encodeURIComponent(LANGUAGE_COOKIE)}=`;
-  const match = document.cookie
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(prefix));
-
-  if (!match) return DEFAULT_LANGUAGE;
-  const value = decodeURIComponent(match.slice(prefix.length));
-  return value === "fa" ? "fa" : "en";
+function applyDocumentLanguage(language: Language) {
+  if (typeof document === "undefined") return;
+  const dir = languageDirection(language);
+  document.documentElement.lang = language;
+  document.documentElement.dir = dir;
+  document.documentElement.classList.toggle("rtl", language === "fa");
 }
 
-function writeLanguageCookie(lang: Language) {
-  if (typeof window === "undefined" || typeof document === "undefined") return;
-  const maxAge = 60 * 60 * 24 * 365; // 1 year
-  const secure = window.location.protocol === "https:" ? "; Secure" : "";
-  document.cookie = `${encodeURIComponent(LANGUAGE_COOKIE)}=${encodeURIComponent(lang)}; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure}`;
-}
-
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(() =>
-    typeof window === "undefined" ? DEFAULT_LANGUAGE : readLanguageCookie(),
+export function LanguageProvider({
+  children,
+  initialLanguage,
+}: {
+  children: ReactNode;
+  initialLanguage?: Language;
+}) {
+  const [language, setLanguageState] = useState<Language>(
+    () => initialLanguage ?? DEFAULT_LANGUAGE,
   );
   const [isLanguageReady, setIsLanguageReady] = useState(
-    () => typeof window !== "undefined",
+    () => initialLanguage != null,
   );
 
   useEffect(() => {
-    const fromCookie = readLanguageCookie();
-    setLanguageState(fromCookie);
+    if (initialLanguage == null) {
+      setLanguageState(readLanguageCookie());
+    }
     setIsLanguageReady(true);
-  }, []);
+    applyDocumentLanguage(initialLanguage ?? readLanguageCookie());
+  }, [initialLanguage]);
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
@@ -82,18 +79,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const dir = language === "fa" ? "rtl" : "ltr";
-    document.documentElement.lang = language;
-    document.documentElement.dir = dir;
-    if (language === "fa") {
-      document.documentElement.classList.add("rtl");
-    } else {
-      document.documentElement.classList.remove("rtl");
-    }
+    applyDocumentLanguage(language);
   }, [language]);
 
   const value = useMemo(() => {
-    const dir: "ltr" | "rtl" = language === "fa" ? "rtl" : "ltr";
+    const dir = languageDirection(language);
     return {
       language,
       dir,

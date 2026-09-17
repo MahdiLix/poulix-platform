@@ -10,51 +10,29 @@ export function LanguageToggle({
   className?: string;
   variant?: "default" | "sidebar" | "compact";
 }) {
-  const { language, setLanguage } = useLanguage();
+  const { language, toggleLanguage } = useLanguage();
   const isSidebar = variant === "sidebar";
   const isCompact = variant === "compact" || isSidebar;
-
-  const buttons = [
-    { id: "en" as const, label: "EN" },
-    { id: "fa" as const, label: "FA" },
-  ];
+  const nextLanguage = language === "fa" ? "en" : "fa";
+  const nextLabel = nextLanguage.toUpperCase();
 
   return (
-    <div
+    <button
+      type="button"
+      onClick={toggleLanguage}
+      aria-label={
+        nextLanguage === "en" ? "Switch to English" : "Switch to Persian"
+      }
       className={cn(
-        "inline-flex items-center rounded-full p-0.5",
-        isSidebar ? "bg-white/10" : "border border-border bg-surface-muted/80",
+        "inline-flex cursor-pointer items-center justify-center rounded-full font-semibold tracking-wide transition active:scale-95",
+        isCompact ? "h-7 w-7 text-[10px]" : "h-8 w-8 text-[11px]",
+        isSidebar
+          ? "border border-white/15 bg-white/10 text-sidebar-foreground hover:bg-white/20"
+          : "border border-border bg-surface text-foreground hover:border-primary/40 hover:text-primary",
         className,
       )}
-      role="group"
-      aria-label="Language"
     >
-      {buttons.map((item) => {
-        const active = language === item.id;
-        return (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setLanguage(item.id)}
-            aria-pressed={active}
-            className={cn(
-              "inline-flex cursor-pointer items-center justify-center rounded-full font-semibold tracking-wide transition active:scale-95",
-              isCompact
-                ? "h-6 min-w-7 px-1.5 text-[10px]"
-                : "h-7 min-w-8 px-2 text-[11px]",
-              active
-                ? isSidebar
-                  ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                  : "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
-                : isSidebar
-                  ? "text-sidebar-muted hover:text-sidebar-foreground"
-                  : "text-muted hover:text-foreground",
-            )}
-          >
-            {item.label}
-          </button>
-        );
-      })}
-    </div>
+      {nextLabel}
+    </button>
   );
 }

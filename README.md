@@ -21,6 +21,7 @@ Repository: **[https://github.com/MahdiLix/Poulix-Platform](https://github.com/M
 
 ### Frontend
 
+- **Next.js 16** 
 - **React**
 - **TypeScript**
 - **HTML / CSS**

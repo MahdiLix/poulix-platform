@@ -205,7 +205,7 @@ export default function EnvelopeDetailPage() {
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
               {t.envelopes.allocated}
             </p>
-            <p className="text-2xl font-extrabold text-foreground">
+            <p className="amount text-2xl font-extrabold text-foreground">
               {formatIrr(allocated, currency)}
             </p>
           </div>
@@ -217,7 +217,7 @@ export default function EnvelopeDetailPage() {
               <h3 className="text-sm font-bold">{t.envelopes.allocateBtn}</h3>
               <p className="text-xs text-muted">
                 {t.envelopes.availableBalance}{" "}
-                <span className="font-bold text-primary">
+                <span className="amount font-bold text-primary">
                   {formatIrr(balance ?? 0, currency)}
                 </span>
               </p>
@@ -303,8 +303,8 @@ export default function EnvelopeDetailPage() {
                   <span
                     className={
                       movement.type === "ALLOCATE"
-                        ? "font-extrabold text-primary"
-                        : "font-extrabold text-success"
+                        ? "amount shrink-0 font-extrabold text-primary"
+                        : "amount shrink-0 font-extrabold text-success"
                     }
                   >
                     {movement.type === "ALLOCATE" ? "-" : "+"}

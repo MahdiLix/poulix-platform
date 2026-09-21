@@ -121,7 +121,7 @@ export function EnvelopeCard({
               <h3 className="truncate text-sm font-bold text-foreground">
                 {envelope.name}
               </h3>
-              <p className="text-sm font-bold text-success">
+              <p className="amount text-sm font-bold text-success">
                 {formatIrr(allocated)}
               </p>
             </div>

@@ -216,9 +216,13 @@ export default function GoalDetailPage() {
           </div>
 
           <div className="space-y-2">
-            <div className="flex justify-between text-sm font-bold">
-              <span>{formatIrr(saved, currency)}</span>
-              <span>{formatIrr(target, currency)}</span>
+            <div className="flex justify-between gap-3 text-sm font-bold">
+              <span className="amount min-w-0">
+                {formatIrr(saved, currency)}
+              </span>
+              <span className="amount min-w-0 text-end">
+                {formatIrr(target, currency)}
+              </span>
             </div>
             <div className="h-3 overflow-hidden rounded-full bg-surface-muted">
               <div
@@ -231,7 +235,8 @@ export default function GoalDetailPage() {
                 {progress}% {t.goals.complete}
               </span>
               <span>
-                {t.goals.remaining}: {formatIrr(remaining, currency)}
+                {t.goals.remaining}:{" "}
+                <span className="amount">{formatIrr(remaining, currency)}</span>
               </span>
             </div>
           </div>
@@ -244,7 +249,7 @@ export default function GoalDetailPage() {
                 <h3 className="text-sm font-bold">{t.goals.contributeBtn}</h3>
                 <p className="text-xs text-muted">
                   {t.goals.availableBalance}{" "}
-                  <span className="font-bold text-primary">
+                  <span className="amount font-bold text-primary">
                     {formatIrr(balance ?? 0, currency)}
                   </span>
                 </p>
@@ -348,8 +353,8 @@ export default function GoalDetailPage() {
                   <span
                     className={
                       entry.type === "CONTRIBUTE"
-                        ? "font-extrabold text-primary"
-                        : "font-extrabold text-success"
+                        ? "amount shrink-0 font-extrabold text-primary"
+                        : "amount shrink-0 font-extrabold text-success"
                     }
                   >
                     {entry.type === "CONTRIBUTE" ? "-" : "+"}

@@ -47,7 +47,7 @@ export function ChartTooltip({
               {item.name ? (
                 <span className="font-medium text-muted">{item.name}</span>
               ) : null}
-              <span className="ms-auto font-bold tabular-nums text-foreground">
+              <span className="amount ms-auto font-bold text-foreground">
                 {display}
               </span>
             </div>

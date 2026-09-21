@@ -153,13 +153,17 @@ export function GoalCard({
 
       <div className="space-y-1.5">
         <p className="text-xs font-semibold" style={{ color: accentColor }}>
-          {t.goals.savedInGoals} {formatIrr(saved)} / {formatIrr(target)}
+          {t.goals.savedInGoals}{" "}
+          <span className="amount">
+            {formatIrr(saved)} / {formatIrr(target)}
+          </span>
         </p>
         <ProgressBar value={progress} barClassName="bg-success" />
         <div className="flex items-center justify-between text-[11px] font-medium text-muted">
           <span>{progress}%</span>
           <span>
-            {t.goals.remaining}: {formatIrr(remaining)}
+            {t.goals.remaining}:{" "}
+            <span className="amount">{formatIrr(remaining)}</span>
           </span>
         </div>
       </div>

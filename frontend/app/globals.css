@@ -212,6 +212,8 @@ body {
 .amount {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
+  unicode-bidi: isolate;
+  direction: ltr;
 }
 
 .bg-hero-gradient {

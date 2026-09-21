@@ -37,11 +37,7 @@ export function WalletBalance({
   const strong =
     variant === "hero" ? "text-primary-foreground" : "text-foreground";
 
-  if (
-    variant !== "hero" &&
-    (status === "idle" || status === "loading") &&
-    balance === null
-  ) {
+  if ((status === "idle" || status === "loading") && balance === null) {
     return (
       <div className="space-y-1 text-center">
         {variant !== "panel" && (
@@ -56,7 +52,7 @@ export function WalletBalance({
     );
   }
 
-  if (status === "unauthenticated") {
+  if (status === "unauthenticated" && balance == null) {
     return (
       <div className="space-y-3 text-center">
         {variant !== "panel" && (
@@ -115,8 +111,8 @@ export function WalletBalance({
     variant === "hero"
       ? "amount text-3xl font-bold tracking-tight lg:text-4xl"
       : variant === "panel"
-        ? "text-xl font-extrabold tracking-tight"
-        : "text-3xl font-extrabold tracking-tight text-foreground";
+        ? "amount text-xl font-extrabold tracking-tight"
+        : "amount text-3xl font-extrabold tracking-tight text-foreground";
 
   return (
     <div
@@ -142,7 +138,12 @@ export function WalletBalance({
           {displayLabel}
         </p>
       ) : null}
-      <p className={cn(amountClass, variant === "hero" && "text-white")}>
+      <p
+        className={cn(
+          amountClass,
+          variant === "hero" && "text-white rtl:lg:text-right",
+        )}
+      >
         {variant === "hero" ? (
           <>
             {formatIrr(balance ?? 0, "").trim()}{" "}

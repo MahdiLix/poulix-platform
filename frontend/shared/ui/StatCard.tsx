@@ -28,39 +28,41 @@ export function StatCard({
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-[11px] font-semibold text-muted">{label}</p>
-          <p className="amount truncate text-lg font-bold tracking-tight text-foreground">
-            {value}
+      <div className="space-y-1">
+        <div className="flex items-start justify-between gap-3">
+          <p className="min-w-0 text-[11px] font-semibold text-muted">
+            {label}
           </p>
-          {trend !== undefined ? (
+          {Icon ? (
             <div
               className={cn(
-                "flex items-center gap-1 text-[11px] font-semibold",
-                trendPositive ? "text-success" : "text-danger",
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                iconClassName ?? "bg-primary-soft text-primary",
               )}
             >
-              {trendPositive ? (
-                <TrendingUp className="h-3 w-3" />
-              ) : (
-                <TrendingDown className="h-3 w-3" />
-              )}
-              <span>
-                {trendPositive ? "+" : ""}
-                {trend}%
-              </span>
+              <Icon className="h-5 w-5" />
             </div>
           ) : null}
         </div>
-        {Icon ? (
+        <p className="amount text-lg font-bold tracking-tight text-foreground">
+          {value}
+        </p>
+        {trend !== undefined ? (
           <div
             className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-              iconClassName ?? "bg-primary-soft text-primary",
+              "flex items-center gap-1 text-[11px] font-semibold",
+              trendPositive ? "text-success" : "text-danger",
             )}
           >
-            <Icon className="h-5 w-5" />
+            {trendPositive ? (
+              <TrendingUp className="h-3 w-3" />
+            ) : (
+              <TrendingDown className="h-3 w-3" />
+            )}
+            <span>
+              {trendPositive ? "+" : ""}
+              {trend}%
+            </span>
           </div>
         ) : null}
       </div>

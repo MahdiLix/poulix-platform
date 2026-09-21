@@ -304,7 +304,7 @@ export function ScheduledPaymentList({
                 </Badge>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="font-bold">
+                <span className="amount font-bold">
                   {formatIrr(parseAmount(payment.amount))}
                 </span>
                 <span className="text-xs text-muted">

@@ -38,6 +38,7 @@ import { saveTransferReceipt } from "@/features/wallet/lib/receipt";
 import type { SpendingLimitSummary } from "@/features/spending-limits/lib/spendingLimits";
 import { minRemainingLimit } from "@/features/spending-limits/lib/spendingLimits";
 import type { FinancialDestination } from "@/features/financial-destinations/lib/destinations";
+import { redirectToLoginForAction } from "@/features/auth/lib/login-redirect";
 
 function ConfirmRow({
   icon: Icon,
@@ -103,8 +104,11 @@ function ConfirmContent() {
       return;
     }
 
+    if (authStatus === "unauthenticated") {
+      redirectToLoginForAction("/send/confirm", t.common.loginToContinue);
+      return;
+    }
     if (authStatus !== "ready") {
-      router.push("/login");
       return;
     }
 

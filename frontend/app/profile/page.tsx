@@ -56,6 +56,25 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [virtualKeyboard, setVirtualKeyboard] = useState(false);
   const { balance, currency } = useWalletBalance();
+  const isGuest = authStatus === "unauthenticated";
+  const displayUser: UserProfile | null =
+    user ??
+    (isGuest
+      ? {
+          id: "guest",
+          username: t.common.guestUser,
+          email: "",
+          status: "ACTIVE",
+        }
+      : null);
+  const displayWallet: WalletInfo | null =
+    wallet ??
+    (isGuest
+      ? {
+          id: "—",
+          currency: currency || "IRR",
+        }
+      : null);
 
   const loadUserData = async () => {
     if (authStatus === "unauthenticated") {
@@ -128,7 +147,7 @@ export default function ProfilePage() {
       <div className="mx-auto max-w-4xl flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
         {loading ? (
           <PageSpinner label={t.profile.loadingProfile} />
-        ) : !user ? (
+        ) : !displayUser ? (
           <div className="space-y-4 py-16 text-center lg:mx-auto lg:max-w-md">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary-soft text-primary">
               <User className="h-8 w-8" />
@@ -154,31 +173,39 @@ export default function ProfilePage() {
           <div className="space-y-6">
             <Card className="flex flex-col items-center gap-6 border border-border p-6 shadow-sm sm:flex-row sm:p-7">
               <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-hero-gradient text-xl font-black text-primary-foreground shadow-md ring-4 ring-primary-soft sm:text-2xl">
-                {user.username
-                  ? user.username.substring(0, 2).toUpperCase()
-                  : user.email.substring(0, 2).toUpperCase()}
+                {displayUser.username
+                  ? displayUser.username.substring(0, 2).toUpperCase()
+                  : (displayUser.email || "U").substring(0, 2).toUpperCase()}
               </div>
               <div className="flex-1 space-y-1 text-center sm:text-start">
                 <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                   <h2 className="text-lg font-bold text-foreground">
-                    {user.username || user.email.split("@")[0]}
+                    {displayUser.username ||
+                      displayUser.email.split("@")[0] ||
+                      t.common.guestUser}
                   </h2>
-                  {user.role === "ADMIN" ? (
+                  {displayUser.role === "ADMIN" ? (
                     <span className="rounded-full bg-foreground px-2.5 py-0.5 text-[11px] font-bold text-background">
                       ADMIN
                     </span>
                   ) : null}
                   <span className="inline-flex items-center gap-1 rounded-full bg-success-soft px-2.5 py-0.5 text-[11px] font-semibold text-success">
                     <ShieldCheck className="h-3 w-3" />
-                    {user.status || "ACTIVE"}
+                    {displayUser.status || "ACTIVE"}
                   </span>
                 </div>
-                <p className="text-xs font-medium text-muted">{user.email}</p>
-                {user.createdAt ? (
+                {displayUser.email ? (
+                  <p className="text-xs font-medium text-muted">
+                    {displayUser.email}
+                  </p>
+                ) : null}
+                {displayUser.createdAt ? (
                   <p className="flex items-center justify-center gap-1 pt-0.5 text-[11px] text-muted sm:justify-start">
                     <Clock className="h-3 w-3" />
                     <span>{t.profile.memberSince}:</span>
-                    <span>{formatDisplayDate(user.createdAt, language)}</span>
+                    <span>
+                      {formatDisplayDate(displayUser.createdAt, language)}
+                    </span>
                   </p>
                 ) : null}
               </div>
@@ -195,7 +222,7 @@ export default function ProfilePage() {
               </div>
             </Card>
 
-            {wallet ? (
+            {displayWallet ? (
               <div className="flex flex-col items-start justify-between gap-6 rounded-[14px] bg-ink-hero p-6 text-primary-foreground sm:flex-row sm:items-center">
                 <div>
                   <p className="text-[11px] font-semibold tracking-[0.08em] text-white/70 uppercase">
@@ -204,7 +231,7 @@ export default function ProfilePage() {
                   <p className="amount mt-1 text-2xl font-bold lg:text-3xl">
                     {formatIrr(balance ?? 0, "", language).trim()}{" "}
                     <span className="text-secondary">
-                      {currency || wallet.currency}
+                      {currency || displayWallet.currency}
                     </span>
                   </p>
                 </div>
@@ -214,7 +241,7 @@ export default function ProfilePage() {
                       {t.profile.walletId}
                     </span>
                     <span className="font-mono text-xs font-medium text-white/90">
-                      {wallet.id}
+                      {displayWallet.id}
                     </span>
                   </div>
                   <div>
@@ -222,7 +249,7 @@ export default function ProfilePage() {
                       {t.profile.currencyLabel}
                     </span>
                     <span className="text-xs font-bold text-white/90">
-                      {wallet.currency}
+                      {displayWallet.currency}
                     </span>
                   </div>
                 </div>
@@ -324,7 +351,7 @@ export default function ProfilePage() {
                   );
                 })}
 
-                {user.role === "ADMIN" ? (
+                {displayUser.role === "ADMIN" ? (
                   <Link href="/admin">
                     <Card className="group flex cursor-pointer items-center justify-between border-primary/40 bg-primary-soft/30 p-4 transition hover:border-primary hover:shadow-md">
                       <div className="flex items-center gap-3.5">

@@ -52,7 +52,7 @@ describe("loadLayoutSession", () => {
     expect(redirect).not.toHaveBeenCalled();
   });
 
-  it("redirects protected routes before HTML when /users/me is unauthorized", async () => {
+  it("does not redirect normal app routes before HTML when /users/me is unauthorized", async () => {
     mockCookies("stale-token");
     mockPath("/");
     vi.mocked(global.fetch).mockResolvedValue({
@@ -62,8 +62,9 @@ describe("loadLayoutSession", () => {
     } as Response);
 
     const { loadLayoutSession } = await import("./get-session-user");
-    await expect(loadLayoutSession()).rejects.toThrow("REDIRECT:/login");
-    expect(redirect).toHaveBeenCalledWith("/login");
+    const result = await loadLayoutSession();
+    expect(result.user).toBeNull();
+    expect(redirect).not.toHaveBeenCalled();
   });
 
   it("does not redirect public auth routes on 401 and does not render as authenticated", async () => {
@@ -143,7 +144,7 @@ describe("loadLayoutSession", () => {
     expect(redirect).not.toHaveBeenCalled();
   });
 
-  it("redirects protected routes on 403 the same as 401", async () => {
+  it("does not redirect normal app routes on 403", async () => {
     mockCookies("stale-token");
     mockPath("/");
     vi.mocked(global.fetch).mockResolvedValue({
@@ -153,8 +154,9 @@ describe("loadLayoutSession", () => {
     } as Response);
 
     const { loadLayoutSession } = await import("./get-session-user");
-    await expect(loadLayoutSession()).rejects.toThrow("REDIRECT:/login");
-    expect(redirect).toHaveBeenCalledWith("/login");
+    const result = await loadLayoutSession();
+    expect(result.user).toBeNull();
+    expect(redirect).not.toHaveBeenCalled();
   });
 
   it("returns the session user for an authenticated request", async () => {
@@ -186,9 +188,24 @@ describe("loadLayoutSession", () => {
     expect(redirect).not.toHaveBeenCalled();
   });
 
-  it("redirects /deposit when the session is unauthorized", async () => {
+  it("does not redirect /deposit when the session is unauthorized", async () => {
     mockCookies("stale-token");
     mockPath("/deposit");
+    vi.mocked(global.fetch).mockResolvedValue({
+      status: 401,
+      ok: false,
+      json: async () => ({}),
+    } as Response);
+
+    const { loadLayoutSession } = await import("./get-session-user");
+    const result = await loadLayoutSession();
+    expect(result.user).toBeNull();
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it("redirects /admin when the session is unauthorized", async () => {
+    mockCookies("stale-token");
+    mockPath("/admin");
     vi.mocked(global.fetch).mockResolvedValue({
       status: 401,
       ok: false,

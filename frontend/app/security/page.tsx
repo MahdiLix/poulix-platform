@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Monitor, ShieldAlert, ShieldCheck, Smartphone } from "lucide-react";
 import { AppShell } from "@/shared/layout/AppShell";
 import { HeaderBar } from "@/shared/layout/HeaderBar";
-import { Button, ButtonLink } from "@/shared/ui/Button";
+import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { Badge } from "@/shared/ui/Badge";
 import { Pagination } from "@/shared/ui/Pagination";
@@ -117,7 +117,11 @@ export default function SecurityPage() {
   useEffect(() => {
     if (authStatus === "loading") return;
     if (authStatus === "unauthenticated") {
-      setPageStatus("unauthenticated");
+      setLimits([]);
+      setSessions([]);
+      setEvents([]);
+      setEventsTotal(0);
+      setPageStatus("ready");
       return;
     }
     void loadData();
@@ -152,7 +156,7 @@ export default function SecurityPage() {
       void api.touchSecuritySession().catch(() => {});
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 401) {
-        setPageStatus("unauthenticated");
+        setPageStatus("ready");
         return;
       }
       setError(localizeError(err, t.messages, "failedToLoadSecurity"));
@@ -210,15 +214,6 @@ export default function SecurityPage() {
           {t.security.limitsTitle}
         </p>
 
-        {pageStatus === "unauthenticated" ? (
-          <Card className="p-6 text-center">
-            <p className="text-sm font-semibold">{t.security.signInRequired}</p>
-            <ButtonLink href="/login" className="mt-3">
-              {t.common.signIn}
-            </ButtonLink>
-          </Card>
-        ) : null}
-
         {error ? (
           <Card className="p-4 text-center text-sm text-danger">{error}</Card>
         ) : null}
@@ -234,7 +229,7 @@ export default function SecurityPage() {
                     <h3 className="text-sm font-bold text-foreground">
                       {limitShortLabel(limit.type)}
                     </h3>
-                    <p className="text-lg font-bold text-success">
+                    <p className="amount text-lg font-bold text-success">
                       {formatIrr(limit.usedAmount, limit.currency)}{" "}
                       <span className="text-sm font-medium text-muted">
                         / {formatIrr(limit.maxAmount, limit.currency)}
@@ -250,7 +245,9 @@ export default function SecurityPage() {
                     </div>
                     <p className="text-[11px] font-medium text-muted">
                       {t.security.remaining}:{" "}
-                      {formatIrr(limit.remainingAmount, limit.currency)}
+                      <span className="amount">
+                        {formatIrr(limit.remainingAmount, limit.currency)}
+                      </span>
                     </p>
                     <div className="flex items-end gap-2">
                       <div className="min-w-0 flex-1">

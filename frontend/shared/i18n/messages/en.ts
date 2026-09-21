@@ -31,6 +31,7 @@ export const en: TranslationDictionary = {
     close: "Close",
     appearance: "Appearance",
     language: "Language",
+    loginToContinue: "Login to your account to continue.",
   },
   nav: {
     home: "Home",
@@ -167,6 +168,9 @@ export const en: TranslationDictionary = {
     topUpModalSub: "Choose or enter an amount in IRR to add to your balance.",
     topUpAmount: "Amount (IRR)",
     payWithZarinpal: "Continue to ZarinPal",
+    continueToZarinpal: "Continue to ZarinPal",
+    pendingGatewayHint:
+      "If the payment page showed an error, continue with the same payment. This does not create a new deposit.",
     redirecting: "Connecting to Gateway...",
     depositStatus: "Deposit Status",
     depositSuccessful: "Deposit Successful!",

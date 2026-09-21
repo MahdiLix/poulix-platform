@@ -1,6 +1,12 @@
 "use client";
 
-import { type ComponentType, useEffect, useMemo, useState } from "react";
+import {
+  type ComponentType,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
 import {
   ArrowDownLeft,
@@ -42,6 +48,7 @@ import type {
   Language,
 } from "@/shared/i18n/messages/types";
 import { cn } from "@/shared/cn";
+import { getDemoTransactions } from "@/features/demo";
 import {
   isTransactionCategory,
   type TransactionCategory,
@@ -108,6 +115,7 @@ export default function HistoryPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [exporting, setExporting] = useState(false);
+  const historyLoadId = useRef(0);
 
   useEffect(() => {
     setPage(1);
@@ -148,11 +156,15 @@ export default function HistoryPage() {
   useEffect(() => {
     if (authStatus === "loading") return;
     if (authStatus === "unauthenticated") {
-      setTransactions([]);
+      historyLoadId.current += 1;
+      const items = getDemoTransactions();
+      setTransactions(items);
+      setTotal(items.length);
       setError(null);
-      setStatus("unauthenticated");
+      setStatus("ready");
       return;
     }
+    if (authStatus !== "ready") return;
     const timer = window.setTimeout(() => void loadHistory(), 250);
     return () => window.clearTimeout(timer);
     // loadHistory intentionally reads the current filter state.
@@ -160,8 +172,11 @@ export default function HistoryPage() {
   }, [authStatus, page, typeFilter, pillFilter, search]);
 
   async function loadHistory() {
+    if (authStatus !== "ready") return;
+    const loadId = ++historyLoadId.current;
     setStatus("loading");
     setError(null);
+    setTransactions([]);
 
     try {
       const serverType =
@@ -176,14 +191,18 @@ export default function HistoryPage() {
         type: serverType,
         q: search.trim() || undefined,
       });
+      if (loadId !== historyLoadId.current) return;
       setTransactions(data.items);
       setTotal(data.total);
       setStatus("ready");
     } catch (err) {
+      if (loadId !== historyLoadId.current) return;
       if (err instanceof ApiRequestError && err.status === 401) {
-        setTransactions([]);
+        const items = getDemoTransactions();
+        setTransactions(items);
+        setTotal(items.length);
         setError(null);
-        setStatus("unauthenticated");
+        setStatus("ready");
         return;
       }
 
@@ -276,7 +295,7 @@ export default function HistoryPage() {
             variant="outline"
             size="sm"
             onClick={() => void exportHistory()}
-            disabled={exporting || status === "unauthenticated"}
+            disabled={exporting || authStatus !== "ready"}
             className="w-auto gap-1.5"
           >
             <Download className="h-3.5 w-3.5" />
@@ -288,28 +307,6 @@ export default function HistoryPage() {
       <div className="flex-1 space-y-4 p-4 lg:p-6">
         {status === "loading" ? (
           <PageSpinner label={t.history.loadingHistory} />
-        ) : status === "unauthenticated" ? (
-          <div className="space-y-4 py-16 text-center lg:mx-auto lg:max-w-md">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-surface-muted text-muted">
-              <FileText className="h-7 w-7" />
-            </div>
-            <p className="text-sm font-bold text-foreground">
-              {t.history.signInToViewHistory}
-            </p>
-            <p className="mx-auto max-w-[220px] text-xs text-muted">
-              {t.history.historyPrivateMsg}
-            </p>
-            <div className="mx-auto flex max-w-xs flex-col gap-2">
-              <Link href="/login" className="cursor-pointer">
-                <Button className="w-full">{t.common.signIn}</Button>
-              </Link>
-              <Link href="/register" className="cursor-pointer">
-                <Button variant="secondary" className="w-full">
-                  {t.common.createAccount}
-                </Button>
-              </Link>
-            </div>
-          </div>
         ) : status === "error" ? (
           <div className="space-y-3 py-16 text-center lg:mx-auto lg:max-w-md">
             <div className="rounded-xl bg-danger-soft p-3 text-xs font-semibold text-danger">
@@ -478,9 +475,9 @@ export default function HistoryPage() {
                     return (
                       <div
                         key={tx.id}
-                        className="flex items-start justify-between rounded-2xl border border-border bg-surface p-4"
+                        className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-surface p-4"
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex min-w-0 items-start gap-3">
                           <div
                             className={cn(
                               "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
@@ -509,13 +506,13 @@ export default function HistoryPage() {
                           </div>
                         </div>
 
-                        <div className="text-right">
+                        <div className="shrink-0 text-end">
                           <p className="text-[11px] font-medium text-muted">
                             {row.formattedDate}
                           </p>
                           <p
                             className={cn(
-                              "text-sm font-extrabold",
+                              "amount text-sm font-extrabold",
                               row.amountColor,
                             )}
                           >

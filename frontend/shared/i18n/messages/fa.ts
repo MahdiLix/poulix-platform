@@ -31,6 +31,7 @@ export const fa: TranslationDictionary = {
     close: "بستن",
     appearance: "ظاهر",
     language: "زبان",
+    loginToContinue: "برای ادامه وارد حساب کاربری خود شوید.",
   },
   nav: {
     home: "خانه",
@@ -167,6 +168,9 @@ export const fa: TranslationDictionary = {
     topUpModalSub: "مبلغ مورد نظر را به ریال انتخاب یا وارد کنید.",
     topUpAmount: "مبلغ (ریال)",
     payWithZarinpal: "ادامه به درگاه زرین‌پال",
+    continueToZarinpal: "ادامه به درگاه زرین‌پال",
+    pendingGatewayHint:
+      "اگر صفحه پرداخت خطا نشان داد، همان پرداخت را ادامه دهید. واریز جدیدی ساخته نمی‌شود.",
     redirecting: "در حال انتقال به درگاه پرداخت...",
     depositStatus: "وضعیت افزایش موجودی",
     depositSuccessful: "افزایش موجودی با موفقیت انجام شد!",

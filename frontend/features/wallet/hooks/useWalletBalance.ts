@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiRequestError, api } from "@/shared/api";
 import { parseAmount } from "@/features/wallet/lib/wallet";
+import { getDemoWallet } from "@/features/demo";
 import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
@@ -13,6 +14,14 @@ import {
 
 export type WalletBalanceStatus =
   "idle" | "loading" | "ready" | "error" | "unauthenticated";
+
+type WalletBalanceState = {
+  status: WalletBalanceStatus;
+  balance: number | null;
+  currency: string;
+  error: string | null;
+  refresh: () => Promise<void>;
+};
 
 const LAST_BALANCE_KEY = "poulix_wallet_last_balance";
 
@@ -86,7 +95,7 @@ function retryAfterSeconds(err: unknown): number {
   return 1;
 }
 
-export function useWalletBalance() {
+export function useWalletBalance(): WalletBalanceState {
   const { t } = useLanguage();
   const { status: authStatus, user } = useUser();
   const userId = user?.id ?? null;
@@ -99,10 +108,14 @@ export function useWalletBalance() {
 
   const refresh = useCallback(async () => {
     if (authStatus === "loading") {
+      setStatus("loading");
+      setBalance(null);
+      setError(null);
       return;
     }
     if (authStatus === "unauthenticated") {
       clearSavedBalance(null);
+      if (userId) clearSavedBalance(userId);
       setStatus("unauthenticated");
       setBalance(null);
       setError(null);
@@ -174,9 +187,8 @@ export function useWalletBalance() {
     }
   }, [t.messages, authStatus, userId]);
 
-  refreshRef.current = refresh;
-
   useEffect(() => {
+    refreshRef.current = refresh;
     void refresh();
   }, [refresh]);
 
@@ -194,6 +206,27 @@ export function useWalletBalance() {
       window.clearTimeout(retryTimer.current);
     };
   }, [refresh]);
+
+  if (authStatus === "loading") {
+    return {
+      status: "loading",
+      balance: null,
+      currency: "IRR",
+      error: null,
+      refresh,
+    };
+  }
+
+  if (authStatus === "unauthenticated") {
+    const demo = getDemoWallet();
+    return {
+      status: "unauthenticated",
+      balance: demo.balance,
+      currency: demo.currency,
+      error: null,
+      refresh,
+    };
+  }
 
   return { status, balance, currency, error, refresh };
 }

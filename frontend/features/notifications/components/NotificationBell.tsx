@@ -32,6 +32,7 @@ import {
   notificationDisplayCategory,
 } from "@/features/notifications/lib/notificationContent";
 import type { Notification } from "@/features/notifications/lib/notifications";
+import { getDemoUnreadCount } from "@/features/demo";
 
 export function NotificationBell({
   className,
@@ -195,6 +196,10 @@ export function NotificationBell({
     }
   }
 
+  const isGuest = authStatus === "unauthenticated";
+  const guestUnreadCount = isGuest ? getDemoUnreadCount() : 0;
+  const showBadge = isGuest ? guestUnreadCount > 0 : unreadCount > 0;
+
   function getCategoryIcon(category: Notification["category"]) {
     switch (category) {
       case "SUCCESS":
@@ -221,9 +226,13 @@ export function NotificationBell({
         aria-expanded={isOpen}
       >
         <Bell className="h-5 w-5" />
-        {unreadCount > 0 ? (
+        {showBadge ? (
           <span className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-700 px-1 text-[10px] font-bold text-white ring-2 ring-surface animate-in fade-in zoom-in duration-300 rtl:right-auto rtl:left-1.5">
-            {unreadCount > 9 ? "9+" : unreadCount}
+            {isGuest
+              ? `+${guestUnreadCount}`
+              : unreadCount > 9
+                ? "9+"
+                : unreadCount}
           </span>
         ) : null}
       </button>

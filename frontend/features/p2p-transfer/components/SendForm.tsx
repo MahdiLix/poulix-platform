@@ -32,6 +32,7 @@ import {
 } from "@/features/envelopes/components/FundingSourceSelect";
 import { RecentDestinationChips } from "@/features/financial-destinations/components/RecentDestinationChips";
 import type { FinancialDestination } from "@/features/financial-destinations/lib/destinations";
+import { redirectToLoginForAction } from "@/features/auth/lib/login-redirect";
 
 export function SendForm() {
   const router = useRouter();
@@ -122,9 +123,11 @@ export function SendForm() {
     setError("");
     setFieldError(null);
 
+    if (authStatus === "unauthenticated") {
+      redirectToLoginForAction("/send", t.common.loginToContinue);
+      return;
+    }
     if (authStatus !== "ready") {
-      setError(t.send.pleaseSignInToSend);
-      router.push("/login");
       return;
     }
 
@@ -240,11 +243,7 @@ export function SendForm() {
           </button>
         </div>
         <div className="min-h-[2.5rem]">
-          {status === "unauthenticated" ? (
-            <p className="text-sm font-semibold text-foreground">
-              {t.common.signInToViewBalance}
-            </p>
-          ) : status === "error" && balance === null ? (
+          {status === "error" && balance === null ? (
             <div className="flex items-center gap-2">
               <p className="text-xs font-medium text-danger">
                 {balanceError || t.common.couldNotLoadBalance}
@@ -391,8 +390,10 @@ export function SendForm() {
         disabled={
           loading ||
           blocked ||
-          status === "unauthenticated" ||
-          (!fundingSource.envelopeId && status !== "ready")
+          authStatus === "loading" ||
+          (authStatus === "ready" &&
+            !fundingSource.envelopeId &&
+            status !== "ready")
         }
       >
         {loading ? t.send.lookingUpRecipient : t.send.continueBtn}

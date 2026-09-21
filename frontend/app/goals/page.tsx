@@ -43,7 +43,10 @@ export default function GoalsPage() {
   useEffect(() => {
     if (authStatus === "loading") return;
     if (authStatus === "unauthenticated") {
-      window.location.replace("/login");
+      setGoals([]);
+      setTotalSaved(0);
+      setListError(null);
+      setPageStatus("ready");
       return;
     }
     void loadGoals();
@@ -60,7 +63,9 @@ export default function GoalsPage() {
       setPageStatus("ready");
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 401) {
-        window.location.replace("/login");
+        setGoals([]);
+        setTotalSaved(0);
+        setPageStatus("ready");
         return;
       }
       setListError(localizeError(err, t.messages, "failedToLoadGoals"));
@@ -108,8 +113,8 @@ export default function GoalsPage() {
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
                   {t.goals.availableBalance}
                 </p>
-                <p className="mt-1 text-lg font-bold text-success">
-                  {status === "ready"
+                <p className="amount mt-1 text-lg font-bold text-success">
+                  {status === "ready" || status === "unauthenticated"
                     ? formatIrr(availableBalance, currency)
                     : "—"}
                 </p>
@@ -123,7 +128,7 @@ export default function GoalsPage() {
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
                   {t.goals.savedInGoals}
                 </p>
-                <p className="mt-1 text-lg font-bold text-success">
+                <p className="amount mt-1 text-lg font-bold text-success">
                   {formatIrr(totalSaved, currency)}
                 </p>
               </div>
@@ -131,7 +136,7 @@ export default function GoalsPage() {
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
                   {t.goals.totalWealth}
                 </p>
-                <p className="mt-1 text-lg font-bold text-foreground">
+                <p className="amount mt-1 text-lg font-bold text-foreground">
                   {formatIrr(totalWealth, currency)}
                 </p>
               </div>
@@ -175,7 +180,7 @@ export default function GoalsPage() {
 
         {pageStatus === "loading" ? (
           <PageSpinner label={t.goals.loading} />
-        ) : pageStatus === "unauthenticated" ? null : pageStatus === "error" ? (
+        ) : pageStatus === "error" ? (
           <div className="space-y-3 py-8 text-center">
             <div className="rounded-xl bg-danger-soft p-3 text-xs font-semibold text-danger">
               {listError}

@@ -44,6 +44,7 @@ import {
   FundingSourceSelect,
   type FundingSource,
 } from "@/features/envelopes/components/FundingSourceSelect";
+import { redirectToLoginForAction } from "@/features/auth/lib/login-redirect";
 
 export function WithdrawForm() {
   const router = useRouter();
@@ -134,9 +135,11 @@ export function WithdrawForm() {
     setError("");
     setFieldError(null);
 
+    if (authStatus === "unauthenticated") {
+      redirectToLoginForAction("/transfer", t.common.loginToContinue);
+      return;
+    }
     if (authStatus !== "ready") {
-      setError(t.withdrawal.pleaseSignInToWithdraw);
-      router.push("/login");
       return;
     }
 
@@ -442,8 +445,10 @@ export function WithdrawForm() {
         disabled={
           loading ||
           blocked ||
-          status === "unauthenticated" ||
-          (!fundingSource.envelopeId && status !== "ready")
+          authStatus === "loading" ||
+          (authStatus === "ready" &&
+            !fundingSource.envelopeId &&
+            status !== "ready")
         }
       >
         {loading ? (

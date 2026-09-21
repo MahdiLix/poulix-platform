@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isCredentialPath, isPublicAuthPath } from "./session";
+import { isAdminPath, isCredentialPath, isPublicAuthPath } from "./session";
 
 describe("auth path helpers", () => {
   it("treats login and register as credential pages", () => {
@@ -15,5 +15,12 @@ describe("auth path helpers", () => {
     expect(isPublicAuthPath("/deposit/callback/")).toBe(true);
     expect(isPublicAuthPath("/deposit")).toBe(false);
     expect(isCredentialPath("/deposit/callback")).toBe(false);
+  });
+
+  it("treats only admin routes as still auth-required", () => {
+    expect(isAdminPath("/admin")).toBe(true);
+    expect(isAdminPath("/admin/users")).toBe(true);
+    expect(isAdminPath("/")).toBe(false);
+    expect(isAdminPath("/deposit")).toBe(false);
   });
 });

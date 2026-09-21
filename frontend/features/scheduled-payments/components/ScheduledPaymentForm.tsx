@@ -40,6 +40,7 @@ import {
 } from "@/features/envelopes/components/FundingSourceSelect";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 import { formatScheduleDate } from "@/shared/i18n/dates";
+import { redirectToLoginForAction } from "@/features/auth/lib/login-redirect";
 
 export function ScheduledPaymentForm() {
   const router = useRouter();
@@ -97,8 +98,11 @@ export function ScheduledPaymentForm() {
     setError("");
     setFieldError(null);
 
+    if (authStatus === "unauthenticated") {
+      redirectToLoginForAction("/scheduled/new", t.common.loginToContinue);
+      return;
+    }
     if (authStatus !== "ready") {
-      router.push("/login");
       return;
     }
 

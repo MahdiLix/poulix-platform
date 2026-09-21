@@ -2,22 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { PATHNAME_HEADER } from "@/shared/user/pathname-header";
 
-const PROTECTED_PREFIXES = [
-  "/",
-  "/transfer",
-  "/send",
-  "/deposit",
-  "/scheduled",
-  "/goals",
-  "/envelopes",
-  "/destinations",
-  "/security",
-  "/profile",
-  "/history",
-  "/notifications",
-  "/admin",
-  "/statistics",
-];
+const AUTH_REQUIRED_PREFIXES = ["/admin"];
 
 const PUBLIC_PREFIXES = [
   "/login",
@@ -106,13 +91,11 @@ export function proxy(request: NextRequest) {
     return nextWithPath(request);
   }
 
-  const isProtected =
-    pathname === "/" ||
-    PROTECTED_PREFIXES.some(
-      (prefix) => prefix !== "/" && pathname.startsWith(prefix),
-    );
+  const isAuthRequired = AUTH_REQUIRED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
 
-  if (isProtected && (!token || tokenExpired)) {
+  if (isAuthRequired && (!token || tokenExpired)) {
     const loginUrl = new URL("/login", request.url);
     const response = NextResponse.redirect(loginUrl);
     // Only wipe cookies when we positively detected an expired JWT.
@@ -121,6 +104,12 @@ export function proxy(request: NextRequest) {
     if (tokenExpired) {
       clearClientSession(response);
     }
+    return response;
+  }
+
+  if (token && tokenExpired) {
+    const response = nextWithPath(request);
+    clearClientSession(response);
     return response;
   }
 

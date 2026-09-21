@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/shared/layout/AppShell";
 import { HeaderBar } from "@/shared/layout/HeaderBar";
-import { Button, ButtonLink } from "@/shared/ui/Button";
+import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { Pagination } from "@/shared/ui/Pagination";
 import { api, ApiRequestError } from "@/shared/api";
@@ -116,7 +116,10 @@ export default function NotificationsPage() {
   useEffect(() => {
     if (authStatus === "loading") return;
     if (authStatus === "unauthenticated") {
-      setPageStatus("unauthenticated");
+      setNotifications([]);
+      setTotal(0);
+      setListError(null);
+      setPageStatus("ready");
       return;
     }
     void loadNotifications();
@@ -140,7 +143,7 @@ export default function NotificationsPage() {
       setPageStatus("ready");
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 401) {
-        setPageStatus("unauthenticated");
+        setPageStatus("ready");
         return;
       }
       setListError(localizeError(err, t.messages, "failedToLoadNotifications"));
@@ -216,15 +219,6 @@ export default function NotificationsPage() {
           <p className="py-8 text-center text-xs font-semibold text-muted">
             {t.notifications.loading}
           </p>
-        ) : null}
-
-        {pageStatus === "unauthenticated" ? (
-          <Card className="space-y-3 p-6 text-center">
-            <p className="text-sm font-semibold text-foreground">
-              {t.notifications.signInRequired}
-            </p>
-            <ButtonLink href="/login">{t.common.signIn}</ButtonLink>
-          </Card>
         ) : null}
 
         {pageStatus === "error" ? (

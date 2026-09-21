@@ -48,7 +48,7 @@ import type {
   AdminUserDetail,
   AdminUserSummary,
 } from "@/features/admin/lib/admin";
-import { isPublicAuthPath, notifySessionExpired } from "@/shared/user/session";
+import { notifySessionExpired } from "@/shared/user/session";
 import { parseAmount } from "@/features/wallet/lib/wallet";
 import { API_BASE_URL } from "@/shared/config";
 import {
@@ -193,10 +193,6 @@ function normalizePage<T>(
   return data;
 }
 
-function isBrowser() {
-  return typeof window !== "undefined" && typeof document !== "undefined";
-}
-
 export class ApiRequestError extends Error {
   status: number;
   retryAfter?: number;
@@ -312,9 +308,7 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
 
   // The HttpOnly session cookie is sent automatically via credentials.
   // Any non-auth-session request that comes back 401 means the session is
-  // no longer valid (never set, expired, or revoked), so it should redirect
-  // to login. isPublicAuthPath below still guards against redirect loops on
-  // the login/register pages themselves.
+  // no longer valid (never set, expired, or revoked).
   const attachToken = !isAuthSessionEndpoint(endpoint);
 
   const url = formatEndpoint(endpoint);
@@ -333,12 +327,16 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   }
 
   // Failed login/register is 401 and must not wipe an existing session.
-  if (response.status === 401 && attachToken) {
+  // Other 401s mean the session is gone: notify so the client can switch
+  // to guest/demo mode, then fail the request normally.
+  // GET /users/me is a background probe; UserProvider handles its 401
+  // without treating a guest first visit as a multi-tab logout.
+  if (
+    response.status === 401 &&
+    attachToken &&
+    !isBackgroundSessionProbe(endpoint, method)
+  ) {
     notifySessionExpired();
-    if (isBrowser() && !isPublicAuthPath(window.location.pathname)) {
-      window.location.assign("/login");
-      return new Promise(() => {});
-    }
   }
 
   const contentType = response.headers.get("content-type") || "";

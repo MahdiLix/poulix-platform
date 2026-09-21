@@ -26,7 +26,7 @@ export default function ScheduledPaymentsPage() {
     if (authStatus === "loading") return;
     if (authStatus === "unauthenticated") {
       setPayments([]);
-      setStatus("unauthenticated");
+      setStatus("ready");
       return;
     }
     void loadPayments();
@@ -42,7 +42,7 @@ export default function ScheduledPaymentsPage() {
       setStatus("ready");
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 401) {
-        setStatus("unauthenticated");
+        setStatus("ready");
         return;
       }
       setError(localizeError(err, t.messages, "failedToLoadScheduledPayments"));
@@ -83,15 +83,6 @@ export default function ScheduledPaymentsPage() {
           <p className="py-8 text-center text-xs font-semibold text-muted">
             {t.scheduled.loading}
           </p>
-        ) : status === "unauthenticated" ? (
-          <div className="space-y-3 py-8 text-center">
-            <p className="text-sm font-bold text-foreground">
-              {t.scheduled.signInRequired}
-            </p>
-            <Link href="/login">
-              <Button className="w-full">{t.common.signIn}</Button>
-            </Link>
-          </div>
         ) : status === "error" ? (
           <div className="space-y-3 py-8 text-center">
             <div className="rounded-xl bg-danger-soft p-3 text-xs font-semibold text-danger">

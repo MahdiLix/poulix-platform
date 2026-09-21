@@ -18,6 +18,10 @@ export function isCredentialPath(pathname: string): boolean {
   return matchesPath(pathname, CREDENTIAL_PATHS);
 }
 
+export function isAdminPath(pathname: string): boolean {
+  return pathname === "/admin" || pathname.startsWith("/admin/");
+}
+
 export function broadcastSessionLogout() {
   if (
     typeof window === "undefined" ||

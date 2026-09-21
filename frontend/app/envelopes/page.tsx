@@ -52,7 +52,10 @@ export default function EnvelopesPage() {
   useEffect(() => {
     if (authStatus === "loading") return;
     if (authStatus === "unauthenticated") {
-      window.location.replace("/login");
+      setEnvelopes([]);
+      setTotalAllocated(0);
+      setListError(null);
+      setPageStatus("ready");
       return;
     }
     void loadEnvelopes();
@@ -71,7 +74,9 @@ export default function EnvelopesPage() {
       setPageStatus("ready");
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 401) {
-        window.location.replace("/login");
+        setEnvelopes([]);
+        setTotalAllocated(0);
+        setPageStatus("ready");
         return;
       }
       setListError(localizeError(err, t.messages, "failedToLoadEnvelopes"));
@@ -144,8 +149,8 @@ export default function EnvelopesPage() {
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
                 {t.envelopes.availableBalance}
               </p>
-              <p className="mt-1 text-lg font-bold text-success">
-                {status === "ready"
+              <p className="amount mt-1 text-lg font-bold text-success">
+                {status === "ready" || status === "unauthenticated"
                   ? formatIrr(availableBalance, currency)
                   : "—"}
               </p>
@@ -159,7 +164,7 @@ export default function EnvelopesPage() {
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
                 {t.envelopes.allocatedInEnvelopes}
               </p>
-              <p className="mt-1 text-lg font-bold text-warning">
+              <p className="amount mt-1 text-lg font-bold text-warning">
                 {formatIrr(totalAllocated, currency)}
               </p>
             </div>
@@ -167,7 +172,7 @@ export default function EnvelopesPage() {
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
                 {t.envelopes.totalWealth}
               </p>
-              <p className="mt-1 text-lg font-bold text-foreground">
+              <p className="amount mt-1 text-lg font-bold text-foreground">
                 {formatIrr(totalWealth, currency)}
               </p>
             </div>
@@ -216,7 +221,7 @@ export default function EnvelopesPage() {
 
         {pageStatus === "loading" ? (
           <PageSpinner label={t.envelopes.loading} />
-        ) : pageStatus === "unauthenticated" ? null : pageStatus === "error" ? (
+        ) : pageStatus === "error" ? (
           <div className="space-y-3 py-8 text-center">
             <div className="rounded-xl bg-danger-soft p-3 text-xs font-semibold text-danger">
               {listError}
@@ -265,7 +270,7 @@ export default function EnvelopesPage() {
                   key={movement.id}
                   className="flex items-center justify-between rounded-xl bg-surface-muted p-3 text-xs"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success-soft text-success">
                       <ArrowDown className="h-4 w-4" />
                     </div>
@@ -281,8 +286,8 @@ export default function EnvelopesPage() {
                       ) : null}
                     </div>
                   </div>
-                  <div className="text-end">
-                    <p className="font-bold text-success">
+                  <div className="shrink-0 text-end">
+                    <p className="amount font-bold text-success">
                       {movement.type === "ALLOCATE" ? "+" : "-"}
                       {formatIrr(parseEnvelopeAmount(movement.amount))}
                     </p>

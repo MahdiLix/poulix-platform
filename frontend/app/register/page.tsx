@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { flashToast } from "@/shared/ui/Toast";
 import { ApiRequestError } from "@/shared/api";
 import { isolateText } from "@/shared/user/displayName";
@@ -33,9 +34,23 @@ import {
   validateUsername,
 } from "@/features/auth/lib/auth";
 import { PasswordStrength } from "@/features/auth/components/PasswordStrength";
+import {
+  sanitizeReturnPath,
+  withReturnPath,
+} from "@/features/auth/lib/login-redirect";
 
 export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterPageContent />
+    </Suspense>
+  );
+}
+
+function RegisterPageContent() {
   const { t } = useLanguage();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("next");
   const { blocked, remainingSeconds, remainingAttempts, attemptLimit } =
     useRateLimitAction("register");
   const [username, setUsername] = useState("");
@@ -103,7 +118,7 @@ export default function RegisterPage() {
           email: isolateText(res.user.email),
         }),
       });
-      window.location.assign("/");
+      window.location.assign(sanitizeReturnPath(returnTo));
     } catch (err: unknown) {
       const status =
         err instanceof ApiRequestError
@@ -313,7 +328,7 @@ export default function RegisterPage() {
               <p className="text-center text-sm text-muted">
                 {t.auth.alreadyHaveAccount}{" "}
                 <Link
-                  href="/login"
+                  href={withReturnPath("/login", returnTo)}
                   className="font-semibold text-primary hover:underline"
                 >
                   {t.auth.signInLink}

@@ -87,4 +87,31 @@ describe("useWalletBalance rate limit", () => {
     expect(result.current.balance).toBe(88_000);
     expect(result.current.error).toBeNull();
   });
+
+  it("uses demo balance only after auth is unauthenticated and never persists it", async () => {
+    getMe.mockRejectedValue(new ApiRequestError("Unauthorized", 401));
+
+    const { result } = renderHook(() => useWalletBalance(), { wrapper });
+
+    expect(result.current.balance).toBeNull();
+    await waitFor(() =>
+      expect(result.current.status).toBe("unauthenticated"),
+    );
+    expect(result.current.balance).toBe(17_500_000);
+    expect(getBalance).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem("poulix_wallet_last_balance")).toBeNull();
+    expect(
+      sessionStorage.getItem("poulix_wallet_last_balance:user-1"),
+    ).toBeNull();
+  });
+
+  it("loads authenticated API balance instead of demo data", async () => {
+    getBalance.mockResolvedValue({ balance: 42_000, currency: "IRR" });
+
+    const { result } = renderHook(() => useWalletBalance(), { wrapper });
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.balance).toBe(42_000);
+    expect(getBalance).toHaveBeenCalled();
+  });
 });

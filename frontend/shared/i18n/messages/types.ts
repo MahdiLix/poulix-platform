@@ -165,6 +165,7 @@ export type TranslationDictionary = {
     close: string;
     appearance: string;
     language: string;
+    loginToContinue: string;
   };
   nav: {
     home: string;
@@ -298,6 +299,8 @@ export type TranslationDictionary = {
     topUpModalSub: string;
     topUpAmount: string;
     payWithZarinpal: string;
+    continueToZarinpal: string;
+    pendingGatewayHint: string;
     redirecting: string;
     depositStatus: string;
     depositSuccessful: string;

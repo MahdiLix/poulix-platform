@@ -23,12 +23,13 @@ import {
   validateGoalTargetAmount,
   validateGoalTitle,
 } from "@/features/goals/lib/goals";
+import { redirectToLoginForAction } from "@/features/auth/lib/login-redirect";
 
 export function CreateGoalForm() {
   const router = useRouter();
   const { t, language } = useLanguage();
   const { status: authStatus } = useUser();
-  const { status, balance, currency } = useWalletBalance();
+  const { balance, currency } = useWalletBalance();
   const [title, setTitle] = useState("");
   const [targetAmount, setTargetAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -44,8 +45,11 @@ export function CreateGoalForm() {
     setError("");
     setFieldError(null);
 
+    if (authStatus === "unauthenticated") {
+      redirectToLoginForAction("/goals/new", t.common.loginToContinue);
+      return;
+    }
     if (authStatus !== "ready") {
-      router.push("/login");
       return;
     }
 
@@ -141,9 +145,7 @@ export function CreateGoalForm() {
               </div>
             </div>
             <p className="shrink-0 text-sm font-bold text-primary">
-              {status === "ready" && balance !== null
-                ? formatIrr(balance, currency)
-                : "—"}
+              {balance !== null ? formatIrr(balance, currency) : "—"}
             </p>
           </div>
 

@@ -25,6 +25,7 @@ import {
   parseEnvelopeAmount,
   type Envelope,
 } from "@/features/envelopes/lib/envelopes";
+import { getDemoTransactions } from "@/features/demo";
 import {
   filterByDayRange,
   percentChange,
@@ -71,29 +72,51 @@ export default function StatisticsPage() {
 
   async function loadTransactions() {
     if (authStatus !== "ready") {
-      setTransactions(null);
-      setSignedIn(false);
-      return;
+      return null;
     }
 
-    setSignedIn(true);
     try {
       const [txRes, goalsRes, envelopesRes] = await Promise.all([
         api.getAllTransactions().catch(() => []),
         api.getGoals().catch(() => ({ goals: [] })),
         api.getEnvelopes().catch(() => ({ envelopes: [] })),
       ]);
-      setTransactions(Array.isArray(txRes) ? txRes : []);
-      setGoals(goalsRes?.goals ?? []);
-      setEnvelopes(envelopesRes?.envelopes ?? []);
+      return {
+        transactions: Array.isArray(txRes) ? txRes : [],
+        goals: goalsRes?.goals ?? [],
+        envelopes: envelopesRes?.envelopes ?? [],
+      };
     } catch {
-      setTransactions([]);
+      return { transactions: [], goals: [], envelopes: [] };
     }
   }
 
   useEffect(() => {
+    let cancelled = false;
     if (authStatus === "loading") return;
-    void loadTransactions();
+    if (authStatus === "unauthenticated") {
+      setTransactions(getDemoTransactions());
+      setGoals([]);
+      setEnvelopes([]);
+      setSignedIn(false);
+      return;
+    }
+    if (authStatus !== "ready") return;
+
+    setSignedIn(true);
+    setTransactions([]);
+    setGoals([]);
+    setEnvelopes([]);
+    void loadTransactions().then((result) => {
+      if (cancelled || !result) return;
+      setTransactions(result.transactions);
+      setGoals(result.goals);
+      setEnvelopes(result.envelopes);
+    });
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authStatus]);
 
@@ -377,7 +400,7 @@ export default function StatisticsPage() {
               <p className="text-[11px] font-medium text-muted">
                 {t.statistics.income}
               </p>
-              <p className="text-xl font-bold text-success">
+              <p className="amount text-xl font-bold text-success">
                 {formatIrr(incomeTotal, currency)}
               </p>
             </Card>
@@ -386,7 +409,7 @@ export default function StatisticsPage() {
               <p className="text-[11px] font-medium text-muted">
                 {t.statistics.expense}
               </p>
-              <p className="text-xl font-bold text-danger">
+              <p className="amount text-xl font-bold text-danger">
                 {formatIrr(expenseTotal, currency)}
               </p>
             </Card>
@@ -395,7 +418,7 @@ export default function StatisticsPage() {
               <p className="text-[11px] font-medium text-muted">
                 {t.statistics.netBalance}
               </p>
-              <p className="text-xl font-bold text-success">
+              <p className="amount text-xl font-bold text-success">
                 {formatIrr(incomeTotal - expenseTotal, currency)}
               </p>
             </Card>
@@ -428,7 +451,7 @@ export default function StatisticsPage() {
                         {pct}%
                       </span>
                     </div>
-                    <p className="mt-1 text-sm font-bold">
+                    <p className="amount mt-1 text-sm font-bold">
                       {formatIrr(amount, currency)}
                     </p>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-muted">

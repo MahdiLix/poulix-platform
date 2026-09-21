@@ -1,7 +1,11 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { AuthUser } from "@/shared/api";
-import { isCredentialPath, isPublicAuthPath } from "@/shared/user/session";
+import {
+  isAdminPath,
+  isCredentialPath,
+  isPublicAuthPath,
+} from "@/shared/user/session";
 import { PATHNAME_HEADER } from "@/shared/user/pathname-header";
 
 const SESSION_COOKIE = "poulix_session";
@@ -82,7 +86,7 @@ export async function loadLayoutSession() {
     return { user, pathname };
   }
 
-  if (pathname && unauthorized) {
+  if (pathname && unauthorized && isAdminPath(pathname)) {
     redirect("/login");
   }
 

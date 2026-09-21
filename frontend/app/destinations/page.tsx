@@ -14,6 +14,7 @@ import { useUser } from "@/shared/user/UserProvider";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { formatDisplayDateTime } from "@/shared/i18n/dates";
 import { localizeError } from "@/shared/i18n/localizeError";
+import { redirectToLoginForAction } from "@/features/auth/lib/login-redirect";
 import { useRateLimitAction, withRemainingLabel } from "@/shared/rate-limit";
 import type {
   CreateSavedDestinationPayload,
@@ -68,7 +69,7 @@ export default function DestinationsPage() {
   useEffect(() => {
     if (authStatus === "loading") return;
     if (authStatus === "unauthenticated") {
-      setPageStatus("unauthenticated");
+      setPageStatus("ready");
       return;
     }
     void loadData();
@@ -102,7 +103,7 @@ export default function DestinationsPage() {
       setPageStatus("ready");
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 401) {
-        setPageStatus("unauthenticated");
+        setPageStatus("ready");
         return;
       }
       setError(localizeError(err, t.messages, "failedToLoadDestinations"));
@@ -112,6 +113,10 @@ export default function DestinationsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
+    if (authStatus === "unauthenticated") {
+      redirectToLoginForAction("/destinations", t.common.loginToContinue);
+      return;
+    }
     setCreating(true);
     try {
       const payload: CreateSavedDestinationPayload = {
@@ -155,17 +160,6 @@ export default function DestinationsPage() {
       />
 
       <div className="flex flex-1 flex-col space-y-4 p-4 lg:mx-auto lg:max-w-6xl lg:p-6">
-        {pageStatus === "unauthenticated" ? (
-          <Card className="p-6 text-center">
-            <p className="text-sm font-semibold">
-              {t.destinations.signInRequired}
-            </p>
-            <Link href="/login" className="mt-3 inline-block">
-              <Button>{t.common.signIn}</Button>
-            </Link>
-          </Card>
-        ) : null}
-
         {error ? (
           <Card className="p-4 text-center text-sm text-danger">{error}</Card>
         ) : null}

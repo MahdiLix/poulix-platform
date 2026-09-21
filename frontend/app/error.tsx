@@ -1,25 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
 import { BrandLogo } from "@/shared/brand/BrandLogo";
 import { Button } from "@/shared/ui/Button";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 
 export default function AppError({
-  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
   const { t } = useLanguage();
-
-  useEffect(() => {
-    const message = error.message || "";
-    if (/unauthorized|401/i.test(message) && typeof window !== "undefined") {
-      window.location.assign("/login");
-    }
-  }, [error]);
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-canvas px-6 text-center">

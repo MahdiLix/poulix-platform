@@ -65,7 +65,9 @@ function unsignedJwt(expOffsetSeconds: number) {
 }
 
 test.describe("first paint", () => {
-  test("unauthenticated / never paints the dashboard", async ({ page }) => {
+  test("unauthenticated / paints the dashboard instead of redirecting to login", async ({
+    page,
+  }) => {
     const statuses: number[] = [];
     page.on("response", (res) => {
       if (res.request().resourceType() === "document") {
@@ -75,13 +77,11 @@ test.describe("first paint", () => {
 
     await page.goto("/", { waitUntil: "domcontentloaded" });
     const first = await snapshot(page);
-    expect(first.href).toContain("/login");
-    expect(first.text).not.toMatch(
-      /Welcome to Poulix|خوش آمدید به پولیکس|Available Balance|موجودی قابل برداشت/,
-    );
-    expect(first.text).toMatch(/Welcome back|خوش آمدید|Sign in|ورود/);
+    expect(first.href.replace(/\/$/, "")).toMatch(/http:\/\/localhost$/);
+    expect(first.href).not.toContain("/login");
+    expect(statuses[0]).not.toBe(307);
     expect(first.themeLs).toBeNull();
-    expect(statuses[0]).toBe(307);
+    await expect(page.getByText("17,500,000")).toBeVisible();
   });
 
   test("login refresh with en and light cookies is English LTR light on first paint", async ({
@@ -220,7 +220,7 @@ test.describe("first paint", () => {
     expect(first.themeLs).toBeNull();
   });
 
-  test("expired session cookie never paints the dashboard", async ({
+  test("expired session cookie paints the guest dashboard instead of login", async ({
     context,
     page,
   }) => {
@@ -240,14 +240,12 @@ test.describe("first paint", () => {
     });
     await page.goto("/", { waitUntil: "domcontentloaded" });
     const first = await snapshot(page);
-    expect(first.href).toContain("/login");
-    expect(first.text).not.toMatch(
-      /Welcome to Poulix|Available Balance|موجودی قابل برداشت/,
-    );
-    expect(statuses[0]).toBe(307);
+    expect(first.href).not.toContain("/login");
+    expect(statuses[0]).not.toBe(307);
+    await expect(page.getByText("17,500,000")).toBeVisible();
   });
 
-  test("invalid unexpired session is redirected before protected UI", async ({
+  test("invalid unexpired session stays on the guest dashboard", async ({
     context,
     page,
   }) => {
@@ -261,11 +259,8 @@ test.describe("first paint", () => {
     ]);
     await page.goto("/", { waitUntil: "domcontentloaded" });
     const first = await snapshot(page);
-    expect(first.href).toContain("/login");
-    expect(first.text).not.toMatch(
-      /Welcome to Poulix|Available Balance|موجودی قابل برداشت/,
-    );
-    expect(first.text).not.toMatch(/^[\s\n]*Loading|^[\s\n]*در حال بارگذاری/);
+    expect(first.href).not.toContain("/login");
+    await expect(page.getByText("17,500,000")).toBeVisible();
   });
 
   test("authenticated / paints the dashboard, not a route loading gate", async ({
@@ -284,7 +279,7 @@ test.describe("first paint", () => {
     await context.close();
   });
 
-  test("logout keeps theme and language cookies on /login", async ({
+  test("logout stays in the app and keeps theme and language cookies", async ({
     browser,
   }) => {
     const context = await browser.newContext();
@@ -298,9 +293,9 @@ test.describe("first paint", () => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "E2", exact: true }).click();
     await page.getByRole("button", { name: /log out|خروج/i }).click();
-    await page.waitForURL("**/login");
+    await expect(page.getByText("17,500,000")).toBeVisible();
     const after = await snapshot(page);
-    expect(after.href).toContain("/login");
+    expect(after.href).not.toContain("/login");
     expect(after.hasDark).toBe(true);
     expect(after.lang).toBe("fa");
     expect(after.hasRtl).toBe(true);

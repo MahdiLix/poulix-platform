@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Eye,
   EyeOff,
@@ -28,9 +29,23 @@ import {
   validateIdentifier,
   validatePassword,
 } from "@/features/auth/lib/auth";
+import {
+  sanitizeReturnPath,
+  withReturnPath,
+} from "@/features/auth/lib/login-redirect";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageContent />
+    </Suspense>
+  );
+}
+
+function LoginPageContent() {
   const { t } = useLanguage();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("next");
   const {
     blocked,
     remainingSeconds,
@@ -96,7 +111,7 @@ export default function LoginPage() {
         title: t.messages.success.loginSuccess,
         description: t.common.welcomeToPoulix,
       });
-      window.location.assign("/");
+      window.location.assign(sanitizeReturnPath(returnTo));
     } catch (err: unknown) {
       const status =
         err instanceof ApiRequestError
@@ -251,7 +266,7 @@ export default function LoginPage() {
               <p className="text-center text-sm text-muted">
                 {t.auth.dontHaveAccount}{" "}
                 <Link
-                  href="/register"
+                  href={withReturnPath("/register", returnTo)}
                   className="font-semibold text-primary hover:underline"
                 >
                   {t.auth.createOne}

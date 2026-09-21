@@ -100,20 +100,6 @@ export function ProfileMenu({
     };
   }, [open]);
 
-  if (status === "unauthenticated" && !user) {
-    return (
-      <Link
-        href="/login"
-        className={cn(
-          "flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground transition hover:opacity-90 active:scale-[0.98]",
-          triggerClassName,
-        )}
-      >
-        {initials}
-      </Link>
-    );
-  }
-
   const sizeClass =
     avatarSize === "md" ? "h-9 w-9 text-xs" : "h-9 w-9 text-[11px]";
 

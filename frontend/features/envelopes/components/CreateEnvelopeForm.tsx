@@ -10,6 +10,7 @@ import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { flashToast } from "@/shared/ui/Toast";
 import { validateEnvelopeName } from "@/features/envelopes/lib/envelopes";
+import { redirectToLoginForAction } from "@/features/auth/lib/login-redirect";
 
 export function CreateEnvelopeForm() {
   const router = useRouter();
@@ -26,8 +27,11 @@ export function CreateEnvelopeForm() {
     setError("");
     setFieldError(null);
 
+    if (authStatus === "unauthenticated") {
+      redirectToLoginForAction("/envelopes/new", t.common.loginToContinue);
+      return;
+    }
     if (authStatus !== "ready") {
-      router.push("/login");
       return;
     }
 

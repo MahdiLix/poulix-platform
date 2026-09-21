@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   ArrowDown,
   ArrowUp,
@@ -54,6 +53,8 @@ import {
   localizeOfferCopy,
   type HomepageOffer,
 } from "@/features/offers/lib/offers";
+import { getDemoTransactions } from "@/features/demo";
+import { redirectToLoginForAction } from "@/features/auth/lib/login-redirect";
 
 type Transaction = {
   id: string;
@@ -164,7 +165,6 @@ function HomeOfferTopUpButton({
 }
 
 export default function HomePage() {
-  const router = useRouter();
   const { t, language } = useLanguage();
   const { status, balance, currency, error, refresh } = useWalletBalance();
   const { user, status: authStatus } = useUser();
@@ -185,22 +185,45 @@ export default function HomePage() {
         api.getGoals(),
         api.getEnvelopes(),
       ]);
-      if (Array.isArray(txRes)) setTransactions(txRes);
-      if (goalsRes?.goals) setGoals(goalsRes.goals);
-      if (envelopesRes?.summary) {
-        setAllocated(
-          parseEnvelopeAmount(envelopesRes.summary.totalAllocatedInEnvelopes),
-        );
-      }
+      return {
+        transactions: Array.isArray(txRes) ? txRes : [],
+        goals: goalsRes?.goals ?? [],
+        allocated: envelopesRes?.summary
+          ? parseEnvelopeAmount(envelopesRes.summary.totalAllocatedInEnvelopes)
+          : 0,
+      };
     } catch {
-      // non-critical dashboard data
+      return { transactions: [], goals: [], allocated: 0 };
     }
   };
 
   useEffect(() => {
+    let cancelled = false;
     if (authStatus === "loading") return;
-    void loadDashboardData();
+    if (authStatus === "unauthenticated") {
+      setTransactions(getDemoTransactions());
+      setGoals([]);
+      setAllocated(0);
+      setOffer(getHomepageOffer());
+      return;
+    }
+    if (authStatus !== "ready") return;
+
+    setTransactions([]);
+    setGoals([]);
+    setAllocated(0);
     setOffer(getHomepageOffer());
+
+    void loadDashboardData().then((result) => {
+      if (cancelled || !result) return;
+      setTransactions(result.transactions);
+      setGoals(result.goals);
+      setAllocated(result.allocated);
+    });
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authStatus]);
 
@@ -295,8 +318,9 @@ export default function HomePage() {
   const displayOffer = offer ? localizeOfferCopy(offer, t.home) : null;
 
   const openTopUp = (fromOffer = false) => {
-    if (authStatus === "unauthenticated") router.push("/login");
-    else if (authStatus === "ready") {
+    if (authStatus === "unauthenticated") {
+      redirectToLoginForAction("/deposit", t.common.loginToContinue);
+    } else if (authStatus === "ready") {
       if (fromOffer && offer) activateHomepageOffer(offer, user?.id);
       setIsDepositOpen(true);
     }
@@ -335,7 +359,7 @@ export default function HomePage() {
               <span className="h-2 w-2 rounded-full bg-success" />
               {t.home.income}
             </span>
-            <span className="tabular-nums text-muted">
+            <span className="amount min-w-0 text-end tabular-nums text-muted">
               {formatIrr(stats.totalReceived, currency)}
             </span>
           </div>
@@ -344,7 +368,7 @@ export default function HomePage() {
               <span className="h-2 w-2 rounded-full bg-danger" />
               {t.home.expense}
             </span>
-            <span className="tabular-nums text-muted">
+            <span className="amount min-w-0 text-end tabular-nums text-muted">
               {formatIrr(stats.totalSent, currency)}
             </span>
           </div>
@@ -482,7 +506,7 @@ export default function HomePage() {
                 </p>
               </div>
               {hideBalance ? (
-                <p className="amount text-2xl font-bold tracking-tight lg:text-3xl">
+                <p className="amount text-2xl font-bold tracking-tight lg:text-3xl rtl:lg:text-right">
                   ••••••
                 </p>
               ) : (
@@ -496,11 +520,33 @@ export default function HomePage() {
                   label=""
                 />
               )}
-              <p className="text-[11px] text-white/60">
-                {t.home.allocated} {formatIrr(allocated, currency)} ·{" "}
-                {t.goals.savedInGoals} {formatIrr(savedInGoals, currency)} ·{" "}
-                {t.home.spendable} {formatIrr(spendable, currency)}
-              </p>
+              <div className="text-[11px] text-white/60">
+                <p className="hidden sm:block">
+                  {t.home.allocated} {formatIrr(allocated, currency)} ·{" "}
+                  {t.goals.savedInGoals} {formatIrr(savedInGoals, currency)} ·{" "}
+                  {t.home.spendable} {formatIrr(spendable, currency)}
+                </p>
+                <div className="space-y-1 sm:hidden">
+                  <p>
+                    {t.home.allocated}{" "}
+                    <span className="amount">
+                      {formatIrr(allocated, currency)}
+                    </span>
+                  </p>
+                  <p>
+                    {t.home.spendable}{" "}
+                    <span className="amount">
+                      {formatIrr(spendable, currency)}
+                    </span>
+                  </p>
+                  <p>
+                    {t.goals.savedInGoals}{" "}
+                    <span className="amount">
+                      {formatIrr(savedInGoals, currency)}
+                    </span>
+                  </p>
+                </div>
+              </div>
             </div>
 
             <HomeMoveMoneyButtons

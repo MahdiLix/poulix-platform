@@ -33,12 +33,6 @@ type UserContextType = {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 const SESSION_RECHECK_INTERVAL_MS = 5_000;
 
-function redirectToLogin() {
-  if (typeof window === "undefined") return;
-  if (isPublicAuthPath(window.location.pathname)) return;
-  window.location.assign("/login");
-}
-
 export function UserProvider({
   children,
   initialUser = null,
@@ -51,7 +45,6 @@ export function UserProvider({
     initialUser ? "ready" : "loading",
   );
   const signingOut = useRef(false);
-  const redirected = useRef(false);
   const userRef = useRef<AuthUser | null>(null);
   const expiryTimer = useRef<number | null>(null);
   const refreshInFlight = useRef<Promise<void> | null>(null);
@@ -67,33 +60,28 @@ export function UserProvider({
     expiryTimer.current = null;
   }, []);
 
-  const signOut = useCallback(
-    async (redirect = true) => {
-      if (signingOut.current) return;
-      signingOut.current = true;
-      clearExpiryTimer();
+  const signOut = useCallback(async () => {
+    if (signingOut.current) return;
+    signingOut.current = true;
+    clearExpiryTimer();
 
+    const signedInUserId = userRef.current?.id;
+    if (signedInUserId) {
       // Wait for the backend to revoke the session and clear the HttpOnly
-      // cookie before navigating. Otherwise /login still carries a valid
-      // cookie and the route guard bounces the user back home.
+      // cookie so later authenticated requests cannot reuse it.
       try {
         await api.logout();
       } catch {
         // Expired or already-revoked sessions still complete local logout.
       }
+      clearSavedBalanceForUser(signedInUserId);
+    }
 
-      clearSavedBalanceForUser(userRef.current?.id);
-      broadcastSessionLogout();
-      setUser(null);
-      setStatus("unauthenticated");
-      if (redirect && !redirected.current) {
-        redirected.current = true;
-        redirectToLogin();
-      }
-      signingOut.current = false;
-    },
-    [clearExpiryTimer],
-  );
+    broadcastSessionLogout();
+    setUser(null);
+    setStatus("unauthenticated");
+    signingOut.current = false;
+  }, [clearExpiryTimer]);
 
   const scheduleExpiry = useCallback(
     (expiresAt?: string) => {
@@ -145,12 +133,6 @@ export function UserProvider({
           clearExpiryTimer();
           setUser(null);
           setStatus("unauthenticated");
-          if (
-            typeof window !== "undefined" &&
-            !isPublicAuthPath(window.location.pathname)
-          ) {
-            redirectToLogin();
-          }
           return;
         }
         if (err instanceof ApiRequestError && err.status === 429) {

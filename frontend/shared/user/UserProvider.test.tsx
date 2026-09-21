@@ -97,7 +97,7 @@ describe("UserProvider session", () => {
     expect(getMe).toHaveBeenCalledOnce();
   });
 
-  it("awaits logout before redirecting to /login", async () => {
+  it("awaits logout and stays in the app instead of sending the user to /login", async () => {
     let resolveLogout: (value: { success: boolean }) => void = () => {};
     logout.mockImplementation(
       () =>
@@ -121,8 +121,10 @@ describe("UserProvider session", () => {
     });
 
     await waitFor(() => {
-      expect(window.location.assign).toHaveBeenCalledWith("/login");
+      expect(result.current.status).toBe("unauthenticated");
+      expect(result.current.user).toBeNull();
     });
+    expect(window.location.assign).not.toHaveBeenCalled();
   });
 
   it("probes the session from loading, and 503 does not send the user to /login", async () => {
@@ -178,9 +180,11 @@ describe("UserProvider session", () => {
     await waitFor(
       () => {
         expect(logout).toHaveBeenCalled();
-        expect(window.location.assign).toHaveBeenCalledWith("/login");
+        expect(result.current.status).toBe("unauthenticated");
+        expect(result.current.user).toBeNull();
       },
       { timeout: 1000 },
     );
+    expect(window.location.assign).not.toHaveBeenCalled();
   });
 });

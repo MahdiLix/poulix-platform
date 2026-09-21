@@ -16,6 +16,7 @@ import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 import { useToast } from "@/shared/ui/Toast";
 import { useUser } from "@/shared/user/UserProvider";
 import { claimHomepageOffer } from "@/features/offers/lib/offers";
+import { clearPendingStartPay } from "@/features/deposit/lib/deposit";
 
 function DepositCallbackContent() {
   const searchParams = useSearchParams();
@@ -64,6 +65,7 @@ function DepositCallbackContent() {
         return;
       }
       requestedKeyRef.current = requestKey;
+      clearPendingStartPay();
 
       try {
         const response = await api.completeDepositCallback(

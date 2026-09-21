@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowRight, Lock } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { Badge } from "@/shared/ui/Badge";
@@ -13,10 +12,14 @@ import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import { localizeError } from "@/shared/i18n/localizeError";
 import { useRateLimitAction, withRemainingLabel } from "@/shared/rate-limit";
+import { redirectToLoginForAction } from "@/features/auth/lib/login-redirect";
 import {
   DEPOSIT_PRESETS,
+  readPendingStartPay,
+  resumePendingStartPay,
   startZarinpalDeposit,
   validateDepositAmount,
+  type PendingStartPay,
 } from "@/features/deposit/lib/deposit";
 import {
   consumeActiveOffer,
@@ -41,15 +44,31 @@ function formatPreset(amount: number): string {
 }
 
 export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
-  const router = useRouter();
   const { t, language } = useLanguage();
-  const { status: authStatus } = useUser();
+  const { status: authStatus, user } = useUser();
   const { blocked, remainingSeconds } = useRateLimitAction("deposit");
   const { balance, status: balanceStatus, currency } = useWalletBalance();
   const [amount, setAmount] = useState(initialAmount);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeOffer, setActiveOffer] = useState<ActiveOffer | null>(null);
+  const [pendingStartPay, setPendingStartPay] =
+    useState<PendingStartPay | null>(null);
+
+
+{/* Sync pending start pay by zarinpal sandbox */}
+  useEffect(() => {
+    function syncPending() {
+      setPendingStartPay(readPendingStartPay(user?.id));
+    }
+    syncPending();
+    window.addEventListener("pageshow", syncPending);
+    window.addEventListener("focus", syncPending);
+    return () => {
+      window.removeEventListener("pageshow", syncPending);
+      window.removeEventListener("focus", syncPending);
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     function syncOffer() {
@@ -75,8 +94,7 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
     }
 
     if (authStatus === "unauthenticated") {
-      setError(t.messages.pleaseSignInToDeposit);
-      router.push("/login");
+      redirectToLoginForAction("/deposit", t.common.loginToContinue);
       return;
     }
     if (authStatus !== "ready") {
@@ -100,10 +118,22 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
         numericAmount,
         t.messages,
         authStatus === "ready",
+        user?.id,
       );
     } catch (err: unknown) {
       setError(localizeError(err, t.messages, "depositFailedGeneric"));
       setLoading(false);
+    }
+  }
+
+  function handleContinuePending() {
+    setError("");
+    if (authStatus === "unauthenticated") {
+      redirectToLoginForAction("/deposit", t.common.loginToContinue);
+      return;
+    }
+    if (!resumePendingStartPay(user?.id)) {
+      setPendingStartPay(null);
     }
   }
 
@@ -115,9 +145,6 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
     : null;
 
   function balanceLabel(): string {
-    if (balanceStatus === "unauthenticated") {
-      return t.common.signInToViewBalance;
-    }
     if (balanceStatus === "error") {
       return t.common.couldNotLoadBalance;
     }
@@ -127,11 +154,14 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
     ) {
       return t.common.loadingBalance;
     }
+    if (balance == null) {
+      return t.common.signInToViewBalance;
+    }
     return formatIrr(currentBalance, currency, language);
   }
 
   function afterBalanceLabel(): string {
-    if (balanceStatus === "ready" && balance !== null) {
+    if (balance !== null) {
       return formatIrr(afterBalance, currency, language);
     }
     return "-";
@@ -143,6 +173,22 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
       onSubmit={handleDeposit}
       className="space-y-6"
     >
+      {pendingStartPay ? (
+        <div className="space-y-3 rounded-xl border border-border bg-surface-muted p-3">
+          <p className="text-xs font-medium text-muted">
+            {t.deposit.pendingGatewayHint}
+          </p>
+          <Button
+            type="button"
+            onClick={handleContinuePending}
+            disabled={loading || authStatus === "loading"}
+            className="h-11"
+          >
+            {t.deposit.continueToZarinpal}
+          </Button>
+        </div>
+      ) : null}
+
       {error || blocked ? (
         <div className="rounded-xl bg-danger-soft p-3 text-center text-xs font-semibold text-danger">
           {blocked ? t.messages.depositRateLimited : error}

@@ -29,11 +29,18 @@ type BarChartProps = {
 };
 
 function axisLabel(value: number): string {
-  if (value >= 1_000_000) {
-    const millions = value / 1_000_000;
-    return `${Number.isInteger(millions) ? millions : millions.toFixed(1)}M`;
+  const sign = value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+
+  if (abs >= 1_000_000) {
+    const millions = abs / 1_000_000;
+    return `${sign}${Number.isInteger(millions) ? millions : millions.toFixed(1)}M`;
   }
-  if (value >= 1_000) return `${Math.round(value / 1_000)}k`;
+
+  if (abs >= 1_000) {
+    const thousands = abs / 1_000;
+    return `${sign}${Number.isInteger(thousands) || thousands >= 100 ? Math.round(thousands) : thousands.toFixed(1)}k`;
+  }
   return String(Math.round(value));
 }
 

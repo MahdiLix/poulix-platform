@@ -55,8 +55,9 @@ export function DepositForm({ initialAmount = "100000" }: DepositFormProps) {
   const [pendingStartPay, setPendingStartPay] =
     useState<PendingStartPay | null>(null);
 
-
-{/* Sync pending start pay by zarinpal sandbox */}
+  {
+    /* Sync pending start pay by zarinpal sandbox */
+  }
   useEffect(() => {
     function syncPending() {
       setPendingStartPay(readPendingStartPay(user?.id));

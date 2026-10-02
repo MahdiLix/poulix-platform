@@ -35,7 +35,11 @@ import { cn } from "@/shared/cn";
 import { DepositModal } from "@/features/deposit/components/DepositModal";
 import { WalletBalance } from "@/features/wallet/components/WalletBalance";
 import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
-import { formatIrr, parseAmount } from "@/features/wallet/lib/wallet";
+import {
+  formatAmountDigits,
+  formatIrr,
+  parseAmount,
+} from "@/features/wallet/lib/wallet";
 import {
   transactionReasonLabel,
   transactionTypeLabel,
@@ -62,6 +66,7 @@ type Transaction = {
   amount: string | number;
   createdAt: string;
   reason?: string | null;
+  status?: string | null;
 };
 
 const INCOME_TYPES = new Set([
@@ -77,6 +82,114 @@ const EXPENSE_TYPES = new Set([
   "GOAL_CONTRIBUTE",
   "ENVELOPE_ALLOCATE",
 ]);
+
+// Recent-activity arrows may include internal moves (goals/envelopes), but
+// income/expense totals and charts must only count money entering or leaving
+// the wallet, otherwise moving your own money into a goal inflates both sides.
+const STATS_INCOME_TYPES = new Set(["DEPOSIT", "TRANSFER_IN"]);
+const STATS_EXPENSE_TYPES = new Set(["WITHDRAWAL", "TRANSFER_OUT"]);
+const UNSETTLED_STATUSES = new Set([
+  "PENDING",
+  "FAILED",
+  "CANCELLED",
+  "CANCELED",
+  "EXPIRED",
+  "REJECTED",
+]);
+const DAY_MS = 86_400_000;
+const CLOCK_SKEW_MS = 5 * 60_000;
+
+// Plain decimal strings such as "500000.00" (Prisma Decimal) are read exactly;
+// anything else (Persian digits, separators...) still goes through parseAmount.
+function txAmount(value: string | number | null | undefined): number {
+  if (typeof value === "string" && /^\s*-?\d+(\.\d+)?\s*$/.test(value)) {
+    return Math.abs(Math.trunc(Number(value)));
+  }
+  return Math.abs(parseAmount(value));
+}
+
+function isSettled(tx: Transaction): boolean {
+  return !tx.status || !UNSETTLED_STATUSES.has(tx.status.toUpperCase());
+}
+
+function startOfDay(date: Date): Date {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+// Calendar-day difference, safe across DST changes.
+function dayDiff(from: Date, to: Date): number {
+  return Math.round(
+    (startOfDay(to).getTime() - startOfDay(from).getTime()) / DAY_MS,
+  );
+}
+
+// Start of the period behind the "this month" cards:
+// - guests: rolling 30 days (demo data is generated relative to today, so a
+//   calendar month would be nearly empty in the first days of the month)
+// - Persian UI: start of the Jalali month
+// - otherwise: start of the Gregorian month
+function getStatsPeriodStart(
+  now: Date,
+  language: string,
+  rolling: boolean,
+): Date {
+  const today = startOfDay(now);
+  if (rolling) {
+    today.setDate(today.getDate() - 29);
+    return today;
+  }
+  if (language === "fa") {
+    const day = Number(
+      new Intl.DateTimeFormat("en-US-u-ca-persian-nu-latn", {
+        day: "numeric",
+      }).format(now),
+    );
+    if (Number.isInteger(day) && day >= 1 && day <= 31) {
+      today.setDate(today.getDate() - (day - 1));
+      return today;
+    }
+  }
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
+function bucketize(
+  transactions: Transaction[],
+  start: Date,
+  totalDays: number,
+  bucketCount: number,
+  now: Date,
+) {
+  const bucketDays = Math.max(1, Math.ceil(totalDays / bucketCount));
+  const buckets = Array.from({ length: bucketCount }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(date.getDate() + index * bucketDays);
+    return { date, income: 0, expense: 0 };
+  });
+  const limit = now.getTime() + CLOCK_SKEW_MS;
+
+  for (const tx of transactions) {
+    if (!isSettled(tx)) continue;
+
+    const createdAt = new Date(tx.createdAt);
+    const time = createdAt.getTime();
+    if (Number.isNaN(time) || time < start.getTime() || time > limit) continue;
+    const isIncome = STATS_INCOME_TYPES.has(tx.type);
+    const isExpense = STATS_EXPENSE_TYPES.has(tx.type);
+    if (!isIncome && !isExpense) continue;
+    const index = Math.min(
+      bucketCount - 1,
+      Math.floor(dayDiff(start, createdAt) / bucketDays),
+    );
+    const bucket = buckets[Math.max(0, index)];
+    const amount = txAmount(tx.amount);
+    
+    if (isIncome) bucket.income += amount;
+    else bucket.expense += amount;
+  }
+  return buckets;
+}
 
 function HomeMoveMoneyButtons({
   onTopUp,
@@ -179,22 +292,24 @@ export default function HomePage() {
   const loadDashboardData = async () => {
     if (authStatus !== "ready") return;
 
-    try {
-      const [txRes, goalsRes, envelopesRes] = await Promise.all([
-        api.getAllTransactions(),
-        api.getGoals(),
-        api.getEnvelopes(),
-      ]);
-      return {
-        transactions: Array.isArray(txRes) ? txRes : [],
-        goals: goalsRes?.goals ?? [],
-        allocated: envelopesRes?.summary
-          ? parseEnvelopeAmount(envelopesRes.summary.totalAllocatedInEnvelopes)
-          : 0,
-      };
-    } catch {
-      return { transactions: [], goals: [], allocated: 0 };
-    }
+    const [txRes, goalsRes, envelopesRes] = await Promise.allSettled([
+      api.getAllTransactions(),
+      api.getGoals(),
+      api.getEnvelopes(),
+    ]);
+    const envelopes =
+      envelopesRes.status === "fulfilled" ? envelopesRes.value : null;
+    return {
+      transactions:
+        txRes.status === "fulfilled" && Array.isArray(txRes.value)
+          ? txRes.value
+          : [],
+      goals:
+        goalsRes.status === "fulfilled" ? (goalsRes.value?.goals ?? []) : [],
+      allocated: envelopes?.summary
+        ? parseEnvelopeAmount(envelopes.summary.totalAllocatedInEnvelopes)
+        : 0,
+    };
   };
 
   useEffect(() => {
@@ -227,63 +342,38 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authStatus]);
 
-  const stats = useMemo(() => {
-    let totalSent = 0;
-    let totalReceived = 0;
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthlyTransactions = transactions.filter(
-      (tx) => new Date(tx.createdAt) >= monthStart,
-    );
+  const isGuest = authStatus === "unauthenticated";
 
-    for (const tx of monthlyTransactions) {
-      const amount = parseAmount(tx.amount);
-      if (tx.type && EXPENSE_TYPES.has(tx.type)) totalSent += amount;
-      if (tx.type && INCOME_TYPES.has(tx.type)) totalReceived += amount;
-    }
+  const { stats, spark } = useMemo(() => {
+    const now = new Date();
+    const start = getStatsPeriodStart(now, language, isGuest);
+    const totalDays = dayDiff(start, now) + 1;
+    const bucketCount = Math.max(2, Math.min(totalDays, 10));
+    const buckets = bucketize(transactions, start, totalDays, bucketCount, now);
+
+    const totalReceived = buckets.reduce((sum, b) => sum + b.income, 0);
+    const totalSent = buckets.reduce((sum, b) => sum + b.expense, 0);
     return {
-      totalTransactions: monthlyTransactions.length,
-      totalSent,
-      totalReceived,
-      net: totalReceived - totalSent,
+      stats: {
+        totalSent,
+        totalReceived,
+        net: totalReceived - totalSent,
+      },
+      spark: {
+        income: buckets.map((b) => b.income),
+        expense: buckets.map((b) => b.expense),
+        net: buckets.map((b) => b.income - b.expense),
+      },
     };
-  }, [transactions]);
+  }, [transactions, language, isGuest]);
 
   const chartSeries = useMemo(() => {
     const days = chartRange === "7" ? 7 : chartRange === "90" ? 90 : 30;
     const now = new Date();
     const bucketCount = days === 7 ? 7 : days === 30 ? 10 : 9;
-    const bucketDays = Math.ceil(days / bucketCount);
-    const start = new Date(now);
-    start.setHours(0, 0, 0, 0);
+    const start = startOfDay(now);
     start.setDate(start.getDate() - days + 1);
-    const buckets = Array.from({ length: bucketCount }, (_, index) => {
-      const date = new Date(start);
-      date.setDate(date.getDate() + index * bucketDays);
-      return { date, income: 0, expense: 0 };
-    });
-
-    for (const tx of transactions) {
-      const createdAt = new Date(tx.createdAt);
-      if (
-        Number.isNaN(createdAt.getTime()) ||
-        createdAt < start ||
-        createdAt > now
-      ) {
-        continue;
-      }
-      const elapsedDays = Math.floor(
-        (createdAt.getTime() - start.getTime()) / 86_400_000,
-      );
-      const bucket =
-        buckets[
-          Math.min(bucketCount - 1, Math.floor(elapsedDays / bucketDays))
-        ];
-      if (!bucket) continue;
-      const amount = parseAmount(tx.amount);
-      if (INCOME_TYPES.has(tx.type)) bucket.income += amount;
-      if (EXPENSE_TYPES.has(tx.type)) bucket.expense += amount;
-    }
+    const buckets = bucketize(transactions, start, days, bucketCount, now);
 
     const income = buckets.map((bucket) => ({
       label: formatMonthDay(bucket.date, language),
@@ -342,21 +432,24 @@ export default function HomePage() {
             {
               label: t.home.income,
               value: stats.totalReceived,
-              color: "var(--secondary)",
+              color: "var(--chart-income)",
             },
             {
               label: t.home.expense,
               value: stats.totalSent,
-              color: "var(--accent-purple)",
+              color: "var(--chart-expense)",
             },
           ]}
-          centerValue={`${stats.net >= 0 ? "+" : ""}${formatIrr(stats.net, currency).replace(" IRR", "")}`}
+          centerValue={`${stats.net >= 0 ? "+" : ""}${formatAmountDigits(stats.net)}`}
           centerLabel={t.home.netThisMonth}
         />
         <div className="space-y-2 text-xs">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-2 font-semibold text-foreground">
-              <span className="h-2 w-2 rounded-full bg-success" />
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: "var(--chart-income)" }}
+              />
               {t.home.income}
             </span>
             <span className="amount min-w-0 text-end tabular-nums text-muted">
@@ -365,7 +458,10 @@ export default function HomePage() {
           </div>
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-2 font-semibold text-foreground">
-              <span className="h-2 w-2 rounded-full bg-danger" />
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: "var(--chart-expense)" }}
+              />
               {t.home.expense}
             </span>
             <span className="amount min-w-0 text-end tabular-nums text-muted">
@@ -588,7 +684,7 @@ export default function HomePage() {
             icon={Wallet}
             tone={stats.net >= 0 ? "emerald" : "rose"}
             caption={t.home.thisMonth}
-            spark={chartSeries[0]?.data.map((d) => d.value) ?? []}
+            spark={spark.net}
           />
           <DashboardMetricCard
             label={t.home.spent}
@@ -596,7 +692,7 @@ export default function HomePage() {
             icon={CircleDollarSign}
             tone="rose"
             caption={t.home.thisMonth}
-            spark={chartSeries[1]?.data.map((d) => d.value) ?? []}
+            spark={spark.expense}
           />
           <DashboardMetricCard
             label={t.home.received}
@@ -604,7 +700,7 @@ export default function HomePage() {
             icon={Landmark}
             tone="emerald"
             caption={t.home.thisMonth}
-            spark={chartSeries[0]?.data.map((d) => d.value) ?? []}
+            spark={spark.income}
           />
           <DashboardMetricCard
             label={t.home.activeGoals}

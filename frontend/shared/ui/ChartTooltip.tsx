@@ -2,6 +2,7 @@
 
 type TooltipItem = {
   name?: string;
+  dataKey?: string | number;
   value?: number | string;
   color?: string;
   payload?: { fill?: string };
@@ -44,7 +45,7 @@ export function ChartTooltip({
                     item.color || item.payload?.fill || "var(--primary)",
                 }}
               />
-              {item.name ? (
+              {item.name && item.name !== String(item.dataKey ?? "") ? (
                 <span className="font-medium text-muted">{item.name}</span>
               ) : null}
               <span className="amount ms-auto font-bold text-foreground">

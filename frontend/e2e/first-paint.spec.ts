@@ -141,6 +141,57 @@ test.describe("first paint", () => {
     expect(flips.dirs).toEqual(["rtl"]);
   });
 
+  test("no language cookie paints Persian RTL from the first frame and never flips to English", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      const seen = {
+        langs: [] as string[],
+        dirs: [] as string[],
+        rtl: [] as boolean[],
+      };
+      (
+        window as unknown as { __poulixFirstFrames: typeof seen }
+      ).__poulixFirstFrames = seen;
+      new MutationObserver(() => {
+        const root = document.documentElement;
+        seen.langs.push(root.lang);
+        seen.dirs.push(root.dir);
+        seen.rtl.push(root.classList.contains("rtl"));
+      }).observe(document, {
+        attributes: true,
+        subtree: true,
+        attributeFilter: ["lang", "dir", "class"],
+      });
+    });
+
+    await page.goto("/login", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(800);
+
+    const first = await snapshot(page);
+    expect(first.lang).toBe("fa");
+    expect(first.dir).toBe("rtl");
+    expect(first.hasRtl).toBe(true);
+    expect(first.text).toContain("خوش آمدید");
+    expect(first.text).not.toContain("Welcome back");
+
+    const seen = await page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __poulixFirstFrames: {
+              langs: string[];
+              dirs: string[];
+              rtl: boolean[];
+            };
+          }
+        ).__poulixFirstFrames,
+    );
+    expect(seen.langs).not.toContain("en");
+    expect(seen.dirs).not.toContain("ltr");
+    expect(seen.rtl).not.toContain(false);
+  });
+
   test("OS dark with no theme cookie persists dark, not system, and never uses localStorage", async ({
     browser,
   }) => {

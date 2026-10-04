@@ -51,7 +51,7 @@ const signedInUser = {
 function submitLogin() {
   render(
     <ThemeProvider>
-      <LanguageProvider>
+      <LanguageProvider initialLanguage="en">
         <LoginPage />
       </LanguageProvider>
     </ThemeProvider>,

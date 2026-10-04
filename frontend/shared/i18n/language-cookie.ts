@@ -2,10 +2,12 @@ import { readUiCookie, writeUiCookie } from "@/shared/preferences/ui-cookie";
 import type { Language } from "./translations";
 
 export const LANGUAGE_COOKIE = "poulix_lang";
-export const DEFAULT_LANGUAGE: Language = "en";
+
+export const DEFAULT_LANGUAGE: Language = "fa";
 
 export function parseLanguageCookie(value?: string | null): Language {
-  return value === "fa" ? "fa" : DEFAULT_LANGUAGE;
+  if (value === "fa" || value === "en") return value;
+  return DEFAULT_LANGUAGE;
 }
 
 export function languageDirection(language: Language): "ltr" | "rtl" {

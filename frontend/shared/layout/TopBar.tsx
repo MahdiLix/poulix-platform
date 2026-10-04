@@ -28,11 +28,12 @@ export function TopBar({
     <AppHeader
       className={className}
       start={
-        <Link href="/" className="flex items-center gap-2 lg:hidden">
+        <Link
+          href="/"
+          aria-label={t.common.appName}
+          className="flex items-center gap-2 lg:hidden"
+        >
           <BrandLogo size={32} />
-          <span className="text-sm font-bold text-foreground">
-            {t.common.appName}
-          </span>
         </Link>
       }
       center={

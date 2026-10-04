@@ -20,35 +20,40 @@ vi.mock("@/shared/user/UserProvider", () => ({
   useUserInitials: () => "TU",
 }));
 
+function renderMenu() {
+  return render(
+    <ThemeProvider>
+      <LanguageProvider>
+        <ProfileMenu />
+      </LanguageProvider>
+    </ThemeProvider>,
+  );
+}
+
 describe("ProfileMenu logout", () => {
   it("places logout in the panel and calls the shared signOut", () => {
-    render(
-      <ThemeProvider>
-        <LanguageProvider>
-          <ProfileMenu />
-        </LanguageProvider>
-      </ThemeProvider>,
-    );
+    renderMenu();
 
     fireEvent.click(screen.getByRole("button", { name: "TU" }));
     fireEvent.click(screen.getByRole("button", { name: /log out|خروج/i }));
     expect(signOut).toHaveBeenCalledOnce();
   });
 
+  it("keeps the avatar button and shows no Login link for signed-in users", () => {
+    renderMenu();
+
+    expect(screen.getByRole("button", { name: "TU" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /login|ورود/i })).toBeNull();
+  });
+
   it("links remaining account pages from the panel", () => {
-    render(
-      <ThemeProvider>
-        <LanguageProvider>
-          <ProfileMenu />
-        </LanguageProvider>
-      </ThemeProvider>,
-    );
+    renderMenu();
 
     fireEvent.click(screen.getByRole("button", { name: "TU" }));
-    const hrefs = screen
-      .getAllByRole("link")
-      .map((link) => link.getAttribute("href"));
-    expect(hrefs).toEqual([
+    const links = screen.getAllByRole("link");
+    // Assert by href (and non-empty label) so the test holds whichever
+    // language the app starts in (English or Persian).
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
       "/",
       "/statistics",
       "/history",
@@ -63,25 +68,8 @@ describe("ProfileMenu logout", () => {
       "/security",
       "/profile",
     ]);
-    expect(screen.getByRole("link", { name: /security/i })).toHaveAttribute(
-      "href",
-      "/security",
-    );
-    expect(
-      screen.getByRole("link", { name: /saved destinations/i }),
-    ).toHaveAttribute("href", "/destinations");
-    expect(screen.getByRole("link", { name: /saving goals/i })).toHaveAttribute(
-      "href",
-      "/goals",
-    );
-    expect(
-      screen.getByRole("link", { name: /virtual envelopes/i }),
-    ).toHaveAttribute("href", "/envelopes");
-    expect(
-      screen.getByRole("link", { name: /scheduled payments/i }),
-    ).toHaveAttribute("href", "/scheduled");
-    expect(
-      screen.getByRole("link", { name: /notifications/i }),
-    ).toHaveAttribute("href", "/notifications");
+    for (const link of links) {
+      expect(link.textContent?.trim()).toBeTruthy();
+    }
   });
 });

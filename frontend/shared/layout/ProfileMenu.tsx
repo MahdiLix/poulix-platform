@@ -14,6 +14,7 @@ import {
   Landmark,
   Layers,
   LayoutDashboard,
+  LogIn,
   LogOut,
   PiggyBank,
   Plus,
@@ -57,6 +58,7 @@ export function ProfileMenu({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const isAdmin = user?.role === "ADMIN";
+  const isGuest = status === "unauthenticated";
   const displayName = getDisplayName(
     user,
     status === "loading" ? "" : t.common.guestUser,
@@ -99,6 +101,37 @@ export function ProfileMenu({
       document.removeEventListener("touchstart", onPointerDown);
     };
   }, [open]);
+
+  if (isGuest) {
+    // Guests get a direct link to the existing /login page instead of an
+    // avatar that opens the account panel. The sidebar variant (showLabel)
+    // reads "Login to account"; the top bar variant reads "Login".
+    const guestLabel = showLabel
+      ? language === "fa"
+        ? "ورود به حساب کاربری"
+        : "Login to account"
+      : language === "fa"
+        ? "ورود"
+        : "Login";
+
+    return (
+      <Link
+        href="/login"
+        aria-label={guestLabel}
+        title={guestLabel}
+        className={cn(
+          "flex cursor-pointer items-center justify-center gap-2 rounded-[10px] bg-primary text-xs font-semibold text-primary-foreground transition hover:opacity-90 active:scale-[0.98]",
+          showLabel ? "w-full px-2 py-2.5" : "h-9 px-4",
+          triggerClassName,
+        )}
+      >
+        <LogIn className="h-4 w-4 shrink-0 rtl:rotate-180" />
+        <span className={cn(showLabel && "hidden xl:inline")}>
+          {guestLabel}
+        </span>
+      </Link>
+    );
+  }
 
   const sizeClass =
     avatarSize === "md" ? "h-9 w-9 text-xs" : "h-9 w-9 text-[11px]";
@@ -344,19 +377,21 @@ export function ProfileMenu({
                     </div>
                   ))}
                 </div>
-                <div className="shrink-0 border-t border-border p-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOpen(false);
-                      signOut();
-                    }}
-                    className="flex w-full cursor-pointer items-center gap-3 rounded-[10px] bg-danger-soft px-3 py-2.5 text-sm font-semibold text-danger transition hover:bg-danger hover:text-white active:scale-[0.98]"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    {t.common.logOut}
-                  </button>
-                </div>
+                {user ? (
+                  <div className="shrink-0 border-t border-border p-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        signOut();
+                      }}
+                      className="flex w-full cursor-pointer items-center gap-3 rounded-[10px] bg-danger-soft px-3 py-2.5 text-sm font-semibold text-danger transition hover:bg-danger hover:text-white active:scale-[0.98]"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      {t.common.logOut}
+                    </button>
+                  </div>
+                ) : null}
               </div>
             </>,
             document.body,

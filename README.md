@@ -1,7 +1,6 @@
-# Poulix
-
 <img width="1918" height="1002" alt="poulix-homepage-fa" src="https://github.com/user-attachments/assets/1547c292-37e9-46e7-ad57-d81a645a5d8f" />
 
+# Poulix
 Poulix is a financial digital wallet focused on IRR (Iranian rial). Users can register, sign in, manage a wallet balance, top up through ZarinPal, withdraw to a card/account or Sheba number, and review transactions and statistics. An admin dashboard provides user, payment, withdrawal, security-event, and audit visibility.
 
 Live application: **[https://poulix.ir](https://poulix.ir)**
